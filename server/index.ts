@@ -11,7 +11,15 @@ import {
   type InboundEmail,
   type RequestHandlers,
 } from 'ugly-app';
-import { enableConversations, type ConversationDeps } from 'ugly-app/conversation/server';
+import {
+  enableConversations,
+  type ConversationDeps,
+  conversationCreate as engineConversationCreate,
+  conversationLoad as engineConversationLoad,
+  conversationMessageCreate as engineConversationMessageCreate,
+  conversationMessageReact as engineConversationMessageReact,
+  conversationMessageDelete as engineConversationMessageDelete,
+} from 'ugly-app/conversation/server';
 import { enableCollab } from 'ugly-app/collab/server';
 import type { WorkerHandlers } from 'ugly-app/shared';
 import { dbDefaults } from 'ugly-app/shared';
@@ -113,6 +121,31 @@ const app = createApp(
       await emailSend({ userId, subject, html, id });
       return { ok: true };
     },
+
+    // ── Chat (conversation engine) ─────────────────────────────────────────
+    conversationCreate: async (userId, input) =>
+      engineConversationCreate(
+        {
+          ...input,
+          id: input.id ?? crypto.randomUUID(),
+          type: input.type ?? 'group',
+          title: input.title ?? '',
+          mode: input.mode ?? 'public',
+          ownerIds: input.ownerIds ?? [userId],
+        },
+        userId,
+      ),
+
+    conversationLoad: async (userId, input) => engineConversationLoad(input, userId),
+
+    conversationMessageCreate: async (userId, input) =>
+      engineConversationMessageCreate(input, userId),
+
+    conversationMessageReact: async (userId, input) =>
+      engineConversationMessageReact(input, userId),
+
+    conversationMessageDelete: async (userId, input) =>
+      engineConversationMessageDelete(input, userId),
   } satisfies RequestHandlers<typeof requests>,
   collections,
   (configurator: AppConfigurator) => {

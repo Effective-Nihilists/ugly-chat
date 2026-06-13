@@ -85,6 +85,62 @@ export const requests = defineRequests({
     output: z.object({ ok: z.boolean() }),
   }),
 
+  // ── Chat (ugly-app/conversation engine) ──────────────────────────────────
+  // Thin RPC wrappers over the conversation engine functions. Inputs use
+  // `.catchall` so the engine's full field set passes through un-stripped;
+  // outputs are permissive since the engine returns rich documents.
+  conversationCreate: authReq({
+    input: z
+      .object({
+        id: z.string().optional(),
+        type: z.string().optional(),
+        title: z.string().optional(),
+        mode: z.enum(['public', 'private', 'restricted']).optional(),
+        ownerIds: z.array(z.string()).optional(),
+      })
+      .catchall(z.unknown()),
+    output: z.any(),
+  }),
+
+  conversationLoad: authReq({
+    input: z.object({ conversationOrUserId: z.string() }).catchall(z.unknown()),
+    output: z.any(),
+  }),
+
+  conversationMessageCreate: authReq({
+    input: z
+      .object({
+        conversationId: z.string(),
+        message: z
+          .object({
+            text: z.string().optional(),
+            markdown: z.string().optional(),
+          })
+          .catchall(z.unknown()),
+      })
+      .catchall(z.unknown()),
+    output: z.any(),
+    rateLimit: { max: 60, window: 60 },
+  }),
+
+  conversationMessageReact: authReq({
+    input: z
+      .object({
+        conversationId: z.string(),
+        messageId: z.string(),
+        reaction: z.string().nullable(),
+      })
+      .catchall(z.unknown()),
+    output: z.any(),
+  }),
+
+  conversationMessageDelete: authReq({
+    input: z
+      .object({ conversationId: z.string(), messageId: z.string() })
+      .catchall(z.unknown()),
+    output: z.any(),
+  }),
+
   // Example: public request — userId is string | null
   // getPublicData: req({
   //   input: z.object({ id: z.string() }),

@@ -14,6 +14,7 @@ import { definePage, definePages } from 'ugly-app/shared';
 // Navigate to it from anywhere via: useRouter().push('route-key', params)
 export const pages = definePages({
   '': definePage<{}>({ auth: false }),
+  'chat': definePage<{}>({ auth: true }),
   'auth-demo': definePage<{}>({ auth: false }),
   'user/:userId': definePage<{ userId: string }>(),
   'search': definePage<{ q?: string }>({ auth: false }),
