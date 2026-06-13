@@ -7,8 +7,28 @@
  * deliberately avoids the dropped custom-bot (`BotCode`) sandbox — these are
  * static, code-defined bots only; users cannot create new ones.
  */
-import { uglyBotRequest } from 'ugly-app';
 import { conversationMessageCreate } from 'ugly-app/conversation/server';
+
+// Workers-safe call to ugly.bot's proxied textGen (importing uglyBotRequest from
+// the 'ugly-app' main entry would drag the Node server into the Workers bundle).
+async function uglyBotTextGen(
+  model: string,
+  messages: { role: string; content: string }[],
+  maxTokens: number,
+): Promise<string> {
+  const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
+  const base = env['UGLY_BOT_LOCAL'] === '1' ? 'http://localhost:3000' : env['UGLY_BOT_URL'] ?? 'https://ugly.bot';
+  const token = env['UGLY_BOT_TOKEN'];
+  if (!token) throw new Error('UGLY_BOT_TOKEN not set');
+  const res = await fetch(`${base}/request`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ op: 'textGen', input: { model, messages, options: { maxTokens } }, sessionId: 'server' }),
+  });
+  if (!res.ok) throw new Error(`textGen HTTP ${res.status}`);
+  const data = (await res.json()) as { message?: { content?: string }; result?: { message?: { content?: string } } };
+  return data.message?.content ?? data.result?.message?.content ?? '';
+}
 
 export interface BotDef {
   id: string;
@@ -82,12 +102,11 @@ export async function triggerBotReplies(
     const bot = BOTS[botId]!;
     let reply = '';
     try {
-      const r = await uglyBotRequest<{ message?: { content?: string } }>('textGen', {
-        model: bot.model,
-        messages: [{ role: 'system', content: bot.systemPrompt }, ...history],
-        options: { maxTokens: 300 },
-      });
-      reply = r?.message?.content ?? '';
+      reply = await uglyBotTextGen(
+        bot.model,
+        [{ role: 'system', content: bot.systemPrompt }, ...history],
+        300,
+      );
     } catch (err) {
       console.warn(`[bots] textGen unavailable for ${botId}; using fallback:`, (err as Error).message);
     }

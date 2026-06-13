@@ -36,10 +36,6 @@ export const pages = definePages({
   'test/worker': definePage<{}>({ auth: true }),
   'test/strings': definePage<{}>({ auth: false }),
   'test/safe-area': definePage<{}>({ auth: false }),
-  'test/inspect-fixture': definePage<{
-    simulate?: 'cls' | 'overlap' | 'safearea' | 'keyboard' | 'jank' | 'popup';
-  }>({ auth: false }),
-  'test/inspect-fixture-other': definePage<{}>({ auth: false }),
 });
 
 export type AppPages = typeof pages;

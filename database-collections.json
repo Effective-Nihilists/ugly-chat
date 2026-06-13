@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-13T06:30:46.067Z",
+  "generatedAt": "2026-06-13T07:23:04.938Z",
   "source": "shared/collections.ts",
   "collections": {
     "errorLog": {
@@ -424,6 +424,49 @@
       "name": "conversation",
       "schema": {
         "fields": {
+          "background": {
+            "type": "unknown",
+            "required": false,
+            "nullable": true
+          },
+          "bots": {
+            "type": "record",
+            "valueType": {
+              "type": "unknown",
+              "required": true
+            },
+            "required": false
+          },
+          "chargeUserIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "required": true
+            },
+            "required": false
+          },
+          "image": {
+            "type": "unknown",
+            "required": false,
+            "nullable": true
+          },
+          "lastHuman": {
+            "type": "number",
+            "required": false
+          },
+          "lastUser": {
+            "type": "number",
+            "required": false
+          },
+          "mode": {
+            "type": "enum",
+            "values": [
+              "public",
+              "private",
+              "restricted"
+            ],
+            "required": false
+          },
           "title": {
             "type": "string",
             "required": true,
@@ -432,13 +475,21 @@
           "type": {
             "type": "string",
             "required": true,
-            "default": "ai-chat"
+            "default": "chat"
+          },
+          "typing": {
+            "type": "array",
+            "items": {
+              "type": "unknown",
+              "required": true
+            },
+            "required": false
           }
         }
       },
       "meta": {
         "cache": false,
-        "trackable": false,
+        "trackable": true,
         "public": false,
         "cascadeFrom": null
       }
@@ -447,11 +498,143 @@
       "name": "message",
       "schema": {
         "fields": {
+          "anchor": {
+            "type": "unknown",
+            "required": false
+          },
+          "buttons": {
+            "type": "array",
+            "items": {
+              "type": "unknown",
+              "required": true
+            },
+            "required": false
+          },
+          "color": {
+            "type": "string",
+            "required": false
+          },
           "conversationId": {
             "type": "string",
             "required": true
           },
+          "deleted": {
+            "type": "boolean",
+            "required": false
+          },
+          "edited": {
+            "type": "boolean",
+            "required": false
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "unknown",
+              "required": true
+            },
+            "required": false
+          },
+          "isBot": {
+            "type": "boolean",
+            "required": false
+          },
+          "markdown": {
+            "type": "string",
+            "required": false,
+            "nullable": true
+          },
+          "mentionUserIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "required": true
+            },
+            "required": false
+          },
+          "mood": {
+            "type": "string",
+            "required": false
+          },
+          "onlyUserIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "required": true
+            },
+            "required": false
+          },
+          "parentMessageId": {
+            "type": "string",
+            "required": false,
+            "nullable": true
+          },
+          "reactionCount": {
+            "type": "record",
+            "valueType": {
+              "type": "number",
+              "required": true
+            },
+            "required": false
+          },
+          "reactionUsers": {
+            "type": "record",
+            "valueType": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "required": true
+              },
+              "required": true
+            },
+            "required": false
+          },
+          "systemType": {
+            "type": "string",
+            "required": false
+          },
           "text": {
+            "type": "string",
+            "required": false,
+            "nullable": true
+          },
+          "userId": {
+            "type": "string",
+            "required": true
+          },
+          "visibility": {
+            "type": "enum",
+            "values": [
+              "normal",
+              "silent",
+              "hidden"
+            ],
+            "required": false
+          }
+        }
+      },
+      "meta": {
+        "cache": false,
+        "trackable": true,
+        "public": false,
+        "cascadeFrom": "conversation",
+        "trackKeys": [
+          "conversationId"
+        ]
+      }
+    },
+    "messageReaction": {
+      "name": "messageReaction",
+      "schema": {
+        "fields": {
+          "conversationId": {
+            "type": "string",
+            "required": false
+          },
+          "messageId": {
+            "type": "string",
+            "required": true
+          },
+          "reaction": {
             "type": "string",
             "required": true
           },
@@ -463,12 +646,121 @@
       },
       "meta": {
         "cache": false,
-        "trackable": false,
+        "trackable": true,
         "public": false,
         "cascadeFrom": "conversation",
         "trackKeys": [
-          "conversationId"
+          "conversationId",
+          "messageId"
         ]
+      }
+    },
+    "conversationUser": {
+      "name": "conversationUser",
+      "schema": {
+        "fields": {
+          "conversationId": {
+            "type": "string",
+            "required": true
+          },
+          "isBot": {
+            "type": "boolean",
+            "required": false
+          },
+          "params": {
+            "type": "record",
+            "valueType": {
+              "type": "unknown",
+              "required": true
+            },
+            "required": false
+          },
+          "role": {
+            "type": "string",
+            "required": false
+          },
+          "userId": {
+            "type": "string",
+            "required": true
+          }
+        }
+      },
+      "meta": {
+        "cache": false,
+        "trackable": true,
+        "public": false,
+        "cascadeFrom": "conversation",
+        "trackKeys": [
+          "conversationId",
+          "userId"
+        ]
+      }
+    },
+    "userConversation": {
+      "name": "userConversation",
+      "schema": {
+        "fields": {
+          "conversationId": {
+            "type": "string",
+            "required": true
+          },
+          "pinned": {
+            "type": "boolean",
+            "required": false
+          },
+          "unread": {
+            "type": "number",
+            "required": false
+          },
+          "userId": {
+            "type": "string",
+            "required": true
+          },
+          "visibility": {
+            "type": "string",
+            "required": false
+          }
+        }
+      },
+      "meta": {
+        "cache": false,
+        "trackable": true,
+        "public": false,
+        "cascadeFrom": "conversation",
+        "trackKeys": [
+          "userId"
+        ]
+      }
+    },
+    "userPublic": {
+      "name": "userPublic",
+      "schema": {
+        "fields": {
+          "avatar": {
+            "type": "unknown",
+            "required": false,
+            "nullable": true
+          },
+          "fetchedAt": {
+            "type": "number",
+            "required": false
+          },
+          "isBot": {
+            "type": "boolean",
+            "required": false
+          },
+          "name": {
+            "type": "string",
+            "required": false,
+            "nullable": true
+          }
+        }
+      },
+      "meta": {
+        "cache": true,
+        "trackable": false,
+        "public": true,
+        "cascadeFrom": null
       }
     },
     "collabDoc": {
