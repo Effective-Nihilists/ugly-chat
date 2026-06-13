@@ -113,6 +113,12 @@ export const requests = defineRequests({
     output: z.any(),
   }),
 
+  // Resolve participant profiles (name + avatar) for rendering.
+  profilesGet: authReq({
+    input: z.object({ userIds: z.array(z.string()) }),
+    output: z.any(),
+  }),
+
   // Example: public request — userId is string | null
   // getPublicData: req({
   //   input: z.object({ id: z.string() }),

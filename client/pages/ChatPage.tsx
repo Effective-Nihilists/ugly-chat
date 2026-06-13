@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { PageLayout, useApp } from 'ugly-app/client';
 import { ChatView, ChatMarkdownContent, ChatTextInput } from 'ugly-app/conversation/client';
 import type { ChatMessage, ChatUser } from 'ugly-app/conversation/shared';
@@ -134,7 +134,7 @@ export default function ChatPage(): React.ReactElement {
   const { socket, userId } = useApp();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [ready, setReady] = useState(false);
-  const usersRef = useRef<Record<string, ChatUser>>({});
+  const [profiles, setProfiles] = useState<Record<string, ChatUser>>({});
 
   useEffect(() => {
     let unsub: (() => void) | undefined;
@@ -171,20 +171,39 @@ export default function ChatPage(): React.ReactElement {
     };
   }, [socket, userId]);
 
+  // Resolve participant profiles (real names + avatars) for any userIds we
+  // haven't loaded yet. Bots resolve locally; humans via ugly.bot.
+  useEffect(() => {
+    const unknown = [...new Set(messages.map((m) => m.userId))].filter((id) => id && !profiles[id]);
+    if (unknown.length === 0) return;
+    void socket
+      .request('profilesGet', { userIds: unknown })
+      .then((res) => {
+        const list = (res as { profiles?: { id: string; name: string; avatarUrl: string | null; isBot: boolean }[] }).profiles ?? [];
+        setProfiles((prev) => {
+          const next = { ...prev };
+          for (const p of list) {
+            next[p.id] = {
+              id: p.id,
+              name: p.id === userId ? 'You' : p.name,
+              isBot: p.isBot,
+              ...(p.avatarUrl ? { avatarUrl: p.avatarUrl } : {}),
+            };
+          }
+          return next;
+        });
+      })
+      .catch((err: unknown) => console.error('[ChatPage] profilesGet failed', err));
+  }, [messages, profiles, socket, userId]);
+
   const getUser = useCallback(
-    (id: string): ChatUser => {
-      const cached = usersRef.current[id];
-      if (cached) return cached;
-      const isBot = id.startsWith('bot-');
-      const u: ChatUser = {
+    (id: string): ChatUser =>
+      profiles[id] ?? {
         id,
-        name: id === userId ? 'You' : isBot ? id.replace('bot-', '').replace(/^./, (c) => c.toUpperCase()) : id.slice(0, 8),
-        isBot,
-      };
-      usersRef.current[id] = u;
-      return u;
-    },
-    [userId],
+        name: id === userId ? 'You' : id.startsWith('bot-') ? 'Bot' : id.slice(0, 8),
+        isBot: id.startsWith('bot-'),
+      },
+    [profiles, userId],
   );
 
   const handleSend = useCallback(

@@ -19,6 +19,7 @@ import {
 import type { WorkerHandlers } from 'ugly-app/shared';
 import { dbDefaults } from 'ugly-app/shared';
 import { triggerBotReplies } from './bots';
+import { resolveProfiles, type Profile } from './profiles';
 import { videoJoin, videoLeave, videoEnd, videoBotJoin, type CallState, type DbLike } from './video';
 import { requests } from '../shared/api';
 import type { Todo } from '../shared/collections';
@@ -131,6 +132,10 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       videoEnd(getDb() as unknown as DbLike, { conversation: collections.conversation }, input.conversationId),
     conversationVideoBotJoin: async (_userId, input): Promise<CallState> =>
       videoBotJoin(getDb() as unknown as DbLike, { conversation: collections.conversation }, input.conversationId, input.botId),
+
+    profilesGet: async (_userId, input): Promise<{ profiles: Profile[] }> => ({
+      profiles: await resolveProfiles(getDb(), input.userIds),
+    }),
   } satisfies RequestHandlers<typeof requests>;
 }
 
