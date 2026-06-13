@@ -132,6 +132,10 @@ const app = createApp(
           title: input.title ?? '',
           mode: input.mode ?? 'public',
           ownerIds: input.ownerIds ?? [userId],
+          // Suppress engine "X joined" system messages — they're built without
+          // onlyUserIds and crash conversationMessageCreateInternal. Members are
+          // still added; we just skip the noisy join notice.
+          disableJoinMessages: input.disableJoinMessages ?? true,
         },
         userId,
       ),
@@ -139,13 +143,29 @@ const app = createApp(
     conversationLoad: async (userId, input) => engineConversationLoad(input, userId),
 
     conversationMessageCreate: async (userId, input) =>
-      engineConversationMessageCreate(input, userId),
+      // Default onlyUserIds to ['global'] (visible to everyone) — the engine
+      // requires it on every message; callers may override for private msgs.
+      engineConversationMessageCreate(
+        { ...input, message: { onlyUserIds: ['global'], ...input.message } },
+        userId,
+      ),
 
     conversationMessageReact: async (userId, input) =>
       engineConversationMessageReact(input, userId),
 
     conversationMessageDelete: async (userId, input) =>
-      engineConversationMessageDelete(input, userId),
+      // Engine deletes by raw doc _id, but message docs are keyed
+      // "<conversationId>:<messageId>". Reconstruct if the caller passed the
+      // short id (react, by contrast, prepends conversationId itself).
+      engineConversationMessageDelete(
+        {
+          ...input,
+          messageId: input.messageId.includes(':')
+            ? input.messageId
+            : `${input.conversationId}:${input.messageId}`,
+        },
+        userId,
+      ),
   } satisfies RequestHandlers<typeof requests>,
   collections,
   (configurator: AppConfigurator) => {
