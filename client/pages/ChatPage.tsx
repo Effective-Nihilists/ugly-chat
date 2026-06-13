@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PageLayout, Text, useApp } from 'ugly-app/client';
 import {
   ChatView,
-  ChatMarkdownContent,
-  ChatMarkdownInput,
+  ChatTextContent,
+  ChatTextInput,
 } from 'ugly-app/conversation/client';
 import type { ChatMessage, ChatUser } from 'ugly-app/conversation/shared';
 import type { DBObject } from 'ugly-app/shared';
@@ -174,11 +174,11 @@ export default function ChatPage(): React.ReactElement {
           onDelete={handleDelete}
           onReact={(id, reaction) => handleReact(id, reaction)}
           getUser={getUser}
-          renderContent={(msg, width) => (
-            <ChatMarkdownContent markdown={msg.markdown ?? msg.text ?? ''} width={width} />
+          renderContent={(msg) => (
+            <ChatTextContent text={msg.text ?? msg.markdown ?? ''} />
           )}
         >
-          <ChatMarkdownInput placeholder="Message ugly.chat…" autoFocus />
+          <ChatTextInput placeholder="Message ugly.chat…" autoFocus />
         </ChatView>
       </div>
     </PageLayout>
