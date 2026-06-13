@@ -1,0 +1,655 @@
+{
+  "errorLog": {
+    "fields": {
+      "context": {
+        "type": "record",
+        "valueType": {
+          "type": "unknown",
+          "required": true
+        },
+        "required": false,
+        "nullable": true
+      },
+      "message": {
+        "type": "string",
+        "required": true
+      },
+      "meta": {
+        "type": "object",
+        "fields": {
+          "buildId": {
+            "type": "string",
+            "required": false
+          },
+          "hash": {
+            "type": "string",
+            "required": false
+          },
+          "isExpected": {
+            "type": "boolean",
+            "required": false
+          },
+          "level": {
+            "type": "enum",
+            "values": [
+              "log",
+              "info",
+              "warn",
+              "error",
+              "debug"
+            ],
+            "required": true
+          },
+          "projectId": {
+            "type": "string",
+            "required": false
+          },
+          "sessionId": {
+            "type": "string",
+            "required": false
+          },
+          "source": {
+            "type": "enum",
+            "values": [
+              "browser",
+              "server",
+              "client",
+              "lazyview",
+              "perf"
+            ],
+            "required": true
+          },
+          "type": {
+            "type": "enum",
+            "values": [
+              "console",
+              "exception",
+              "unhandled"
+            ],
+            "required": true
+          },
+          "userId": {
+            "type": "string",
+            "required": true,
+            "nullable": true
+          }
+        },
+        "required": true
+      },
+      "previousLogs": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "fields": {
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "unknown",
+                "required": true
+              },
+              "required": true
+            },
+            "level": {
+              "type": "enum",
+              "values": [
+                "log",
+                "info",
+                "warn",
+                "error",
+                "debug"
+              ],
+              "required": true
+            },
+            "message": {
+              "type": "string",
+              "required": true
+            },
+            "timestamp": {
+              "type": "number",
+              "required": true
+            }
+          },
+          "required": true
+        },
+        "required": false
+      },
+      "stack": {
+        "type": "string",
+        "required": false,
+        "nullable": true
+      },
+      "url": {
+        "type": "string",
+        "required": false,
+        "nullable": true
+      }
+    },
+    "indexes": [
+      {
+        "fields": {
+          "meta.level": 1
+        }
+      },
+      {
+        "fields": {
+          "meta.userId": 1
+        }
+      }
+    ]
+  },
+  "perfLog": {
+    "fields": {
+      "durationMs": {
+        "type": "number",
+        "required": true
+      },
+      "operation": {
+        "type": "string",
+        "required": true
+      },
+      "userId": {
+        "type": "string",
+        "required": true
+      }
+    },
+    "indexes": [
+      {
+        "fields": {
+          "operation": 1
+        }
+      },
+      {
+        "fields": {
+          "userId": 1
+        }
+      }
+    ]
+  },
+  "feedbackReport": {
+    "fields": {
+      "context": {
+        "type": "string",
+        "required": false
+      },
+      "message": {
+        "type": "string",
+        "required": true
+      },
+      "previousLogs": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "fields": {
+            "level": {
+              "type": "string",
+              "required": true
+            },
+            "message": {
+              "type": "string",
+              "required": true
+            },
+            "timestamp": {
+              "type": "number",
+              "required": true
+            }
+          },
+          "required": true
+        },
+        "required": false
+      },
+      "resolution": {
+        "type": "string",
+        "required": false
+      },
+      "resolvedAt": {
+        "type": "number",
+        "required": false
+      },
+      "screenshotUri": {
+        "type": "string",
+        "required": false
+      },
+      "status": {
+        "type": "enum",
+        "values": [
+          "pending",
+          "captured",
+          "resolved",
+          "declined"
+        ],
+        "required": true
+      },
+      "type": {
+        "type": "enum",
+        "values": [
+          "bug",
+          "feature",
+          "design"
+        ],
+        "required": true
+      },
+      "url": {
+        "type": "string",
+        "required": true
+      },
+      "userId": {
+        "type": "string",
+        "required": true
+      }
+    },
+    "indexes": [
+      {
+        "fields": {
+          "userId": 1
+        }
+      },
+      {
+        "fields": {
+          "status": 1
+        }
+      }
+    ]
+  },
+  "authMagicLink": {
+    "fields": {
+      "consumedAt": {
+        "type": "number",
+        "required": true,
+        "nullable": true
+      },
+      "email": {
+        "type": "string",
+        "required": true
+      },
+      "expiresAt": {
+        "type": "number",
+        "required": true
+      },
+      "requestIp": {
+        "type": "string",
+        "required": true,
+        "nullable": true
+      },
+      "requestedAt": {
+        "type": "number",
+        "required": true
+      },
+      "tokenHash": {
+        "type": "string",
+        "required": true
+      }
+    },
+    "indexes": [
+      {
+        "fields": {
+          "email": 1
+        }
+      },
+      {
+        "fields": {
+          "expiresAt": 1
+        },
+        "ttl": 86400
+      }
+    ]
+  },
+  "authIdentity": {
+    "fields": {
+      "createdAt": {
+        "type": "number",
+        "required": true
+      },
+      "email": {
+        "type": "string",
+        "required": true,
+        "nullable": true
+      },
+      "lastLoginAt": {
+        "type": "number",
+        "required": true
+      },
+      "name": {
+        "type": "string",
+        "required": true,
+        "nullable": true
+      },
+      "provider": {
+        "type": "enum",
+        "values": [
+          "magic-link",
+          "google",
+          "uglybot"
+        ],
+        "required": true
+      },
+      "providerKey": {
+        "type": "string",
+        "required": true
+      },
+      "userId": {
+        "type": "string",
+        "required": true
+      }
+    },
+    "indexes": [
+      {
+        "fields": {
+          "providerKey": 1
+        }
+      },
+      {
+        "fields": {
+          "userId": 1
+        }
+      }
+    ]
+  },
+  "todo": {
+    "fields": {
+      "done": {
+        "type": "boolean",
+        "required": true
+      },
+      "text": {
+        "type": "string",
+        "required": true
+      },
+      "userId": {
+        "type": "string",
+        "required": true
+      }
+    }
+  },
+  "conversation": {
+    "fields": {
+      "background": {
+        "type": "unknown",
+        "required": false,
+        "nullable": true
+      },
+      "bots": {
+        "type": "record",
+        "valueType": {
+          "type": "unknown",
+          "required": true
+        },
+        "required": false
+      },
+      "chargeUserIds": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "required": true
+        },
+        "required": false
+      },
+      "image": {
+        "type": "unknown",
+        "required": false,
+        "nullable": true
+      },
+      "lastHuman": {
+        "type": "number",
+        "required": false
+      },
+      "lastUser": {
+        "type": "number",
+        "required": false
+      },
+      "mode": {
+        "type": "enum",
+        "values": [
+          "public",
+          "private",
+          "restricted"
+        ],
+        "required": false
+      },
+      "title": {
+        "type": "string",
+        "required": true,
+        "default": ""
+      },
+      "type": {
+        "type": "string",
+        "required": true,
+        "default": "chat"
+      },
+      "typing": {
+        "type": "array",
+        "items": {
+          "type": "unknown",
+          "required": true
+        },
+        "required": false
+      }
+    }
+  },
+  "message": {
+    "fields": {
+      "anchor": {
+        "type": "unknown",
+        "required": false
+      },
+      "buttons": {
+        "type": "array",
+        "items": {
+          "type": "unknown",
+          "required": true
+        },
+        "required": false
+      },
+      "color": {
+        "type": "string",
+        "required": false
+      },
+      "conversationId": {
+        "type": "string",
+        "required": true
+      },
+      "deleted": {
+        "type": "boolean",
+        "required": false
+      },
+      "edited": {
+        "type": "boolean",
+        "required": false
+      },
+      "files": {
+        "type": "array",
+        "items": {
+          "type": "unknown",
+          "required": true
+        },
+        "required": false
+      },
+      "isBot": {
+        "type": "boolean",
+        "required": false
+      },
+      "markdown": {
+        "type": "string",
+        "required": false,
+        "nullable": true
+      },
+      "mentionUserIds": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "required": true
+        },
+        "required": false
+      },
+      "mood": {
+        "type": "string",
+        "required": false
+      },
+      "onlyUserIds": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "required": true
+        },
+        "required": false
+      },
+      "parentMessageId": {
+        "type": "string",
+        "required": false,
+        "nullable": true
+      },
+      "reactionCount": {
+        "type": "record",
+        "valueType": {
+          "type": "number",
+          "required": true
+        },
+        "required": false
+      },
+      "reactionUsers": {
+        "type": "record",
+        "valueType": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "required": true
+          },
+          "required": true
+        },
+        "required": false
+      },
+      "systemType": {
+        "type": "string",
+        "required": false
+      },
+      "text": {
+        "type": "string",
+        "required": false,
+        "nullable": true
+      },
+      "userId": {
+        "type": "string",
+        "required": true
+      },
+      "visibility": {
+        "type": "enum",
+        "values": [
+          "normal",
+          "silent",
+          "hidden"
+        ],
+        "required": false
+      }
+    }
+  },
+  "messageReaction": {
+    "fields": {
+      "conversationId": {
+        "type": "string",
+        "required": false
+      },
+      "messageId": {
+        "type": "string",
+        "required": true
+      },
+      "reaction": {
+        "type": "string",
+        "required": true
+      },
+      "userId": {
+        "type": "string",
+        "required": true
+      }
+    }
+  },
+  "conversationUser": {
+    "fields": {
+      "conversationId": {
+        "type": "string",
+        "required": true
+      },
+      "isBot": {
+        "type": "boolean",
+        "required": false
+      },
+      "params": {
+        "type": "record",
+        "valueType": {
+          "type": "unknown",
+          "required": true
+        },
+        "required": false
+      },
+      "role": {
+        "type": "string",
+        "required": false
+      },
+      "userId": {
+        "type": "string",
+        "required": true
+      }
+    }
+  },
+  "userConversation": {
+    "fields": {
+      "conversationId": {
+        "type": "string",
+        "required": true
+      },
+      "pinned": {
+        "type": "boolean",
+        "required": false
+      },
+      "unread": {
+        "type": "number",
+        "required": false
+      },
+      "userId": {
+        "type": "string",
+        "required": true
+      },
+      "visibility": {
+        "type": "string",
+        "required": false
+      }
+    }
+  },
+  "userPublic": {
+    "fields": {
+      "avatar": {
+        "type": "unknown",
+        "required": false,
+        "nullable": true
+      },
+      "fetchedAt": {
+        "type": "number",
+        "required": false
+      },
+      "isBot": {
+        "type": "boolean",
+        "required": false
+      },
+      "name": {
+        "type": "string",
+        "required": false,
+        "nullable": true
+      }
+    }
+  },
+  "collabDoc": {
+    "fields": {
+      "lastSyncedAt": {
+        "type": "number",
+        "required": true
+      },
+      "serialized": {
+        "type": "string",
+        "required": true,
+        "nullable": true
+      },
+      "yjsState": {
+        "type": "string",
+        "required": true
+      }
+    }
+  }
+}
