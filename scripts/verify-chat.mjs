@@ -94,6 +94,27 @@ try {
     conversationId: roomId, messageId: shortId(mA._id || mA.id),
   });
   assert(dbMessageCount(roomId) === 1, `after delete, 1 visible message (got ${dbMessageCount(roomId)})`);
+
+  // 7. BOT chat: create a room with a bot, human posts → bot replies
+  const botRoom = `verifybot-${randomUUID().slice(0, 8)}`;
+  await rpc(tokenA, 'conversationCreate', {
+    id: botRoom, type: 'group', title: 'Bot Room', mode: 'public', ownerIds: [userA],
+    bots: { 'bot-ugly': { botParams: {}, type: 'assistant' } },
+  });
+  await rpc(tokenA, 'conversationMessageCreate', {
+    conversationId: botRoom, message: { text: 'hello bot', markdown: 'hello bot' },
+  });
+  const botMsgCount = () => parseInt(execSync(
+    `docker exec ugly-app-postgres psql -U app -d ugly_chat -tA -c ` +
+      `"SELECT count(*) FROM message WHERE data->>'conversationId'='${botRoom}' AND data->>'userId'='bot-ugly'"`,
+    { encoding: 'utf8' },
+  ).trim(), 10);
+  let botReplied = false;
+  for (let i = 0; i < 30 && !botReplied; i++) {
+    if (botMsgCount() >= 1) { botReplied = true; break; }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  assert(botReplied, 'bot replied to a human message');
 } catch (err) {
   failures++;
   console.error('\n✗ ERROR:', err.message);

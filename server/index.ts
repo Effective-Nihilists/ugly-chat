@@ -21,6 +21,7 @@ import {
   conversationMessageDelete as engineConversationMessageDelete,
 } from 'ugly-app/conversation/server';
 import { enableCollab } from 'ugly-app/collab/server';
+import { botUser, triggerBotReplies } from './bots';
 import type { WorkerHandlers } from 'ugly-app/shared';
 import { dbDefaults } from 'ugly-app/shared';
 import { messages, requests } from '../shared/api';
@@ -142,13 +143,22 @@ const app = createApp(
 
     conversationLoad: async (userId, input) => engineConversationLoad(input, userId),
 
-    conversationMessageCreate: async (userId, input) =>
+    conversationMessageCreate: async (userId, input) => {
       // Default onlyUserIds to ['global'] (visible to everyone) — the engine
       // requires it on every message; callers may override for private msgs.
-      engineConversationMessageCreate(
+      const msg = await engineConversationMessageCreate(
         { ...input, message: { onlyUserIds: ['global'], ...input.message } },
         userId,
-      ),
+      );
+      // Fire bot replies (delivered via trackDocs); don't block the sender.
+      void triggerBotReplies(
+        app.db,
+        { conversation: collections.conversation, message: collections.message },
+        input.conversationId,
+        userId,
+      ).catch((err: unknown) => console.error('[bots] reply failed', err));
+      return msg;
+    },
 
     conversationMessageReact: async (userId, input) =>
       engineConversationMessageReact(input, userId),
@@ -202,6 +212,8 @@ const app = createApp(
         userConversation: collections.userConversation,
       },
       async userGet(userId: string) {
+        const bot = botUser(userId);
+        if (bot) return bot;
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         const u = convDeps.db ? await convDeps.db.getDoc(collections.userPublic, userId) : null;
         return u ?? { _id: userId, name: userId.slice(0, 8), isBot: false };
