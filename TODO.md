@@ -45,11 +45,15 @@ custom bots are intentionally dropped.
 ### Phase 3 — Chat layer (build on `ugly-app/conversation`)
 > KEY: the full conversation+bot ENGINE is already in `ugly-app/conversation/server` (lifted from
 > ugly.bot, DI via `ConversationDeps`). Phase 3/4 = implement `ConversationDeps`, not re-extract.
-- [ ] Implement real `ConversationDeps` (db, collections, userGet → profile cache, optional bots/files/
-      video) and pass to `enableConversations` (scaffold currently uses stub deps in `server/index.ts`)
-- [ ] Expose rich ops (react/edit/members/search) via `shared/api.ts` RPC → exported engine fns
-- [ ] Build a real `ChatPage` = `ChatView` + `ChatMarkdownContent` (from ChatDemoPage) wired to the
-      live `conv:*` socket protocol (from ChatTestPage); replace demo pages, wire `client/allPages.ts`
+- [x] Real `ConversationDeps` wired into `enableConversations` (db, 5 collections, userGet w/ userPublic
+      cache fallback); all optional deps are `?.`-guarded so happy path needs no extra deps
+- [x] RPC ops in `shared/api.ts` + handlers in `server/index.ts`: conversationCreate/Load/MessageCreate/
+      MessageReact/MessageDelete (engine fns aliased). Routes 401-gated ✓
+- [x] `ChatPage` = `ChatView` + `ChatMarkdownContent`/`Input` wired to `trackDocs('message')` realtime +
+      RPC ops; bootstraps a shared demo room; route `chat` (auth). Type-clean, serves 200.
+- [ ] Interactive verify (login → send → realtime → react/delete) in browser; then replace demo-room
+      with real conversation routing + list/search; resolve userPublic profiles for real names/avatars
+- [ ] Expose remaining ops (edit, members, search, typing) + render reactions/typing in ChatView
 - [!] node-canvas spike — `canvas@^3.2.1` (Image/File thumbnails) is native, no Workers support
 
 ### Framework workstream — markdown/client migration (ugly-app repo)
