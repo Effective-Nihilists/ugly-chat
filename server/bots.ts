@@ -7,7 +7,7 @@
  * deliberately avoids the dropped custom-bot (`BotCode`) sandbox — these are
  * static, code-defined bots only; users cannot create new ones.
  */
-import { conversationMessageCreate } from 'ugly-app/conversation/server';
+import { conversationMessageCreate } from 'ugly-app/conversation/engine';
 
 // Workers-safe call to ugly.bot's proxied textGen (importing uglyBotRequest from
 // the 'ugly-app' main entry would drag the Node server into the Workers bundle).

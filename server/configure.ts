@@ -18,7 +18,7 @@ import {
   setConversationDeps,
   setConversationUserDeps,
   type ConversationDeps,
-} from 'ugly-app/conversation/server';
+} from 'ugly-app/conversation/engine';
 import { botUser } from './bots';
 import type { DbSurface } from './handlers';
 import { collections } from '../shared/collections';

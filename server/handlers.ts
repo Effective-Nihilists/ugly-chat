@@ -15,7 +15,7 @@ import {
   conversationMessageCreate as engineConversationMessageCreate,
   conversationMessageReact as engineConversationMessageReact,
   conversationMessageDelete as engineConversationMessageDelete,
-} from 'ugly-app/conversation/server';
+} from 'ugly-app/conversation/engine';
 import type { WorkerHandlers } from 'ugly-app/shared';
 import { dbDefaults } from 'ugly-app/shared';
 import { triggerBotReplies } from './bots';
