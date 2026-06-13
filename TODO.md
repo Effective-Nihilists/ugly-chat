@@ -8,6 +8,16 @@ Extracting all chat from **ugly.bot** into this **ugly-app**–based project, de
 functionality match (text chat, group/1:1 video, JS built-in bots). Python bots and user-created
 custom bots are intentionally dropped.
 
+## Current status (2026-06-13)
+**Verified locally (automated):** text chat human↔human + human↔bot (real AI), reactions, delete
+(`scripts/verify-chat.mjs` 11/11); chat UI + realtime + video-start (local camera) + bot fake-call
+tile in a real browser (`scripts/verify-ui.mjs`); video call lifecycle (join/leave/end + bot).
+**Deploy-ready:** `build:workers` is GREEN against published `ugly-app@0.1.528` (added the
+Workers-safe `conversation/engine` export — the conversation barrel pulled the Node nats client).
+**Remaining for full "done":** Ugly Studio deploy → `ugly.chat` (acquires Cloudflare incl. Realtime
+creds), then wire Cloudflare Realtime to verify **cross-peer human video** (two browsers seeing each
+other). Run `bash scripts/dev-local.sh` for local dev (self-auth + NATS + ugly.bot proxy token).
+
 ## Architecture (locked)
 - **Hosting:** Cloudflare Workers (studio publish flow). **Video:** Cloudflare Realtime (no Mediasoup).
 - **Auth:** federated from ugly.bot (framework default; `userId`/name/avatar come from ugly.bot).
