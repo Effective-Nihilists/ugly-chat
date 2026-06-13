@@ -1,0 +1,20 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FF8A2B"/>
+      <stop offset="1" stop-color="#F0500A"/>
+    </linearGradient>
+  </defs>
+  <!-- app tile -->
+  <rect width="512" height="512" rx="116" fill="url(#bg)"/>
+  <!-- chat bubble -->
+  <rect x="96" y="104" width="320" height="232" rx="48" fill="#161616"/>
+  <path d="M166 322 l6 78 l70 -70 z" fill="#161616"/>
+  <!-- ugly mismatched eyes -->
+  <circle cx="204" cy="206" r="46" fill="#FF8A2B"/>
+  <circle cx="214" cy="214" r="18" fill="#161616"/>
+  <circle cx="324" cy="214" r="31" fill="#FFB45A"/>
+  <circle cx="332" cy="221" r="12" fill="#161616"/>
+  <!-- crooked grin -->
+  <path d="M194 282 q58 42 134 -2" stroke="#FF8A2B" stroke-width="17" fill="none" stroke-linecap="round"/>
+</svg>
