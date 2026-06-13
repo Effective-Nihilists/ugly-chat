@@ -13,3 +13,7 @@ coverage/
 .ugly-studio/tmp/
 .ugly-studio/users/
 .ugly-studio/home/
+
+# Local env (never commit)
+.env
+.env.local

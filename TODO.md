@@ -21,7 +21,13 @@ custom bots are intentionally dropped.
 
 ### Phase 0 — Scaffold
 - [x] `npx ugly-app init ugly-chat` (projectId `11tm1kplpe`), git-committed
-- [ ] Create public GitHub repo `Effective-Nihilists/ugly-chat`, push
+- [x] Create public GitHub repo `Effective-Nihilists/ugly-chat`, push (default branch `main`)
+- [x] Boot locally — `ugly_chat` DB on local Postgres, `db:migrate` + `dev` on :4321; auth mode
+      `uglybot` confirmed, Vite serving. ugly.bot(:3000) + ugly.chat(:4321) run side-by-side.
+- [ ] **Baseline cleanup (scaffold drift, ugly-app ^0.1.126 vs installed 0.1.523):**
+      `server/workers.ts` imports a non-existent `./handlers` split + omits `messages` (blocks Workers
+      build); demo `InspectFixturePage.tsx` imports removed `useRouter`. Fix during Phase 3 demo strip.
+      Align `ugly-app` dep to installed version.
 
 ### Phase 1 — Auth federation
 - [x] Confirmed framework default (`UGLY_APP_AUTH_MODE` unset → proxy to ugly.bot `/verify`)
