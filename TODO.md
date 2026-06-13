@@ -36,15 +36,20 @@ custom bots are intentionally dropped.
       public-profile endpoint (`userLoad` is self-only today)
 
 ### Phase 2 — Collections + history migration
-- [ ] Port chat collections into `shared/collections.ts` (conversation, conversationUser,
-      userConversation, message, messageReaction, conversationFile, conversationThread, conversationEvent)
+- [x] Chat collections in `shared/collections.ts` (conversation, message, messageReaction,
+      conversationUser, userConversation, userPublic); trackable realtime; migrations 002-005 applied
+- [ ] Add conversationFile/conversationThread/conversationEvent if engine needs them (add when wiring deps)
 - [ ] `scripts/migrate-chat-history.ts` (prod Postgres → Neon); needs prod creds + Neon target
 - [ ] File-blob strategy (reference ugly.bot CDN for historical vs. copy to ugly.chat R2)
 
 ### Phase 3 — Chat layer (build on `ugly-app/conversation`)
-- [ ] Extend framework `enableConversations` server for gaps (threads, search, files, roles, system msgs)
-- [ ] Register chat ops in `shared/api.ts` + `server/index.ts`; live delivery via `trackDocs`
-- [ ] Remove bot-create/code routes; wire conversation pages in `client/allPages.ts`
+> KEY: the full conversation+bot ENGINE is already in `ugly-app/conversation/server` (lifted from
+> ugly.bot, DI via `ConversationDeps`). Phase 3/4 = implement `ConversationDeps`, not re-extract.
+- [ ] Implement real `ConversationDeps` (db, collections, userGet → profile cache, optional bots/files/
+      video) and pass to `enableConversations` (scaffold currently uses stub deps in `server/index.ts`)
+- [ ] Expose rich ops (react/edit/members/search) via `shared/api.ts` RPC → exported engine fns
+- [ ] Build a real `ChatPage` = `ChatView` + `ChatMarkdownContent` (from ChatDemoPage) wired to the
+      live `conv:*` socket protocol (from ChatTestPage); replace demo pages, wire `client/allPages.ts`
 - [!] node-canvas spike — `canvas@^3.2.1` (Image/File thumbnails) is native, no Workers support
 
 ### Framework workstream — markdown/client migration (ugly-app repo)
@@ -52,8 +57,10 @@ custom bots are intentionally dropped.
       into `ugly-app` so ugly.bot + ugly.chat both consume it
 
 ### Phase 4 — JS built-in bots
-- [ ] Port uglyBot/character/moderator/uglyTranslator/linguaPractice + slimmed `wrapper.ts`
-- [ ] Sever all `BotCode.ts` imports; static bot registry (no custom-bot creation)
+> Engine already has `conversationBotAdd/BotRun/BotGetAll` (in framework). Likely = provide bot defs +
+> `botGet`/`serverBotCodes` deps, not re-port the runner.
+- [ ] Port uglyBot/character/moderator/uglyTranslator/linguaPractice as static bot defs
+- [ ] Wire bot deps (`botGet`, `serverBotCodes`, `conversationBotRun`); no custom-bot creation/BotCode sandbox
 
 ### Phase 5 — Video on Cloudflare Realtime
 - [ ] Signaling Durable Object (room membership, WHIP/WHEP, fan-out)
