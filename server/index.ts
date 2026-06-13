@@ -11,7 +11,7 @@ import {
   type InboundEmail,
   type RequestHandlers,
 } from 'ugly-app';
-import { enableConversations } from 'ugly-app/conversation/server';
+import { enableConversations, type ConversationDeps } from 'ugly-app/conversation/server';
 import { enableCollab } from 'ugly-app/collab/server';
 import type { WorkerHandlers } from 'ugly-app/shared';
 import { dbDefaults } from 'ugly-app/shared';
@@ -134,14 +134,34 @@ const app = createApp(
       console.log('[Email] Received:', { from: inbound.from, id: inbound.id, subject: inbound.subject });
     });
 
-    // ── Conversations (AI chat) ────────────────────────────────────────────
-    // Note: ConversationDeps.db is set lazily since `app` isn't assigned yet during createApp.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const convDeps: any = { db: null, collections: {}, userGet: () => null, userPrivateGet: () => null };
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    // ── Conversations (chat + bots) ────────────────────────────────────────
+    // Wire the full conversation engine (lifted from ugly.bot) via ConversationDeps.
+    // `db` is set lazily in setOnAfterStart since `app` isn't assigned yet here.
+    // userGet resolves from the local `userPublic` cache (populated from ugly.bot's
+    // public-profile lookup — Phase 1); falls back to a minimal record.
+    const convDeps: ConversationDeps = {
+      db: null,
+      collections: {
+        conversation: collections.conversation,
+        message: collections.message,
+        messageReaction: collections.messageReaction,
+        conversationUser: collections.conversationUser,
+        userConversation: collections.userConversation,
+      },
+      async userGet(userId: string) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        const u = convDeps.db ? await convDeps.db.getDoc(collections.userPublic, userId) : null;
+        return u ?? { _id: userId, name: userId.slice(0, 8), isBot: false };
+      },
+      // eslint-disable-next-line @typescript-eslint/require-await
+      async userPrivateGet(userId: string) {
+        return { _id: userId };
+      },
+    };
     const convServer = enableConversations(configurator, {
       conversationCollection: 'conversation',
       messageCollection: 'message',
+      reactionCollection: 'messageReaction',
       aiChat: {
         async *onMessage(session, userMessage) {
           const data = await uglyBotRequest<{ message: { content: string } }>('textGen', {
