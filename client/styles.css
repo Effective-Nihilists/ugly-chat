@@ -1,15 +1,334 @@
+/* Light mode CSS variable values */
 :root {
-  --safe-area-inset-top: env(safe-area-inset-top, 0px);
-  --safe-area-inset-right: env(safe-area-inset-right, 0px);
-  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+  --app-primary: #ff5500;
+  --app-primary-rgb: 255, 85, 0;
+  --app-secondary: #f4f4f5;
+  --app-secondary-rgb: 244, 244, 245;
+  --app-tertiary: #fafafa;
+  --app-tertiary-rgb: 250, 250, 250;
+  --app-sidebar: #ebebed;
+  --app-main: #ffffff;
+  --app-main-rgb: 255, 255, 255;
+  --app-border: #d4d4d8;
+  --app-border-rgb: 212, 212, 216;
+  --app-foreground: #000000;
+  --app-foreground-rgb: 0, 0, 0;
+  --app-input: #ffffff;
+  --app-error: #e3120b;
+  --app-error-rgb: 227, 18, 11;
+  --app-foreground-10: rgba(0, 0, 0, 0.1);
+  --app-foreground-20: rgba(0, 0, 0, 0.2);
+  --app-foreground-50: rgba(0, 0, 0, 0.5);
+  --app-foreground-60: rgba(0, 0, 0, 0.6);
+  --app-foreground-80: rgba(0, 0, 0, 0.8);
+  --app-primary-20: rgba(255, 85, 0, 0.2);
+  --app-error-20: rgba(227, 18, 11, 0.2);
+  --app-foreground-muted: rgba(0, 0, 0, 0.55);
+
+  /* Semantic fixed colors */
+  --app-on-primary: #ffffff;
+  --app-warn: #ff9800;
+  --app-info: #2196f3;
+  --app-success: #4caf50;
+
+  /* Token / date / meal accent colors */
+  --app-token: #9b59b6;
+  --app-token-rgb: 155, 89, 182;
+  --app-token-20: rgba(155, 89, 182, 0.2);
+  --app-token-50: rgba(155, 89, 182, 0.5);
+  --app-date: #3498db;
+  --app-date-rgb: 52, 152, 219;
+  --app-date-20: rgba(52, 152, 219, 0.2);
+  --meal-accent: #10b981;
+  --meal-accent-rgb: 16, 185, 129;
+  --meal-accent-20: rgba(16, 185, 129, 0.2);
+  --meal-accent-10: rgba(16, 185, 129, 0.1);
+
+  /* Static alpha values (not theme-dependent) */
+  --app-white: #ffffff;
+  --app-white-10: rgba(255, 255, 255, 0.1);
+  --app-white-20: rgba(255, 255, 255, 0.2);
+  --app-white-40: rgba(255, 255, 255, 0.4);
+  --app-white-50: rgba(255, 255, 255, 0.5);
+  --app-white-60: rgba(255, 255, 255, 0.6);
+  --app-black-10: rgba(0, 0, 0, 0.1);
+  --app-black-20: rgba(0, 0, 0, 0.2);
+  --app-black-50: rgba(0, 0, 0, 0.5);
+  --app-black-60: rgba(0, 0, 0, 0.6);
+  --app-black-80: rgba(0, 0, 0, 0.8);
+
+  /* Shadows */
+  --app-shadow-text: drop-shadow(1px 1px 1px var(--app-black-50));
+  --app-shadow-text-strong: drop-shadow(2px 2px 4px var(--app-black-50));
+  --app-shadow-inset: inset 0 4px 20px var(--app-black-10);
+  --app-shadow-inset-highlight: inset -4px -3.5px 0px -4.5px var(--app-white-40);
+  --app-shadow-blur: 10px 4px 6px var(--app-black-50);
+  --app-shadow-button-default: 0 1px 3px var(--app-black-10);
+
+  /* Font variables — hardcoded from shared/DefaultStyle constants */
+  /* IMPORTANT: Keep in sync with shared/DefaultStyle.ts if font values change */
+  --app-font-heading: 'Plus Jakarta Sans', 'Noto Sans Arabic', sans-serif;
+  --app-font-body: 'Inter', 'Noto Sans Arabic', sans-serif;
+  --app-font-heading-weight: 700;
+  --app-font-body-weight: 400;
+  --app-font-body-weight-bold: 600;
+  --app-font-size-large: 17px;
+  --app-font-size-medium: 15px;
+  --app-font-size-small: 12px;
+
+  /* Gradients */
+  --app-gradient-primary: linear-gradient(
+    135deg,
+    #ff6b35 0%,
+    #ff5500 50%,
+    #e84d00 100%
+  );
+  --app-gradient-error: linear-gradient(135deg, #ff4757 0%, #c0392b 100%);
+  --app-gradient-default: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+  --app-gradient-debug: linear-gradient(135deg, #f5f3f8 0%, #ebe7f0 100%);
+
+  /* ugly-app --color-* aliases (used by library components with fallbacks) */
+  --color-primary: var(--app-primary);
+  --color-error: var(--app-error);
+  --color-border: var(--app-border);
+  --color-text: var(--app-foreground);
+  --color-bg: var(--app-main);
+  --color-primary-subtle: var(--app-primary-20);
+  --color-error-subtle: var(--app-error-20);
+}
+
+/* Dark mode CSS variable values */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --app-primary: #ff5500;
+    --app-primary-rgb: 255, 85, 0;
+    --app-secondary: #1a1d23;
+    --app-secondary-rgb: 26, 29, 35;
+    --app-tertiary: #141720;
+    --app-tertiary-rgb: 20, 23, 32;
+    --app-sidebar: #1e2128;
+    --app-main: #0f1115;
+    --app-main-rgb: 15, 17, 21;
+    --app-border: #2a2d35;
+    --app-border-rgb: 42, 45, 53;
+    --app-foreground: #ffffff;
+    --app-foreground-rgb: 255, 255, 255;
+    --app-input: #12141a;
+    --app-error: #e3120b;
+    --app-error-rgb: 227, 18, 11;
+    --app-foreground-10: rgba(255, 255, 255, 0.1);
+    --app-foreground-20: rgba(255, 255, 255, 0.2);
+    --app-foreground-50: rgba(255, 255, 255, 0.5);
+    --app-foreground-60: rgba(255, 255, 255, 0.6);
+    --app-foreground-80: rgba(255, 255, 255, 0.8);
+    --app-primary-20: rgba(255, 85, 0, 0.2);
+    --app-error-20: rgba(227, 18, 11, 0.2);
+    --app-foreground-muted: rgba(255, 255, 255, 0.55);
+    --app-gradient-default: linear-gradient(135deg, #282d36 0%, #1a1d23 100%);
+    --app-gradient-debug: linear-gradient(135deg, #2a2832 0%, #1e1c26 100%);
+  }
+}
+
+/* ============================================================
+   Global element styles
+   (Previously in server/pages/Page.ts inline <style> block)
+   ============================================================ */
+
+html,
+body,
+#root {
+  width: 100%;
+  -webkit-overflow-scrolling: touch;
+  margin: 0px;
+  padding: 0px;
+  background-color: var(--app-main);
+  text-rendering: optimizeLegibility !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+}
+
+#root {
+  flex-shrink: 1;
+  flex-basis: auto;
+  flex-direction: column;
+  flex-grow: 1;
+  display: flex;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
 }
 
 html {
+  -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  -webkit-touch-callout: none;
+  height: calc(100% + env(safe-area-inset-top));
+  min-height: calc(100% + env(safe-area-inset-top));
+  --safe-area-inset-top: env(safe-area-inset-top);
+  --safe-area-inset-right: env(safe-area-inset-right);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom);
+  --safe-area-inset-left: env(safe-area-inset-left);
+}
+
+html[data-mode='embed'] {
   height: 100%;
-  height: 100dvh;
+  min-height: 100%;
 }
 
 body {
+  display: flex;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  overflow-y: hidden;
   overscroll-behavior-y: none;
+  -ms-overflow-style: scrollbar;
+  user-select: none;
+  -o-user-select: none;
+  -moz-user-select: none;
+  -khtml-user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  line-height: normal;
+  font-size: 15px;
+  height: 100%;
+  min-height: 100%;
+}
+
+p {
+  font-family: 'Inter', 'Noto Sans Arabic', sans-serif;
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 21px;
+  margin-block-start: 0;
+  margin-block-end: 8px;
+}
+
+.selectable {
+  user-select: text;
+  -o-user-select: text;
+  -moz-user-select: text;
+  -khtml-user-select: text;
+  -webkit-user-select: text;
+}
+
+.katex {
+  font-size: 17px;
+}
+
+.react-viewer-btn {
+  align-content: center;
+}
+
+.react-viewer-attribute {
+  display: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: 'Inter', 'Noto Sans Arabic', sans-serif;
+  font-weight: 400;
+  font-size: inherit;
+  border: none;
+  outline: none;
+}
+
+button {
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+a:link {
+  color: var(--app-primary);
+  text-decoration: none;
+}
+a:visited {
+  color: var(--app-primary);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--app-primary);
+  text-decoration: none;
+}
+a:active {
+  color: var(--app-primary);
+  text-decoration: none;
+}
+
+a,
+button,
+div {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::placeholder {
+  color: var(--app-foreground);
+  font-family: var(--app-font-body);
+  font-weight: var(--app-font-body-weight);
+  font-size: var(--app-font-size-medium);
+  opacity: 0.5;
+}
+
+h1 {
+  font-family: 'Plus Jakarta Sans', 'Noto Sans Arabic', sans-serif;
+  font-weight: 700;
+  font-size: 30px;
+  line-height: 41px;
+  margin-block-start: 0px;
+  margin-block-end: 8px;
+}
+
+h2 {
+  font-family: 'Plus Jakarta Sans', 'Noto Sans Arabic', sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 32px;
+  margin-block-start: 0px;
+  margin-block-end: 8px;
+}
+
+h3 {
+  font-family: 'Plus Jakarta Sans', 'Noto Sans Arabic', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 24px;
+  margin-block-start: 0px;
+  margin-block-end: 8px;
+}
+
+h4 {
+  font-family: 'Plus Jakarta Sans', 'Noto Sans Arabic', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 24px;
+  margin-block-start: 0px;
+  margin-block-end: 8px;
+}
+
+h5 {
+  font-family: 'Plus Jakarta Sans', 'Noto Sans Arabic', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 24px;
+  margin-block-start: 0px;
+  margin-block-end: 8px;
+}
+
+h6 {
+  font-family: 'Plus Jakarta Sans', 'Noto Sans Arabic', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 24px;
+  margin-block-start: 0px;
+  margin-block-end: 8px;
+}
+
+hr {
+  color: var(--app-foreground);
+  background-color: var(--app-foreground);
+  height: 1px;
+  border: 0px;
 }
