@@ -7,6 +7,7 @@ import {
 } from 'ugly-app/conversation/client';
 import type { ChatMessage, ChatUser } from 'ugly-app/conversation/shared';
 import type { DBObject } from 'ugly-app/shared';
+import { VideoCall } from '../components/VideoCall';
 
 // A single shared demo room so two browsers (or ugly.bot vs ugly.chat) land in
 // the same conversation for side-by-side comparison. Real routing comes later.
@@ -165,6 +166,7 @@ export default function ChatPage(): React.ReactElement {
             Connecting…
           </Text>
         )}
+        <VideoCall conversationId={ROOM_ID} />
         <ChatView
           messages={messages}
           userId={userId}
