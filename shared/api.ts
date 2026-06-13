@@ -141,6 +141,24 @@ export const requests = defineRequests({
     output: z.any(),
   }),
 
+  // ── Video call lifecycle (roster via trackDoc on conversation.call) ───────
+  conversationVideoJoin: authReq({
+    input: z.object({ conversationId: z.string() }).catchall(z.unknown()),
+    output: z.any(),
+  }),
+  conversationVideoLeave: authReq({
+    input: z.object({ conversationId: z.string() }).catchall(z.unknown()),
+    output: z.any(),
+  }),
+  conversationVideoEnd: authReq({
+    input: z.object({ conversationId: z.string() }).catchall(z.unknown()),
+    output: z.any(),
+  }),
+  conversationVideoBotJoin: authReq({
+    input: z.object({ conversationId: z.string(), botId: z.string() }).catchall(z.unknown()),
+    output: z.any(),
+  }),
+
   // Example: public request — userId is string | null
   // getPublicData: req({
   //   input: z.object({ id: z.string() }),

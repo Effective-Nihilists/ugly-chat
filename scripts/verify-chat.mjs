@@ -115,6 +115,23 @@ try {
     await new Promise((r) => setTimeout(r, 500));
   }
   assert(botReplied, 'bot replied to a human message');
+
+  // 8. Video call lifecycle: humans + bot join roster, leave, end
+  const vroom = `verifyvid-${randomUUID().slice(0, 8)}`;
+  await rpc(tokenA, 'conversationCreate', {
+    id: vroom, type: 'group', title: 'Video Room', mode: 'public', ownerIds: [userA],
+    bots: { 'bot-ugly': { botParams: {}, type: 'assistant' } },
+  });
+  await rpc(tokenA, 'conversationVideoJoin', { conversationId: vroom });
+  await rpc(tokenB, 'conversationVideoJoin', { conversationId: vroom });
+  let call = await rpc(tokenA, 'conversationVideoBotJoin', { conversationId: vroom, botId: 'bot-ugly' });
+  const n = (c) => Object.keys(c?.participants ?? {}).length;
+  assert(call.active && n(call) === 3, `call roster has A + B + bot (got ${n(call)})`);
+  assert(call.participants['bot-ugly']?.isBot === true, 'bot is a fake-call participant');
+  call = await rpc(tokenA, 'conversationVideoLeave', { conversationId: vroom });
+  assert(n(call) === 2, `after A leaves, 2 participants (got ${n(call)})`);
+  call = await rpc(tokenB, 'conversationVideoEnd', { conversationId: vroom });
+  assert(call.active === false && n(call) === 0, 'video end clears the call');
 } catch (err) {
   failures++;
   console.error('\n✗ ERROR:', err.message);

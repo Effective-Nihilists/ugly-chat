@@ -22,6 +22,7 @@ import {
 } from 'ugly-app/conversation/server';
 import { enableCollab } from 'ugly-app/collab/server';
 import { botUser, triggerBotReplies } from './bots';
+import { videoJoin, videoLeave, videoEnd, videoBotJoin, type CallState, type DbLike } from './video';
 import type { WorkerHandlers } from 'ugly-app/shared';
 import { dbDefaults } from 'ugly-app/shared';
 import { messages, requests } from '../shared/api';
@@ -162,6 +163,17 @@ const app = createApp(
 
     conversationMessageReact: async (userId, input) =>
       engineConversationMessageReact(input, userId),
+
+    // ── Video call lifecycle (explicit return types break the app.db
+    // circular-inference; see conversationMessageCreate which voids app.db) ──
+    conversationVideoJoin: async (userId, input): Promise<CallState> =>
+      videoJoin(app.db as unknown as DbLike, { conversation: collections.conversation }, input.conversationId, userId),
+    conversationVideoLeave: async (userId, input): Promise<CallState> =>
+      videoLeave(app.db as unknown as DbLike, { conversation: collections.conversation }, input.conversationId, userId),
+    conversationVideoEnd: async (_userId, input): Promise<CallState> =>
+      videoEnd(app.db as unknown as DbLike, { conversation: collections.conversation }, input.conversationId),
+    conversationVideoBotJoin: async (_userId, input): Promise<CallState> =>
+      videoBotJoin(app.db as unknown as DbLike, { conversation: collections.conversation }, input.conversationId, input.botId),
 
     conversationMessageDelete: async (userId, input) =>
       // Engine deletes by raw doc _id, but message docs are keyed
