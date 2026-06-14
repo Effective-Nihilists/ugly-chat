@@ -15,10 +15,13 @@ import {
   conversationMessageCreate as engineConversationMessageCreate,
   conversationMessageReact as engineConversationMessageReact,
   conversationMessageDelete as engineConversationMessageDelete,
+  conversationUserAdd as engineConversationUserAdd,
 } from 'ugly-app/conversation/engine';
 import type { WorkerHandlers } from 'ugly-app/shared';
 import { dbDefaults } from 'ugly-app/shared';
-import { triggerBotReplies } from './bots';
+import { triggerBotReplies, getBotConfig, isBot } from './bots';
+import { fireMessageWebhooks } from './webhooks';
+import { UGLY_BOT_USER_ID } from '../shared/bots';
 import { resolveProfiles, type Profile } from './profiles';
 import { videoJoin, videoLeave, videoEnd, videoBotJoin, type CallState, type DbLike } from './video';
 import { requests } from '../shared/api';
@@ -79,11 +82,12 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       return { logged: true };
     },
     // ── Chat (conversation engine) ─────────────────────────────────────────
-    conversationCreate: async (userId, input) =>
-      engineConversationCreate(
+    conversationCreate: async (userId, input) => {
+      const id = input.id ?? crypto.randomUUID();
+      const conv = await engineConversationCreate(
         {
           ...input,
-          id: input.id ?? crypto.randomUUID(),
+          id,
           type: input.type ?? 'group',
           title: input.title ?? '',
           mode: input.mode ?? 'public',
@@ -91,7 +95,35 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
           disableJoinMessages: input.disableJoinMessages ?? true,
         },
         userId,
-      ),
+      );
+      // Seed a bot member's opening message + starter buttons into the brand-new
+      // conversation. The client only calls conversationCreate when the room
+      // doesn't exist yet, so this runs once. A button-only bot (no first
+      // message) still posts so its starters render.
+      // Bot members to greet: ids in the `bots` field PLUS a DM's bot
+      // participant (e.g. the canonical Ugly Bot in `<botId>+<userId>`).
+      const greetIds = new Set<string>(Object.keys((input.bots ?? {}) as Record<string, unknown>).filter(isBot));
+      if (id.includes('+')) {
+        for (const p of id.split('+').filter(Boolean)) {
+          if (p !== userId && isBot(p)) greetIds.add(p);
+        }
+      }
+      for (const botId of greetIds) {
+        const bot = await getBotConfig(getDb(), botId).catch(() => null);
+        if (!bot?.firstMessage) continue;
+        // Greeting only — starter buttons render persistently above the composer
+        // (from the live bot config), so they're always visible, not just on the
+        // first (scroll-away) message.
+        await engineConversationMessageCreate(
+          {
+            conversationId: id,
+            message: { text: bot.firstMessage, markdown: bot.firstMessage, onlyUserIds: ['global'] },
+          },
+          botId,
+        ).catch((err: unknown) => console.error('[bots] first message failed', err));
+      }
+      return conv;
+    },
 
     conversationLoad: async (userId, input) => engineConversationLoad(input, userId),
 
@@ -100,12 +132,21 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         { ...input, message: { onlyUserIds: ['global'], ...input.message } },
         userId,
       );
+      // Built-in/custom bots WITHOUT a webhook reply via textGen here. App bots
+      // (with a webhookUrl) are driven by their owning app instead — see
+      // fireMessageWebhooks, which notifies the conversation + bot webhooks.
       void triggerBotReplies(
         getDb(),
         { conversation: collections.conversation, message: collections.message },
         input.conversationId,
         userId,
       ).catch((err: unknown) => console.error('[bots] reply failed', err));
+      void fireMessageWebhooks(
+        getDb(),
+        'message.created',
+        input.conversationId,
+        msg as unknown as Record<string, unknown>,
+      ).catch((err: unknown) => console.error('[webhook] fire failed', err));
       return msg;
     },
 
@@ -136,7 +177,184 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
     profilesGet: async (_userId, input): Promise<{ profiles: Profile[] }> => ({
       profiles: await resolveProfiles(getDb(), input.userIds),
     }),
+
+    // ── Conversation list (sidebar / chat home) ────────────────────────────
+    conversationListMine: async (userId): Promise<{ conversations: ConversationListRow[] }> => {
+      // The engine keys userConversation by `userPrivateId` and denormalizes
+      // the sidebar fields onto it (title/image/notificationText/count).
+      const db = getDb();
+      const ucs = (await db.getDocs(collections.userConversation, {
+        userPrivateId: userId,
+      })) as Record<string, unknown>[];
+      const rows: ConversationListRow[] = ucs
+        .filter((u) => ((u['visibility'] as string) ?? 'visible') !== 'hidden')
+        .map((u) => ({
+          conversationId: String(u['conversationId'] ?? ''),
+          title: (u['title'] as string) || '',
+          image: (u['image'] as unknown) ?? null,
+          type: (u['type'] as string) || 'group',
+          preview: (u['notificationText'] as string) || '',
+          unread: (u['notificationCount'] as number) ?? 0,
+          pinned: (u['visibility'] as string) === 'pinned',
+          lastActivity: toMillis(u['updated'] ?? u['viewed'] ?? u['created']),
+        }))
+        .filter((r) => r.conversationId !== '');
+
+      rows.sort(
+        (a, b) => Number(b.pinned) - Number(a.pinned) || b.lastActivity - a.lastActivity,
+      );
+
+      // DM/1:1 conversations carry no title — ugly.bot shows the *other*
+      // participant's name + avatar. DM ids are `{otherId}+{myUserId}`. Resolve
+      // the most-recent ones in one batch (names from migrated data, avatars
+      // from ugly.bot — its avatars aren't in our migration; resolveProfiles
+      // caps at 100 ids and caches). Rows are pre-sorted so the visible top
+      // conversations get resolved first.
+      // The Ugly Bot DM is auto-created with title 'Ugly Bot' (so it'd skip the
+      // `!r.title` filter) but still needs its avatar resolved — include any DM
+      // whose other participant is the canonical bot regardless of title.
+      const dmRows = rows
+        .filter((r) => {
+          const other = deriveOtherUserId(r.conversationId, userId);
+          return !!other && (!r.title || other === UGLY_BOT_USER_ID);
+        })
+        .slice(0, 90);
+      const otherIds = [...new Set(dmRows.map((r) => deriveOtherUserId(r.conversationId, userId)!))];
+      if (otherIds.length > 0) {
+        const profiles = await resolveProfiles(getDb(), otherIds);
+        const byId = new Map(profiles.map((p) => [p.id, p]));
+        for (const r of dmRows) {
+          const other = deriveOtherUserId(r.conversationId, userId)!;
+          const p = byId.get(other);
+          if (p) {
+            if (!r.title) r.title = p.name;
+            // Canonical bot: pin its avatar even over a stale/blank image.
+            if (other === UGLY_BOT_USER_ID ? !!p.avatarUrl : !r.image && !!p.avatarUrl) {
+              r.image = p.avatarUrl;
+            }
+          }
+        }
+      }
+
+      return { conversations: rows };
+    },
+
+    conversationJoin: async (userId, input) =>
+      engineConversationUserAdd(
+        { conversationId: input.conversationId, userId, role: 'member', visibility: 'visible' },
+        userId,
+      ),
+
+    // ── Custom bots (config-only personas) ──────────────────────────────────
+    botCreate: async (userId, input): Promise<{ botId: string }> => {
+      const botId = `bot-${crypto.randomUUID()}`;
+      await getDb().setDoc(collections.bot, {
+        _id: botId,
+        ownerId: userId,
+        name: input.name,
+        instruction: input.instruction ?? '',
+        model: input.model ?? 'deepseek_v4_flash',
+        avatarUrl: input.avatarUrl ?? null,
+        backgroundUrl: input.backgroundUrl ?? null,
+        firstMessage: input.firstMessage ?? null,
+        buttons: input.buttons ?? [],
+        ...dbDefaults(),
+      });
+      return { botId };
+    },
+
+    botUpdate: async (userId, input): Promise<{ ok: boolean }> => {
+      const existing = await getDb().getDoc(collections.bot, input.botId);
+      if (!existing || existing['ownerId'] !== userId) throw new Error('Bot not found');
+      const patch: Record<string, unknown> = {};
+      for (const k of ['name', 'instruction', 'model', 'avatarUrl', 'backgroundUrl', 'firstMessage', 'buttons'] as const) {
+        if (input[k] !== undefined) patch[k] = input[k];
+      }
+      await getDb().setDoc(collections.bot, { ...existing, ...patch, ...dbDefaults() });
+      return { ok: true };
+    },
+
+    botGet: async (_userId, input) => getDb().getDoc(collections.bot, input.botId),
+
+    botListMine: async (userId): Promise<{ bots: Record<string, unknown>[] }> => {
+      const bots = await getDb().getDocs(collections.bot, { ownerId: userId });
+      bots.sort((a, b) => toMillis(b['updated'] ?? b['created']) - toMillis(a['updated'] ?? a['created']));
+      return { bots };
+    },
+
+    botDelete: async (userId, input): Promise<{ ok: boolean }> => {
+      const existing = await getDb().getDoc(collections.bot, input.botId);
+      if (!existing || existing['ownerId'] !== userId) throw new Error('Bot not found');
+      await getDb().deleteDoc(collections.bot, input.botId);
+      return { ok: true };
+    },
+
+    // Wipe a conversation's messages (used by the bot-chat "Clear chat" menu).
+    // Allowed only for a participant/owner; re-seeds the bot's greeting after.
+    conversationClear: async (userId, input): Promise<{ ok: boolean }> => {
+      const db = getDb();
+      const conv = await db.getDoc(collections.conversation, input.conversationId);
+      if (!conv) throw new Error('Conversation not found');
+      const owners = (conv['ownerIds'] as string[] | undefined) ?? [];
+      if (!owners.includes(userId) && !input.conversationId.endsWith(userId)) {
+        throw new Error('Not allowed');
+      }
+      // Delete in batches until none remain — getDocs pages, so a single pass
+      // only wipes the first page (why a long migrated DM looked like it did
+      // nothing). Bounded guard so a bug can't loop forever.
+      for (let guard = 0; guard < 200; guard++) {
+        const msgs = await db.getDocs(
+          collections.message,
+          { conversationId: input.conversationId },
+          { limit: 500 },
+        );
+        if (msgs.length === 0) break;
+        for (const m of msgs) await db.deleteDoc(collections.message, String(m['_id']));
+        if (msgs.length < 500) break;
+      }
+      // Re-seed the bot's greeting so a cleared bot chat starts fresh.
+      const botsField = (conv['bots'] as Record<string, unknown> | undefined) ?? {};
+      for (const botId of Object.keys(botsField)) {
+        if (!isBot(botId)) continue;
+        const bot = await getBotConfig(db, botId).catch(() => null);
+        if (!bot?.firstMessage) continue;
+        await engineConversationMessageCreate(
+          { conversationId: input.conversationId, message: { text: bot.firstMessage, markdown: bot.firstMessage, onlyUserIds: ['global'] } },
+          botId,
+        ).catch(() => undefined);
+      }
+      return { ok: true };
+    },
   } satisfies RequestHandlers<typeof requests>;
+}
+
+interface ConversationListRow {
+  conversationId: string;
+  title: string;
+  image: unknown;
+  type: string;
+  preview: string;
+  unread: number;
+  pinned: boolean;
+  lastActivity: number;
+}
+
+// DM/1:1 conversation ids are `{otherId}+{myUserId}` (either order). Return the
+// participant that isn't the current user, or null for group ids (no '+').
+function deriveOtherUserId(conversationId: string, userId: string): string | null {
+  if (!conversationId.includes('+')) return null;
+  const parts = conversationId.split('+').filter(Boolean);
+  return parts.find((p) => p !== userId) ?? null;
+}
+
+function toMillis(v: unknown): number {
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string') {
+    const t = new Date(v).getTime();
+    return Number.isNaN(t) ? 0 : t;
+  }
+  if (v instanceof Date) return v.getTime();
+  return 0;
 }
 
 export const cronHandlers: WorkerHandlers<typeof cronTasks> = {

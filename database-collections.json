@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-13T07:23:04.938Z",
+  "generatedAt": "2026-06-14T17:00:47.041Z",
   "source": "shared/collections.ts",
   "collections": {
     "errorLog": {
@@ -424,6 +424,10 @@
       "name": "conversation",
       "schema": {
         "fields": {
+          "appId": {
+            "type": "string",
+            "required": false
+          },
           "background": {
             "type": "unknown",
             "required": false,
@@ -483,6 +487,14 @@
               "type": "unknown",
               "required": true
             },
+            "required": false
+          },
+          "webhookSecret": {
+            "type": "string",
+            "required": false
+          },
+          "webhookUrl": {
+            "type": "string",
             "required": false
           }
         }
@@ -700,12 +712,38 @@
       "name": "userConversation",
       "schema": {
         "fields": {
+          "background": {
+            "type": "unknown",
+            "required": false,
+            "nullable": true
+          },
           "conversationId": {
             "type": "string",
             "required": true
           },
+          "image": {
+            "type": "unknown",
+            "required": false,
+            "nullable": true
+          },
+          "notificationCount": {
+            "type": "number",
+            "required": false
+          },
+          "notificationText": {
+            "type": "string",
+            "required": false
+          },
           "pinned": {
             "type": "boolean",
+            "required": false
+          },
+          "title": {
+            "type": "string",
+            "required": false
+          },
+          "type": {
+            "type": "string",
             "required": false
           },
           "unread": {
@@ -714,7 +752,15 @@
           },
           "userId": {
             "type": "string",
-            "required": true
+            "required": false
+          },
+          "userPrivateId": {
+            "type": "string",
+            "required": false
+          },
+          "viewed": {
+            "type": "number",
+            "required": false
           },
           "visibility": {
             "type": "string",
@@ -787,6 +833,86 @@
         "trackable": false,
         "public": false,
         "cascadeFrom": null
+      }
+    },
+    "bot": {
+      "name": "bot",
+      "schema": {
+        "fields": {
+          "appId": {
+            "type": "string",
+            "required": false
+          },
+          "avatarUrl": {
+            "type": "string",
+            "required": false,
+            "nullable": true
+          },
+          "backgroundUrl": {
+            "type": "string",
+            "required": false,
+            "nullable": true
+          },
+          "buttons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "fields": {
+                "label": {
+                  "type": "string",
+                  "required": true
+                },
+                "prompt": {
+                  "type": "string",
+                  "required": true
+                }
+              },
+              "required": true
+            },
+            "required": false
+          },
+          "firstMessage": {
+            "type": "string",
+            "required": false,
+            "nullable": true
+          },
+          "instruction": {
+            "type": "string",
+            "required": true,
+            "default": ""
+          },
+          "model": {
+            "type": "string",
+            "required": true,
+            "default": "deepseek_v4_flash"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "default": "Bot"
+          },
+          "ownerId": {
+            "type": "string",
+            "required": true
+          },
+          "webhookSecret": {
+            "type": "string",
+            "required": false
+          },
+          "webhookUrl": {
+            "type": "string",
+            "required": false
+          }
+        }
+      },
+      "meta": {
+        "cache": true,
+        "trackable": true,
+        "public": true,
+        "cascadeFrom": null,
+        "trackKeys": [
+          "ownerId"
+        ]
       }
     }
   }

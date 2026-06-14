@@ -195,6 +195,16 @@ body {
   min-height: 100%;
 }
 
+/* Base text font. ugly.bot applies this via its root React-Native View style;
+   we set it on body/#root so all inheriting text renders Inter (not the UA
+   serif default). Headings opt into --app-font-heading explicitly. */
+html,
+body,
+#root {
+  font-family: var(--app-font-body);
+  font-weight: var(--app-font-body-weight);
+}
+
 p {
   font-family: 'Inter', 'Noto Sans Arabic', sans-serif;
   font-weight: 400;
@@ -331,4 +341,114 @@ hr {
   background-color: var(--app-foreground);
   height: 1px;
   border: 0px;
+}
+
+/* ── Chat shell interaction states ──────────────────────────────────────── */
+.uc-row { transition: background-color 0.12s ease-out; }
+.uc-row:hover { background: rgba(var(--app-foreground-rgb), 0.06) !important; }
+.uc-iconbtn { transition: background-color 0.12s ease-out; }
+.uc-iconbtn:hover { background: var(--app-tertiary) !important; }
+.uc-footbtn { transition: background-color 0.12s ease-out; }
+.uc-footbtn:hover { background: var(--app-tertiary) !important; }
+.uc-featured { transition: transform 0.1s ease-out, filter 0.12s ease-out; }
+.uc-featured:hover { filter: brightness(1.05); transform: translateY(-1px); }
+
+/* Composer attachment upload spinner. */
+@keyframes uc-spin { to { transform: rotate(360deg); } }
+.uc-spin { animation: uc-spin 0.7s linear infinite; }
+
+/* Tappable message buttons (bot starters / conversation buttons). */
+.uc-msgbtn { transition: background-color 0.12s ease, color 0.12s ease; }
+.uc-msgbtn:hover { background: var(--app-primary) !important; color: #fff !important; }
+
+/* Overflow-menu items (e.g. ⋯ → Clear chat). */
+.uc-menuitem { transition: background-color 0.12s ease; }
+.uc-menuitem:hover { background: rgba(var(--app-foreground-rgb), 0.07) !important; }
+
+/* Inline images in messages (uploaded attachments, markdown images): cap the
+   size and round corners. Sender avatars are 24px via inline styles, which win
+   over these caps, so avatars are unaffected. */
+[data-message-id] img {
+  max-width: min(100%, 420px);
+  max-height: 360px;
+  height: auto;
+  border-radius: 8px;
+}
+
+/* Hide the framework's floating feedback button — it overlaps the composer.
+   ugly.bot puts Feedback in the sidebar footer; our Sidebar's "Feedback"
+   button still triggers this (hidden) element via [data-id="feedback-button"]. */
+[data-id="feedback-button"] { display: none !important; }
+
+/* ── Scrollbars: no background track, neutral always-visible thumb ──────────
+   The thumb is a mid-grey (not foreground-black) so it reads on BOTH the white
+   chat pane and the dark textured conversation background — a black-at-22%
+   thumb vanished into the dark bg. Track stays transparent (no channel). */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(140, 140, 145, 0.6);
+  border-radius: 8px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+  min-height: 40px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(140, 140, 145, 0.85);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(140, 140, 145, 0.7) transparent;
+}
+
+/* ── Chat message column: full-width scroll container (scrollbar stays at the
+   pane's right edge) with the message list centered in a readable column,
+   matching ugly.bot. Only the horizontal margins are set so ChatView's inline
+   `margin-top: auto` (bottom-anchoring) is preserved. ───────────────────── */
+[data-testid='message-list-inner'] {
+  width: 100%;
+  max-width: 820px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 16px;
+  padding-right: 16px;
+  /* Breathing room so the last message isn't flush against the composer. */
+  padding-bottom: 10px;
+  box-sizing: border-box;
+}
+
+/* ── Composer (chat input) ──────────────────────────────────────────────────
+   The framework composer container bottom-aligns its children (align-items:
+   flex-end) for multi-line growth; for our single-line chat input that left the
+   placeholder and the send (paperplane) icon sitting low. Center them, and
+   strip the global <p> margins inside the editor so the text/placeholder is
+   truly vertically centered in the rounded input. */
+.uc-composer > div {
+  align-items: center !important;
+}
+.uc-composer .ProseMirror {
+  /* No extra left padding: the framework's placeholder overlay sits at the
+     wrapper's left edge, so adding inset here desynced the placeholder from the
+     typed text. The composer container padding provides the inset. */
+  min-height: 24px;
+  line-height: 24px;
+}
+.uc-composer .ProseMirror p {
+  margin: 0;
+  line-height: 24px;
+}
+/* The placeholder is an ::before on the empty editor — match the line height so
+   it sits on the same centered baseline as the caret. */
+.uc-composer .ProseMirror[data-placeholder]:empty::before {
+  line-height: 24px;
 }

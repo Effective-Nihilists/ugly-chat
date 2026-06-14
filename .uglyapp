@@ -1,3 +1,28 @@
 {
-  "projectId": "11tm1kplpe"
+  "projectId": "11tm1kplpe",
+  "deployTarget": {
+    "provider": "cloudflare-workers",
+    "workerName": "ugly-chat",
+    "workerUrl": "https://ugly-chat.justin-mann.workers.dev",
+    "cloudflareSubdomain": "justin-mann",
+    "neonProjectId": "sweet-recipe-62072924",
+    "cloudflareAccountId": "9edc7fbe4a55b0b6489df8e7a120526c",
+    "r2BucketName": "ugly-chat",
+    "appDomain": "ugly.chat",
+    "appDomainZoneId": "27a4d85ea3552facc8596a989e8c6b06",
+    "customDomainUrl": "https://ugly.chat",
+    "sendingDomain": "ugly.chat",
+    "proxyTokenIds": {
+      "ai": "",
+      "email": "",
+      "push": "",
+      "search": ""
+    },
+    "lastDeployedAt": "2026-06-14T17:06:38.086Z"
+  },
+  "name": "ugly-chat",
+  "description": "Text and video chat with humans and bots — cheap models by default.",
+  "icon": "https://ugly.chat/icon.png",
+  "image": "https://ugly.chat/icon.png",
+  "title": "Ugly Chat"
 }

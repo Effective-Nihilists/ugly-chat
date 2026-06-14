@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      lucide-react:
+        specifier: ^1.18.0
+        version: 1.18.0(react@18.3.1)
       nanoid:
         specifier: ^5.1.5
         version: 5.1.11
@@ -21,8 +24,8 @@ importers:
         specifier: ^0.183.2
         version: 0.183.2
       ugly-app:
-        specifier: ^0.1.529
-        version: 0.1.529(@types/react@19.2.17)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.183.2)(typescript@5.9.3)(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)(y-protocols@1.0.7(yjs@13.6.31))(yjs@13.6.31)
+        specifier: ^0.1.570
+        version: 0.1.570(@types/react@19.2.17)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.183.2)(typescript@5.9.3)(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)(y-protocols@1.0.7(yjs@13.6.31))(yjs@13.6.31)
       yjs:
         specifier: ^13.6.30
         version: 13.6.31
@@ -2802,6 +2805,11 @@ packages:
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
 
+  lucide-react@1.18.0:
+    resolution: {integrity: sha512-LZDb7H/0YfM+RJncD0hDQRCAu+vSGODqpe35TuVI8EuXaRjkczbsx7p8dY4J87F/MUSj6bpYqeI8nw8qXaAdmA==}
+    peerDependencies:
+      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
   lucide@1.18.0:
     resolution: {integrity: sha512-xzUa3LbA/Uvn3DCs7B7YfDcOZeqV8aZ4r4OFyCgJSfZGUdMglJiK3PJSbd26SXLLQvGGsYX9PdETCRXvfK4rnA==}
 
@@ -3824,8 +3832,8 @@ packages:
     engines: {node: '>=0.8.0'}
     hasBin: true
 
-  ugly-app@0.1.529:
-    resolution: {integrity: sha512-vxff2qEH/z1+ndfkPzJwOYYFWwVXMCcIM2KToEzHl/ko9iooD4//rFX2UyQdMTpYxvS1IghigMeK42RJZzTLug==}
+  ugly-app@0.1.570:
+    resolution: {integrity: sha512-jso2MOAzhXOE5acnQ6GV2a5nFKSkmCSo+oVt6WiG9VqSyWceL3R2AfFsKFgxA7b2j318G7kJJjyJC0Q/9eiAEA==}
     hasBin: true
     peerDependencies:
       '@types/react': '>=18.0.0'
@@ -7445,6 +7453,10 @@ snapshots:
     dependencies:
       yallist: 3.1.1
 
+  lucide-react@1.18.0(react@18.3.1):
+    dependencies:
+      react: 18.3.1
+
   lucide@1.18.0: {}
 
   magic-string@0.30.21:
@@ -8739,7 +8751,7 @@ snapshots:
   uglify-js@3.19.3:
     optional: true
 
-  ugly-app@0.1.529(@types/react@19.2.17)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.183.2)(typescript@5.9.3)(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)(y-protocols@1.0.7(yjs@13.6.31))(yjs@13.6.31):
+  ugly-app@0.1.570(@types/react@19.2.17)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.183.2)(typescript@5.9.3)(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)(y-protocols@1.0.7(yjs@13.6.31))(yjs@13.6.31):
     dependencies:
       '@aws-sdk/client-s3': 3.1068.0
       '@aws-sdk/s3-request-presigner': 3.1068.0

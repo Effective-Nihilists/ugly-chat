@@ -18,6 +18,7 @@ import { collections } from '../shared/collections';
 import { cronTasks } from '../shared/cron';
 import { createChatHandlers, cronHandlers, type DbSurface } from './handlers';
 import { wireEngineDeps } from './configure';
+import { registerAppApi } from './appApi';
 
 const getDb = (): DbSurface => {
   const ctx = getAppContext();
@@ -32,6 +33,9 @@ const app = createWorkersApp(
   (cfg) => {
     cfg.setWorkers(cronTasks, cronHandlers);
     wireEngineDeps(getDb);
+    // Cross-app chat API (/app/*) — authenticated by ugly.bot chat tokens.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    cfg.setRawRoutes((honoApp: any) => registerAppApi(honoApp, getDb));
   },
 );
 

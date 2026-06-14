@@ -9,14 +9,24 @@ functionality match (text chat, group/1:1 video, JS built-in bots). Python bots 
 custom bots are intentionally dropped.
 
 ## Current status (2026-06-13)
-**Verified locally (automated):** text chat human↔human + human↔bot (real AI), reactions, delete
-(`scripts/verify-chat.mjs` 11/11); chat UI + realtime + video-start (local camera) + bot fake-call
-tile in a real browser (`scripts/verify-ui.mjs`); video call lifecycle (join/leave/end + bot).
-**Deploy-ready:** `build:workers` is GREEN against published `ugly-app@0.1.528` (added the
-Workers-safe `conversation/engine` export — the conversation barrel pulled the Node nats client).
-**Remaining for full "done":** Ugly Studio deploy → `ugly.chat` (acquires Cloudflare incl. Realtime
-creds), then wire Cloudflare Realtime to verify **cross-peer human video** (two browsers seeing each
-other). Run `bash scripts/dev-local.sh` for local dev (self-auth + NATS + ugly.bot proxy token).
+**LIVE on https://ugly.chat (Cloudflare Workers).** Full ugly.bot-style app shell shipped:
+- **Sidebar** (`--app-sidebar`): wordmark, search + create, live conversation list
+  (`conversationListMine` reads denormalized `userConversation`), Feedback/All-Chats footer.
+- **Chat-home directory** (`/chat`): "Chat" title, search, Featured gradient cards
+  ("Get Roasted" / "New Group Chat"), conversation list, Create Chat.
+- **Thread** (`/chat/:conversationId`): themed bubbles, markdown, reactions, video-start, centered
+  900px column; title from denormalized userConversation row.
+- **Fonts fixed:** body was falling back to serif (Times) — added `html,body,#root { font-family:
+  var(--app-font-body) }` (ugly.bot applies this via a root RN View; we set it in CSS).
+**Chat history MIGRATED (prod → Neon):** `scripts/migrate-chat-history.cjs` copied 88,393
+conversations · 547,385 messages · 89,857 conversationUser · 94,268 userConversation · 6 reactions
+(idempotent keyset upsert; identical `_id/data/created/updated/version` schema; userIds verbatim).
+Verified: real Justin account (`1AOVA8bnlsNzzHElpC8Fc8GbNca2`) has 1,024 conversations in Neon.
+**Deploy mechanics:** full client `npm run build` BEFORE the orchestrator (its `build:workers` only
+rebuilds the worker, reusing `dist/client`); deploy via `studio/scripts/redeploy-uglychat.ts` with
+`ELECTRON_IPC_PORT`=Studio's live loopback (real CF token from keychain — keys/.env token is revoked).
+**Remaining for full "done":** wire Cloudflare Realtime for **cross-peer human video**; verify the
+migrated history renders when logged in as a real ugly.bot user (federated auth).
 
 ## Architecture (locked)
 - **Hosting:** Cloudflare Workers (studio publish flow). **Video:** Cloudflare Realtime (no Mediasoup).

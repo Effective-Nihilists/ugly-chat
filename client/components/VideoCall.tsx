@@ -1,6 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Button, Text, useApp } from 'ugly-app/client';
 import type { DBObject } from 'ugly-app/shared';
+
+export interface VideoCallHandle {
+  start: () => void;
+}
 
 interface CallParticipant {
   userId: string;
@@ -37,7 +41,10 @@ const center: React.CSSProperties = {
  * delivered by Cloudflare Realtime in production — until REALTIME_* is wired,
  * remote humans show a placeholder tile while the roster still updates live.
  */
-export function VideoCall({ conversationId }: { conversationId: string }): React.ReactElement {
+export const VideoCall = forwardRef<VideoCallHandle, { conversationId: string }>(function VideoCall(
+  { conversationId },
+  ref,
+) {
   const { socket, userId } = useApp();
   const [call, setCall] = useState<CallState>({ active: false, participants: {} });
   const [joined, setJoined] = useState(false);
@@ -82,16 +89,18 @@ export function VideoCall({ conversationId }: { conversationId: string }): React
       .catch((err: unknown) => console.error('[VideoCall] add bot failed', err));
   }, [socket, conversationId]);
 
+  useImperativeHandle(ref, () => ({ start: () => void join() }), [join]);
+
   const participants = Object.values(call.participants);
+
+  // Only present while a call is active/joined — starting one is triggered from
+  // the conversation header's video icon (ugly.bot has no standalone button).
+  if (!call.active && !joined) return null;
 
   return (
     <div style={{ borderBottom: '1px solid var(--app-border, #ddd)', padding: 8 }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        {!joined ? (
-          <Button size="sm" onClick={() => void join()}>📹 Start video</Button>
-        ) : (
-          <Button size="sm" variant="secondary" onClick={() => void leave()}>Leave call</Button>
-        )}
+        <Button size="sm" variant="secondary" onClick={() => void leave()}>Leave call</Button>
         {joined && <Button size="sm" variant="secondary" onClick={addBot}>+ Bot</Button>}
         {call.active && (
           <Text size="sm" style={{ opacity: 0.6 }}>
@@ -150,4 +159,4 @@ export function VideoCall({ conversationId }: { conversationId: string }): React
       )}
     </div>
   );
-}
+});

@@ -2,6 +2,7 @@ import { bootstrapApp, FeedbackButton } from 'ugly-app/client';
 import { requests } from '../shared/api';
 import en from '../shared/lang/en';
 import { stringsDef } from '../shared/strings';
+import { AppShell } from './components/AppShell';
 import { RouterProvider, RouterView } from './router';
 import './styles.css';
 
@@ -10,7 +11,9 @@ bootstrapApp({
   RouterProvider,
   render: () => (
     <>
-      <RouterView />
+      <AppShell>
+        <RouterView />
+      </AppShell>
       <FeedbackButton />
     </>
   ),

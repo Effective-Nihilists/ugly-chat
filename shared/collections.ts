@@ -28,6 +28,11 @@ export const ConversationSchema = z
     chargeUserIds: z.array(z.string()).optional(),
     bots: z.record(z.string(), z.unknown()).optional(),
     typing: z.array(z.unknown()).optional(),
+    // Cross-app fields: which app owns this conversation + an optional webhook
+    // that receives ALL message events in it (HMAC-signed with webhookSecret).
+    appId: z.string().optional(),
+    webhookUrl: z.string().optional(),
+    webhookSecret: z.string().optional(),
   })
   .catchall(z.unknown());
 export type Conversation = InferDocType<typeof ConversationSchema>;
@@ -82,10 +87,22 @@ export const ConversationUserSchema = z
 export type ConversationUser = InferDocType<typeof ConversationUserSchema>;
 
 // A user's view of a conversation (unread, pinned, notifications, visibility).
+// The conversation engine keys these by `userPrivateId` (NOT `userId`) and
+// denormalizes the sidebar fields onto the doc (title/image/notificationText
+// preview/notificationCount unread/visibility). Schema is permissive so the
+// engine's writes round-trip without validation errors.
 export const UserConversationSchema = z
   .object({
     conversationId: z.string(),
-    userId: z.string(),
+    userPrivateId: z.string().optional(),
+    userId: z.string().optional(),
+    title: z.string().optional(),
+    type: z.string().optional(),
+    image: z.unknown().nullable().optional(),
+    background: z.unknown().nullable().optional(),
+    notificationText: z.string().optional(),
+    notificationCount: z.number().optional(),
+    viewed: z.number().optional(),
     unread: z.number().optional(),
     pinned: z.boolean().optional(),
     visibility: z.string().optional(),
@@ -111,6 +128,37 @@ export const CollabDocSchema = z.object({
   lastSyncedAt: z.number(),
 });
 export type CollabDoc = InferDocType<typeof CollabDocSchema>;
+
+// A custom bot = a config-only persona (no code sandbox). The creator sets a
+// name, avatar, conversation background, system instruction, model, an optional
+// opening message, and "starter" buttons that send preset prompts on tap.
+// Bot _id is `bot-<id>` so server-side `isBot()` recognizes it like the
+// built-ins. Public so anyone can open a chat with a shared bot.
+export const BotButtonSchema = z.object({
+  label: z.string().max(40),
+  prompt: z.string().max(2000),
+});
+export type BotButton = z.infer<typeof BotButtonSchema>;
+
+export const BotSchema = z
+  .object({
+    ownerId: z.string(),
+    name: z.string().default('Bot'),
+    avatarUrl: z.string().nullable().optional(),
+    backgroundUrl: z.string().nullable().optional(),
+    instruction: z.string().default(''),
+    model: z.string().default('deepseek_v4_flash'),
+    firstMessage: z.string().nullable().optional(),
+    buttons: z.array(BotButtonSchema).optional(),
+    // App-registered bots: the owning app + a webhook that receives message
+    // events for conversations this bot is in (the app generates the reply).
+    // When `webhookUrl` is set, Ugly Chat does NOT run textGen for this bot.
+    appId: z.string().optional(),
+    webhookUrl: z.string().optional(),
+    webhookSecret: z.string().optional(),
+  })
+  .catchall(z.unknown());
+export type Bot = InferDocType<typeof BotSchema>;
 
 // --- Collections ---
 // meta options:
@@ -153,6 +201,10 @@ export const collections = defineCollections({
   collabDoc: {
     schema: CollabDocSchema,
     meta: { cache: false, trackable: false, public: false, cascadeFrom: null },
+  },
+  bot: {
+    schema: BotSchema,
+    meta: { cache: true, trackable: true, public: true, cascadeFrom: null, trackKeys: ['ownerId'] },
   },
 });
 

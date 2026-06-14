@@ -38,6 +38,12 @@ export function wireEngineDeps(getDb: () => DbSurface): void {
     async userGet(userId: string) {
       const bot = botUser(userId);
       if (bot) return bot;
+      // App-registered bots live in the `bot` collection with a `bot-` id; resolve
+      // them as bots so their messages are flagged isBot.
+      if (userId.startsWith('bot-')) {
+        const b = await getDb().getDoc(collections.bot, userId);
+        if (b) return { _id: userId, name: String(b['name'] ?? 'Bot'), isBot: true };
+      }
       const u = await getDb().getDoc(collections.userPublic, userId);
       return u ?? { _id: userId, name: userId.slice(0, 8), isBot: false };
     },

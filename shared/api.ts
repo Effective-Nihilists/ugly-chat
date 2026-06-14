@@ -61,6 +61,33 @@ export const requests = defineRequests({
     output: z.any(),
   }),
 
+  // Sidebar / chat-home conversation list for the current user. Built from the
+  // user's `userConversation` rows (engine-denormalized: title/preview/unread).
+  conversationListMine: authReq({
+    input: z.object({}).catchall(z.unknown()),
+    output: z.object({
+      conversations: z.array(
+        z.object({
+          conversationId: z.string(),
+          title: z.string(),
+          image: z.unknown().nullable(),
+          type: z.string(),
+          preview: z.string(),
+          unread: z.number(),
+          pinned: z.boolean(),
+          lastActivity: z.number(),
+        }),
+      ),
+    }),
+  }),
+
+  // Idempotently add the current user to a public group conversation so it
+  // appears in their list (used to join the shared Demo Room).
+  conversationJoin: authReq({
+    input: z.object({ conversationId: z.string() }).catchall(z.unknown()),
+    output: z.any(),
+  }),
+
   conversationMessageCreate: authReq({
     input: z
       .object({
@@ -117,6 +144,49 @@ export const requests = defineRequests({
   profilesGet: authReq({
     input: z.object({ userIds: z.array(z.string()) }),
     output: z.any(),
+  }),
+
+  // ── Custom bots (config-only personas) ────────────────────────────────────
+  botCreate: authReq({
+    input: z.object({
+      name: z.string().min(1).max(60),
+      instruction: z.string().max(8000).optional(),
+      model: z.string().optional(),
+      avatarUrl: z.string().nullable().optional(),
+      backgroundUrl: z.string().nullable().optional(),
+      firstMessage: z.string().max(2000).nullable().optional(),
+      buttons: z.array(z.object({ label: z.string().max(40), prompt: z.string().max(2000) })).optional(),
+    }),
+    output: z.object({ botId: z.string() }),
+  }),
+  botUpdate: authReq({
+    input: z.object({
+      botId: z.string(),
+      name: z.string().min(1).max(60).optional(),
+      instruction: z.string().max(8000).optional(),
+      model: z.string().optional(),
+      avatarUrl: z.string().nullable().optional(),
+      backgroundUrl: z.string().nullable().optional(),
+      firstMessage: z.string().max(2000).nullable().optional(),
+      buttons: z.array(z.object({ label: z.string().max(40), prompt: z.string().max(2000) })).optional(),
+    }),
+    output: z.object({ ok: z.boolean() }),
+  }),
+  botGet: authReq({
+    input: z.object({ botId: z.string() }),
+    output: z.any(),
+  }),
+  botListMine: authReq({
+    input: z.object({}).catchall(z.unknown()),
+    output: z.object({ bots: z.array(z.any()) }),
+  }),
+  botDelete: authReq({
+    input: z.object({ botId: z.string() }),
+    output: z.object({ ok: z.boolean() }),
+  }),
+  conversationClear: authReq({
+    input: z.object({ conversationId: z.string() }),
+    output: z.object({ ok: z.boolean() }),
   }),
 
   // Example: public request — userId is string | null

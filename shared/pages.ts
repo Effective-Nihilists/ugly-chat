@@ -15,6 +15,9 @@ import { definePage, definePages } from 'ugly-app/shared';
 export const pages = definePages({
   '': definePage<{}>({ auth: false }),
   'chat': definePage<{}>({ auth: true }),
+  'chat/:conversationId': definePage<{ conversationId: string }>({ auth: true }),
+  'bots': definePage<{}>({ auth: true }),
+  'bot/:botId': definePage<{ botId: string }>({ auth: true }),
   'auth-demo': definePage<{}>({ auth: false }),
   'user/:userId': definePage<{ userId: string }>(),
   'search': definePage<{ q?: string }>({ auth: false }),
