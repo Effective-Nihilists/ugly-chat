@@ -166,7 +166,10 @@ export function registerAppApi(
         bots,
         custom: body['custom'] ?? undefined,
         disableJoinMessages: true,
-        hidden: true,
+        // Conversations are never created hidden — a hidden conversation never
+        // appears in the member's list (conversationListMine filters it out),
+        // which silently strands app-created chats the user is actually in.
+        hidden: false,
       } as any,
       creator,
     );

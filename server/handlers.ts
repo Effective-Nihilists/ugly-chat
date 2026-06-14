@@ -94,6 +94,10 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
           mode: input.mode ?? 'public',
           ownerIds: input.ownerIds ?? [userId],
           disableJoinMessages: input.disableJoinMessages ?? true,
+          // Hidden conversations are disallowed — they never show in the list
+          // (conversationListMine filters them), stranding the user. Override
+          // any `hidden` that slipped through the input `.catchall`.
+          hidden: false,
         },
         userId,
       );
@@ -132,9 +136,12 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       // `hidden: true`, so the member's userConversation starts `visibility:
       // 'hidden'` and never appears in conversationListMine. Opening it is
       // explicit engagement — un-hide it so "if I can see it, it's in my list".
-      void unhideMembers(getDb(), input.conversationId, userId).catch((err: unknown) =>
-        console.error('[conv] unhide on load failed', err),
-      );
+      const loadedId = (loaded as { conversation?: { _id?: string } } | null)?.conversation?._id;
+      if (loadedId) {
+        void unhideMembers(getDb(), loadedId, userId).catch((err: unknown) =>
+          console.error('[conv] unhide on load failed', err),
+        );
+      }
       return loaded;
     },
 
