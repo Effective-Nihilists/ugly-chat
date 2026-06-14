@@ -67,7 +67,10 @@ export async function fireMessageWebhooks(
   if (!conv) return;
   const appId = conv['appId'] as string | undefined;
   const authorId = String(message['userId'] ?? '');
-  const base = { event, appId, conversationId, message };
+  // Include the conversation's `custom` so the receiving app can route the event
+  // (e.g. love distinguishes coach vs couple conversations) without storing
+  // conversations itself.
+  const base = { event, appId, conversationId, custom: conv['custom'] ?? null, message };
   const targets: Promise<void>[] = [];
 
   // 1. Conversation-level webhook (observes everything).
