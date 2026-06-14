@@ -19,6 +19,7 @@ import {
 } from 'ugly-app/conversation/engine';
 import type { WorkerHandlers } from 'ugly-app/shared';
 import { dbDefaults } from 'ugly-app/shared';
+import { nanoid } from 'nanoid';
 import { triggerBotReplies, getBotConfig, isBot } from './bots';
 import { fireMessageWebhooks } from './webhooks';
 import { UGLY_BOT_USER_ID } from '../shared/bots';
@@ -40,7 +41,7 @@ export interface DbSurface {
 export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<typeof requests> {
   return {
     createTodo: async (userId, { text }) => {
-      const _id = crypto.randomUUID();
+      const _id = nanoid();
       const todo: Todo = { _id, userId, text, done: false, ...dbDefaults() };
       await getDb().setDoc(collections.todo, todo);
       return { id: _id };
@@ -68,7 +69,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       throw new Error(message ?? 'Worker task exception test');
     },
     testWorkerDbMutation: async (userId, { text }): Promise<{ id: string; verified: boolean }> => {
-      const _id = `worker-test-${crypto.randomUUID()}`;
+      const _id = `worker-test-${nanoid()}`;
       const todo: Todo = { _id, userId, text, done: false, ...dbDefaults() };
       await getDb().setDoc(collections.todo, todo);
       const readBack = await getDb().getDoc(collections.todo, _id);
@@ -83,7 +84,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
     },
     // ── Chat (conversation engine) ─────────────────────────────────────────
     conversationCreate: async (userId, input) => {
-      const id = input.id ?? crypto.randomUUID();
+      const id = input.id ?? nanoid();
       const conv = await engineConversationCreate(
         {
           ...input,
@@ -125,12 +126,27 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       return conv;
     },
 
-    conversationLoad: async (userId, input) => engineConversationLoad(input, userId),
+    conversationLoad: async (userId, input) => {
+      const loaded = await engineConversationLoad(input, userId);
+      // App-created conversations (e.g. Ugly Love) are seeded with
+      // `hidden: true`, so the member's userConversation starts `visibility:
+      // 'hidden'` and never appears in conversationListMine. Opening it is
+      // explicit engagement — un-hide it so "if I can see it, it's in my list".
+      void unhideMembers(getDb(), input.conversationId, userId).catch((err: unknown) =>
+        console.error('[conv] unhide on load failed', err),
+      );
+      return loaded;
+    },
 
     conversationMessageCreate: async (userId, input) => {
       const msg = await engineConversationMessageCreate(
         { ...input, message: { onlyUserIds: ['global'], ...input.message } },
         userId,
+      );
+      // A real message surfaces the conversation in every human member's list
+      // (the other Love partner sees it appear), not just the sender's.
+      void unhideMembers(getDb(), input.conversationId).catch((err: unknown) =>
+        console.error('[conv] unhide on message failed', err),
       );
       // Built-in/custom bots WITHOUT a webhook reply via textGen here. App bots
       // (with a webhookUrl) are driven by their owning app instead — see
@@ -247,7 +263,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
 
     // ── Custom bots (config-only personas) ──────────────────────────────────
     botCreate: async (userId, input): Promise<{ botId: string }> => {
-      const botId = `bot-${crypto.randomUUID()}`;
+      const botId = `bot-${nanoid()}`;
       await getDb().setDoc(collections.bot, {
         _id: botId,
         ownerId: userId,
@@ -345,6 +361,34 @@ function deriveOtherUserId(conversationId: string, userId: string): string | nul
   if (!conversationId.includes('+')) return null;
   const parts = conversationId.split('+').filter(Boolean);
   return parts.find((p) => p !== userId) ?? null;
+}
+
+// Flip a member's userConversation from `visibility: 'hidden'` to 'visible' so
+// it appears in conversationListMine. Passing `onlyUserId` un-hides just that
+// member (engagement on open); omitting it un-hides every human member of the
+// conversation (a new message surfaces it for all). Pinned rows are left alone,
+// and bot members never get a visible sidebar row.
+async function unhideMembers(
+  db: DbSurface,
+  conversationId: string,
+  onlyUserId?: string,
+): Promise<void> {
+  const rows = onlyUserId
+    ? ([await db.getDoc(collections.userConversation, `${onlyUserId}:${conversationId}`)].filter(
+        Boolean,
+      ) as Record<string, unknown>[])
+    : await db.getDocs(collections.userConversation, { conversationId });
+  await Promise.all(
+    rows.map(async (uc) => {
+      if ((uc['visibility'] as string) !== 'hidden') return;
+      if (isBot(String(uc['userPrivateId'] ?? ''))) return;
+      await db.setDoc(collections.userConversation, {
+        ...uc,
+        visibility: 'visible',
+        updated: new Date(),
+      });
+    }),
+  );
 }
 
 function toMillis(v: unknown): number {

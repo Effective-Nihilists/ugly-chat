@@ -19,6 +19,7 @@ import {
   conversationMessageCreate as engineConversationMessageCreate,
 } from 'ugly-app/conversation/engine';
 import { dbDefaults } from 'ugly-app/shared';
+import { nanoid } from 'nanoid';
 import { collections } from '../shared/collections';
 import type { DbSurface } from './handlers';
 import { fireMessageWebhooks } from './webhooks';
@@ -149,7 +150,7 @@ export function registerAppApi(
     if (memberUserIds.length === 0 && botIds.length === 0) {
       return c.json({ error: 'memberUserIds or botIds required' }, 400);
     }
-    const convId = typeof body['id'] === 'string' ? body['id'] : crypto.randomUUID();
+    const convId = typeof body['id'] === 'string' ? body['id'] : nanoid();
     const creator = memberUserIds[0] ?? id.ownerUserId;
     const bots = Object.fromEntries(botIds.map((b) => [b, {}]));
 
