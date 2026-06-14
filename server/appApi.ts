@@ -71,6 +71,27 @@ function appBotId(projectId: string, key: string): string {
   return `bot-${safe}`;
 }
 
+/**
+ * An app may access a conversation if it CREATED it (`conv.appId === appId`) OR
+ * one of ITS OWN bots is a member (a bot doc with `appId === appId`). The latter
+ * covers cross-app bots — App B's bot added to App A's conversation lets B read
+ * + post there to drive its bot.
+ */
+async function appCanAccess(
+  getDb: () => DbSurface,
+  conv: Record<string, unknown>,
+  appId: string,
+): Promise<boolean> {
+  if (conv['appId'] === appId) return true;
+  const botIds = Object.keys((conv['bots'] as Record<string, unknown> | undefined) ?? {});
+  for (const botId of botIds) {
+    if (!botId.startsWith('bot-')) continue;
+    const bot = await getDb().getDoc(collections.bot, botId);
+    if (bot && bot['appId'] === appId) return true;
+  }
+  return false;
+}
+
 export function registerAppApi(
   app: Hono<{ Bindings: Record<string, unknown> }>,
   getDb: () => DbSurface,
@@ -178,7 +199,7 @@ export function registerAppApi(
     }
     const conv = await getDb().getDoc(collections.conversation, conversationId);
     if (!conv) return c.json({ error: 'conversation not found' }, 404);
-    if (conv['appId'] !== id.appId) return c.json({ error: 'Forbidden' }, 403);
+    if (!(await appCanAccess(getDb, conv, id.appId))) return c.json({ error: 'Forbidden' }, 403);
 
     const message = (body['message'] as Record<string, unknown>) ?? {};
     const msg = await engineConversationMessageCreate(
@@ -207,7 +228,7 @@ export function registerAppApi(
     if (!conversationId) return c.json({ error: 'conversationId required' }, 400);
     const conv = await getDb().getDoc(collections.conversation, conversationId);
     if (!conv) return c.json({ error: 'conversation not found' }, 404);
-    if (conv['appId'] !== id.appId) return c.json({ error: 'Forbidden' }, 403);
+    if (!(await appCanAccess(getDb, conv, id.appId))) return c.json({ error: 'Forbidden' }, 403);
 
     const limit = Math.min(Number(body['limit'] ?? 50), 200);
     const messages = await getDb().getDocs(
