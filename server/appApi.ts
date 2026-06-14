@@ -23,6 +23,7 @@ import { nanoid } from 'nanoid';
 import { collections } from '../shared/collections';
 import type { DbSurface } from './handlers';
 import { fireMessageWebhooks } from './webhooks';
+import { unfurlMessageLinks } from './linkPreview';
 
 interface AppIdentity {
   appId: string;
@@ -220,6 +221,12 @@ export function registerAppApi(
       msg as unknown as Record<string, unknown>,
     ).catch((err: unknown) => console.error('[appApi] webhook fire failed', err));
     c.executionCtx.waitUntil(fire);
+    // Unfurl links (e.g. the Love challenge URL) into a preview card.
+    c.executionCtx.waitUntil(
+      unfurlMessageLinks(getDb(), msg as unknown as Parameters<typeof unfurlMessageLinks>[1]).catch(
+        (err: unknown) => console.error('[appApi] unfurl failed', err),
+      ),
+    );
     return c.json({ message: msg });
   });
 

@@ -22,6 +22,7 @@ import { dbDefaults } from 'ugly-app/shared';
 import { nanoid } from 'nanoid';
 import { triggerBotReplies, getBotConfig, isBot } from './bots';
 import { fireMessageWebhooks } from './webhooks';
+import { unfurlMessageLinks } from './linkPreview';
 import { UGLY_BOT_USER_ID } from '../shared/bots';
 import { resolveProfiles, type Profile } from './profiles';
 import { videoJoin, videoLeave, videoEnd, videoBotJoin, type CallState, type DbLike } from './video';
@@ -170,6 +171,10 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         input.conversationId,
         msg as unknown as Record<string, unknown>,
       ).catch((err: unknown) => console.error('[webhook] fire failed', err));
+      // Unfurl any links into a `linkPreviews` card (best-effort, async).
+      void unfurlMessageLinks(getDb(), msg as unknown as Parameters<typeof unfurlMessageLinks>[1]).catch(
+        (err: unknown) => console.error('[unfurl] failed', err),
+      );
       return msg;
     },
 
@@ -365,8 +370,13 @@ interface ConversationListRow {
 // DM/1:1 conversation ids are `{otherId}+{myUserId}` (either order). Return the
 // participant that isn't the current user, or null for group ids (no '+').
 function deriveOtherUserId(conversationId: string, userId: string): string | null {
-  if (!conversationId.includes('+')) return null;
-  const parts = conversationId.split('+').filter(Boolean);
+  // Direct conversations are keyed by the two user ids joined with ':' (framework
+  // native, e.g. the Love couple chat) or legacy '+'. A 2-part id that includes
+  // our own userId is a DM; the other part is the partner.
+  const sep = conversationId.includes(':') ? ':' : conversationId.includes('+') ? '+' : '';
+  if (!sep) return null;
+  const parts = conversationId.split(sep).filter(Boolean);
+  if (parts.length !== 2 || !parts.includes(userId)) return null;
   return parts.find((p) => p !== userId) ?? null;
 }
 

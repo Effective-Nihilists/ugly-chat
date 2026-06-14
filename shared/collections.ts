@@ -59,6 +59,18 @@ export const MessageSchema = z
     mentionUserIds: z.array(z.string()).optional(),
     reactionCount: z.record(z.string(), z.number()).optional(),
     reactionUsers: z.record(z.string(), z.array(z.string())).optional(),
+    // OpenGraph link-preview cards, populated server-side after create (unfurl).
+    linkPreviews: z
+      .array(
+        z.object({
+          url: z.string(),
+          title: z.string().optional(),
+          description: z.string().optional(),
+          image: z.string().optional(),
+          siteName: z.string().optional(),
+        }),
+      )
+      .optional(),
   })
   .catchall(z.unknown());
 export type Message = InferDocType<typeof MessageSchema>;

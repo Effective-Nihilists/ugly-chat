@@ -10,6 +10,14 @@ import { useRouter } from '../router';
 import { Avatar, pingConversationActivity } from '../lib/conversations';
 import { UGLY_BOT_USER_ID } from '../../shared/bots';
 
+interface LinkPreview {
+  url: string;
+  title?: string;
+  description?: string;
+  image?: string;
+  siteName?: string;
+}
+
 interface MessageDoc extends DBObject {
   conversationId: string;
   userId: string;
@@ -22,6 +30,7 @@ interface MessageDoc extends DBObject {
   reactionUsers?: Record<string, string[]>;
   parentMessageId?: string | null;
   buttons?: unknown[];
+  linkPreviews?: LinkPreview[];
 }
 
 // A tappable message button: a custom-bot starter ({label, prompt}) or a generic
@@ -140,6 +149,48 @@ function MessageBody(props: {
       </div>
       ) : null}
 
+      {((msg as { linkPreviews?: LinkPreview[] }).linkPreviews ?? []).map((lp, i) => (
+        <a
+          key={`${lp.url}-${i}`}
+          href={lp.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'block',
+            maxWidth: 320,
+            border: '1px solid var(--app-border)',
+            borderRadius: 10,
+            overflow: 'hidden',
+            background: 'var(--app-main)',
+            textDecoration: 'none',
+            color: 'var(--app-foreground)',
+          }}
+        >
+          {lp.image ? (
+            <img
+              src={lp.image}
+              alt=""
+              style={{ width: '100%', maxHeight: 168, objectFit: 'cover', display: 'block' }}
+            />
+          ) : null}
+          <div style={{ padding: '8px 11px' }}>
+            {lp.siteName ? (
+              <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', opacity: 0.55 }}>
+                {lp.siteName}
+              </div>
+            ) : null}
+            <div style={{ fontSize: 14, fontWeight: 600, lineHeight: '18px', marginTop: 2 }}>
+              {lp.title ?? lp.url}
+            </div>
+            {lp.description ? (
+              <div style={{ fontSize: 12, opacity: 0.65, marginTop: 3, lineHeight: '16px', maxHeight: 32, overflow: 'hidden' }}>
+                {lp.description}
+              </div>
+            ) : null}
+          </div>
+        </a>
+      ))}
+
       {buttons.length > 0 ? (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', maxWidth: 520 }}>
           {buttons.map((b, i) => (
@@ -232,6 +283,7 @@ function toChatMessage(d: MessageDoc): ChatMessage {
     ...(d.reactionCount ? { reactionCount: d.reactionCount } : {}),
     ...(d.reactionUsers ? { reactionUsers: d.reactionUsers } : {}),
     ...(d.buttons ? { buttons: d.buttons } : {}),
+    ...(d.linkPreviews ? { linkPreviews: d.linkPreviews } : {}),
   } as ChatMessage;
 }
 
@@ -287,9 +339,14 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         const uc = (await socket.getDoc('userConversation', `${userId}:${roomId}`)) as ConversationDoc | null;
         if (!cancelled && uc?.title) {
           setTitle(uc.title);
-        } else if (!cancelled && roomId.includes('+')) {
-          // DM with no title → show the other participant's name (ugly.bot parity).
-          const other = roomId.split('+').filter(Boolean).find((p) => p !== userId);
+        } else if (!cancelled) {
+          // DM with no title → show the other participant's name (ugly.bot
+          // parity). Direct conversations are keyed by the two user ids joined
+          // with ':' (framework native) or legacy '+'. Either way, a 2-part id
+          // containing our own userId is a DM.
+          const sep = roomId.includes(':') ? ':' : roomId.includes('+') ? '+' : '';
+          const parts = sep ? roomId.split(sep).filter(Boolean) : [];
+          const other = parts.length === 2 ? parts.find((p) => p !== userId) : undefined;
           if (other) {
             const res = (await socket.request('profilesGet', { userIds: [other] })) as { profiles?: { name: string }[] };
             const nm = res.profiles?.[0]?.name;
