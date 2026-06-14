@@ -78,24 +78,47 @@ function initial(s: string): string {
   return t ? t.charAt(0).toUpperCase() : '#';
 }
 
-// ugly.bot's UserAvatar falls back to `defaultAvatar.image` (a generic rendered
-// avatar) for any null image — groups without an image, users without an
-// avatar — never a colored initial. Match that so the sidebar looks the same.
-const DEFAULT_AVATAR_URL =
-  'https://blob.ugly.bot/debug/user/ZHK_QVWdFU6rd_-w_EZzf/ZrqxZIhgWqDA4q5awdGkj.webp';
-
-/** Circular avatar — resolves to the image, then ugly.bot's default avatar. */
+/**
+ * Circular avatar — the real image when there is one, otherwise a colored
+ * initial derived from the label/seed. (We used to fall back to a single
+ * hardcoded blob.ugly.bot image, which showed a random stranger's face for
+ * every avatar-less user — e.g. the DM couple chat header and sidebar.)
+ */
 export function Avatar(props: { image?: unknown; seed: string; label?: string; size?: number }): React.ReactElement {
   const size = props.size ?? 42;
-  const url = resolveImageUrl(props.image) ?? DEFAULT_AVATAR_URL;
+  const url = resolveImageUrl(props.image);
+  if (url) {
+    return (
+      <img
+        src={url}
+        width={size}
+        height={size}
+        alt=""
+        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, display: 'block' }}
+      />
+    );
+  }
   return (
-    <img
-      src={url}
-      width={size}
-      height={size}
-      alt=""
-      style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, display: 'block' }}
-    />
+    <div
+      aria-hidden
+      style={{
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        flexShrink: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: avatarColor(props.seed),
+        color: '#fff',
+        fontSize: Math.round(size * 0.45),
+        fontWeight: 600,
+        lineHeight: 1,
+        userSelect: 'none',
+      }}
+    >
+      {initial(props.label || props.seed)}
+    </div>
   );
 }
 

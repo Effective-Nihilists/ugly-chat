@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-14T17:00:47.041Z",
+  "generatedAt": "2026-06-14T19:41:19.539Z",
   "source": "shared/collections.ts",
   "collections": {
     "errorLog": {
@@ -548,6 +548,36 @@
           },
           "isBot": {
             "type": "boolean",
+            "required": false
+          },
+          "linkPreviews": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "fields": {
+                "description": {
+                  "type": "string",
+                  "required": false
+                },
+                "image": {
+                  "type": "string",
+                  "required": false
+                },
+                "siteName": {
+                  "type": "string",
+                  "required": false
+                },
+                "title": {
+                  "type": "string",
+                  "required": false
+                },
+                "url": {
+                  "type": "string",
+                  "required": true
+                }
+              },
+              "required": true
+            },
             "required": false
           },
           "markdown": {

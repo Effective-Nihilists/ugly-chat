@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ThumbsUp, ThumbsDown, Heart, Laugh, HelpCircle, AlertTriangle, Trash2, Video, Paperclip, X, FileText, MoreVertical, Eraser } from 'lucide-react';
 import { useApp, uploadBlob, promoteBlob, downscaleImage } from 'ugly-app/client';
-import { ChatView, ChatMarkdownContent } from 'ugly-app/conversation/client';
+import { ChatView } from 'ugly-app/conversation/client';
+import { MdastViewer } from 'ugly-app/markdown/client';
 import { ConversationInput } from '../components/ConversationInput';
 import type { ChatMessage, ChatUser } from 'ugly-app/conversation/shared';
 import type { DBObject } from 'ugly-app/shared';
@@ -9,6 +10,15 @@ import { VideoCall, type VideoCallHandle } from '../components/VideoCall';
 import { useRouter } from '../router';
 import { Avatar, pingConversationActivity } from '../lib/conversations';
 import { UGLY_BOT_USER_ID } from '../../shared/bots';
+
+// Open a markdown link. MdastViewer's default link handler calls
+// `global.open(...)` for non-mention links, which throws in the browser
+// (`global` is undefined) — so links silently do nothing. Passing our own
+// `openUri` overrides that with a real `window.open`.
+function openLink(uri: string): Promise<void> {
+  if (typeof window !== 'undefined') window.open(uri, '_blank', 'noopener');
+  return Promise.resolve();
+}
 
 interface LinkPreview {
   url: string;
@@ -145,7 +155,7 @@ function MessageBody(props: {
           wordBreak: 'break-word',
         }}
       >
-        <ChatMarkdownContent markdown={text} width={520} />
+        <MdastViewer markdown={text} width={520} openUri={openLink} />
       </div>
       ) : null}
 
@@ -348,9 +358,13 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           const parts = sep ? roomId.split(sep).filter(Boolean) : [];
           const other = parts.length === 2 ? parts.find((p) => p !== userId) : undefined;
           if (other) {
-            const res = (await socket.request('profilesGet', { userIds: [other] })) as { profiles?: { name: string }[] };
-            const nm = res.profiles?.[0]?.name;
-            if (nm && !cancelled) setTitle(nm);
+            const res = (await socket.request('profilesGet', { userIds: [other] })) as {
+              profiles?: { name: string; avatarUrl?: string | null }[];
+            };
+            const p = res.profiles?.[0];
+            if (p?.name && !cancelled) setTitle(p.name);
+            // Use the partner's avatar in the header (the DM has no conv image).
+            if (p?.avatarUrl && !cancelled) setConvImage((img: unknown) => img ?? p.avatarUrl);
           }
         }
       } catch (err) {
