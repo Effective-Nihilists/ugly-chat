@@ -17,7 +17,6 @@ export interface BotDoc {
   ownerId: string;
   name: string;
   avatarUrl?: string | null;
-  backgroundUrl?: string | null;
   instruction?: string;
   model?: string;
   firstMessage?: string | null;
@@ -46,7 +45,6 @@ export async function startBotChat(
         ownerIds: [userId],
         bots: { [bot._id]: {} },
         image: bot.avatarUrl ?? null,
-        background: bot.backgroundUrl ?? null,
       });
     }
     navigate(id);
