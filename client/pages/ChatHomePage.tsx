@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Flame, MessageSquarePlus } from 'lucide-react';
+import { Flame, MessageSquarePlus, Search } from 'lucide-react';
 import { useApp } from 'ugly-app/client';
 import { useRouter } from '../router';
 import { Avatar, useConversations, type ConvRow } from '../lib/conversations';
@@ -141,6 +141,33 @@ export default function ChatHomePage(): React.ReactElement {
 
           {/* Conversation list */}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {/* The box above filters conversation TITLES; this jumps to a
+                full-text search across all message bodies. */}
+            {q.trim().length >= 2 ? (
+              <button
+                type="button"
+                className="uc-row"
+                onClick={() => router.push('search', { q: q.trim() })}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  width: '100%',
+                  padding: '10px 8px',
+                  border: 'none',
+                  borderBottom: '1px solid var(--app-border)',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  font: 'inherit',
+                  color: 'var(--app-primary)',
+                  fontWeight: 600,
+                }}
+              >
+                <Search size={18} />
+                Search all messages for “{q.trim()}”
+              </button>
+            ) : null}
             {loading && conversations.length === 0 ? (
               <Hint text="Loading…" />
             ) : filtered.length === 0 ? (

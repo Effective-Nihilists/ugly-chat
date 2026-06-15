@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
-import { useApp, uploadBlob, promoteBlob } from 'ugly-app/client';
+import { Mic, Square } from 'lucide-react';
+import { useApp, uploadBlob, promoteBlob, useSTT } from 'ugly-app/client';
+import type { UglyBotSocket } from 'ugly-app/client';
 import { MarkdownEditor } from 'ugly-app/markdown/client';
 import type { MarkdownEditorFunctions } from 'ugly-app/markdown/client';
 
@@ -18,6 +20,8 @@ export interface ConversationInputProps {
   /** Allow sending with empty text (e.g. an attachment is staged). */
   allowEmpty?: boolean;
   onSend: (markdown: string) => void;
+  /** Fires as the user edits (each content change) — for typing indicators. */
+  onType?: () => void;
   /** Resolve @mention candidates (conversation participants). */
   mentionSearch?: (query: string) => Promise<{ id: string; name: string }[]>;
   leftActions?: ReactNode;
@@ -40,15 +44,25 @@ export function ConversationInput({
   autoFocus = false,
   allowEmpty = false,
   onSend,
+  onType,
   mentionSearch,
   leftActions,
   rightActions,
 }: ConversationInputProps): React.ReactElement {
-  const { socket } = useApp();
+  const { socket, uglyBotSocket } = useApp();
   const editorRef = useRef<MarkdownEditorFunctions>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [value, setValue] = useState('');
+  const valueRef = useRef('');
   const [width, setWidth] = useState(520);
+
+  // Set composer content programmatically (used by dictation) — both the
+  // controlled `value` state and the live editor document.
+  const applyText = useCallback((text: string) => {
+    setValue(text);
+    valueRef.current = text;
+    editorRef.current?.setValue(text);
+  }, []);
 
   // Track the editor width (image embeds + the floating toolbar need it).
   useEffect(() => {
@@ -67,6 +81,7 @@ export function ConversationInput({
     if (!text && !allowEmpty) return;
     onSend(text);
     setValue('');
+    valueRef.current = '';
     editorRef.current?.setValue('');
   }, [value, allowEmpty, onSend]);
 
@@ -108,7 +123,11 @@ export function ConversationInput({
         <MarkdownEditor
           editorRef={editorRef}
           value={value}
-          onValueChanged={setValue}
+          onValueChanged={(v) => {
+            setValue(v);
+            valueRef.current = v;
+            if (v.trim()) onType?.();
+          }}
           disabled={disabled}
           autoFocus={autoFocus}
           compact
@@ -126,6 +145,14 @@ export function ConversationInput({
         />
       </div>
       {rightActions}
+      {uglyBotSocket ? (
+        <DictationButton
+          socket={uglyBotSocket}
+          disabled={disabled}
+          getBase={() => valueRef.current}
+          onText={applyText}
+        />
+      ) : null}
       <button type="button" style={sendButtonStyle} onClick={handleSend} disabled={disabled} aria-label="Send">
         <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="m22 2-7 20-4-9-9-4Z" />
@@ -133,6 +160,67 @@ export function ConversationInput({
         </svg>
       </button>
     </div>
+  );
+}
+
+// Mic → dictate into the composer via ugly.bot's WebSocket STT (Whisper).
+// Rendered only when an ugly.bot socket exists, so `useSTT` gets a real socket.
+// The backend is batch (transcript arrives when you stop), so this reads as
+// push-to-talk: tap to record, tap again to insert. The transcript is appended
+// to whatever was already typed (captured when recording starts).
+function DictationButton({
+  socket,
+  disabled,
+  getBase,
+  onText,
+}: {
+  socket: UglyBotSocket;
+  disabled: boolean;
+  getBase: () => string;
+  onText: (text: string) => void;
+}): React.ReactElement {
+  const stt = useSTT(socket);
+  const baseRef = useRef('');
+
+  useEffect(() => {
+    const t = stt.transcript.trim();
+    if (!t) return;
+    const base = baseRef.current.trim();
+    onText(base ? `${base} ${t}` : t);
+  }, [stt.transcript, onText]);
+
+  const toggle = (): void => {
+    if (stt.listening) {
+      stt.stop();
+    } else {
+      baseRef.current = getBase();
+      void stt.start();
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      disabled={disabled}
+      title={stt.listening ? 'Stop dictation' : 'Dictate'}
+      aria-label={stt.listening ? 'Stop dictation' : 'Dictate'}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 32,
+        height: 32,
+        flexShrink: 0,
+        borderRadius: '50%',
+        border: 'none',
+        background: stt.listening ? 'var(--app-error)' : 'transparent',
+        color: stt.listening ? '#fff' : 'var(--app-foreground)',
+        cursor: 'pointer',
+      }}
+    >
+      {stt.listening ? <Square size={15} /> : <Mic size={18} />}
+    </button>
   );
 }
 

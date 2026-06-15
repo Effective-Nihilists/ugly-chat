@@ -15,7 +15,11 @@ import {
   conversationMessageCreate as engineConversationMessageCreate,
   conversationMessageReact as engineConversationMessageReact,
   conversationMessageDelete as engineConversationMessageDelete,
+  conversationMessageEdit as engineConversationMessageEdit,
+  conversationSetTyping as engineConversationSetTyping,
   conversationUserAdd as engineConversationUserAdd,
+  conversationUserRemove as engineConversationUserRemove,
+  conversationUserUpdateRole as engineConversationUserUpdateRole,
 } from 'ugly-app/conversation/engine';
 import type { WorkerHandlers } from 'ugly-app/shared';
 import { dbDefaults } from 'ugly-app/shared';
@@ -23,9 +27,16 @@ import { nanoid } from 'nanoid';
 import { triggerBotReplies, getBotConfig, isBot } from './bots';
 import { fireMessageWebhooks } from './webhooks';
 import { unfurlMessageLinks } from './linkPreview';
+import { bumpListForMessage, markRead } from './listDenorm';
 import { UGLY_BOT_USER_ID } from '../shared/bots';
 import { resolveProfiles, type Profile } from './profiles';
-import { videoJoin, videoLeave, videoEnd, videoBotJoin, type CallState, type DbLike } from './video';
+import { videoJoin, videoLeave, videoEnd, videoBotJoin, videoPublish, videoState, type CallState, type DbLike } from './video';
+import {
+  realtimeIceServers,
+  realtimeNewSession,
+  realtimeTracks,
+  realtimeRenegotiate,
+} from './realtime';
 import { requests } from '../shared/api';
 import type { Todo } from '../shared/collections';
 import { collections } from '../shared/collections';
@@ -37,6 +48,13 @@ export interface DbSurface {
   getDoc(col: unknown, id: string): Promise<Record<string, unknown> | null>;
   getDocs(col: unknown, filter?: unknown, opts?: unknown): Promise<Record<string, unknown>[]>;
   deleteDoc(col: unknown, id: string): Promise<void>;
+  // Postgres full-text search (→ pgSearchDocs, `search @@ plainto_tsquery`).
+  // Present on the Pg adapter; optional so the interface stays minimal.
+  searchDocs?(
+    col: unknown,
+    searchQuery: string,
+    opts?: { filter?: unknown; limit?: number },
+  ): Promise<Record<string, unknown>[]>;
 }
 
 export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<typeof requests> {
@@ -133,14 +151,13 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
 
     conversationLoad: async (userId, input) => {
       const loaded = await engineConversationLoad(input, userId);
-      // App-created conversations (e.g. Ugly Love) are seeded with
-      // `hidden: true`, so the member's userConversation starts `visibility:
-      // 'hidden'` and never appears in conversationListMine. Opening it is
-      // explicit engagement — un-hide it so "if I can see it, it's in my list".
+      // Opening a conversation marks it read (zero unread + stamp viewed) and
+      // un-hides it — app-created chats (e.g. Ugly Love) start `hidden`, so
+      // engagement is what surfaces them ("if I can see it, it's in my list").
       const loadedId = (loaded as { conversation?: { _id?: string } } | null)?.conversation?._id;
       if (loadedId) {
-        void unhideMembers(getDb(), loadedId, userId).catch((err: unknown) =>
-          console.error('[conv] unhide on load failed', err),
+        void markRead(getDb(), loadedId, userId).catch((err: unknown) =>
+          console.error('[conv] markRead on load failed', err),
         );
       }
       return loaded;
@@ -151,11 +168,14 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         { ...input, message: { onlyUserIds: ['global'], ...input.message } },
         userId,
       );
-      // A real message surfaces the conversation in every human member's list
-      // (the other Love partner sees it appear), not just the sender's.
-      void unhideMembers(getDb(), input.conversationId).catch((err: unknown) =>
-        console.error('[conv] unhide on message failed', err),
-      );
+      // Denormalize the sidebar: refresh every member's last-message preview,
+      // +1 unread for recipients (sender marked read), bump recency, un-hide.
+      void bumpListForMessage(
+        getDb(),
+        input.conversationId,
+        String(input.message?.text ?? input.message?.markdown ?? ''),
+        userId,
+      ).catch((err: unknown) => console.error('[conv] list denorm failed', err));
       // Built-in/custom bots WITHOUT a webhook reply via textGen here. App bots
       // (with a webhookUrl) are driven by their owning app instead — see
       // fireMessageWebhooks, which notifies the conversation + bot webhooks.
@@ -178,6 +198,12 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       return msg;
     },
 
+    conversationSetTyping: async (userId, input) =>
+      engineConversationSetTyping(
+        { conversationId: input.conversationId, start: input.start ?? undefined },
+        userId,
+      ),
+
     conversationMessageReact: async (userId, input) =>
       engineConversationMessageReact(input, userId),
 
@@ -192,6 +218,62 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         userId,
       ),
 
+    conversationMessageEdit: async (userId, input) => {
+      // The engine's edit ignores userId, so enforce "own messages only" here.
+      const shortId = input.messageId.includes(':')
+        ? input.messageId.split(':').slice(1).join(':')
+        : input.messageId;
+      const stored = await getDb().getDoc(
+        collections.message,
+        `${input.conversationId}:${shortId}`,
+      );
+      if (!stored) throw new Error('Message not found');
+      if (stored['userId'] !== userId) throw new Error('Can only edit your own messages');
+      const updated = await engineConversationMessageEdit(
+        {
+          conversationId: input.conversationId,
+          messageId: shortId,
+          message: { markdown: input.markdown, edited: Date.now() },
+        },
+        userId,
+      );
+      // Re-unfurl links on the edited body (best-effort).
+      void unfurlMessageLinks(
+        getDb(),
+        updated as unknown as Parameters<typeof unfurlMessageLinks>[1],
+      ).catch((err: unknown) => console.error('[unfurl] edit failed', err));
+      return updated;
+    },
+
+    conversationMessageSearch: async (userId, input) => {
+      const db = getDb();
+      if (!db.searchDocs || !input.search.trim()) return { items: [] };
+      // Scope to conversations the user belongs to (access control). A specific
+      // conversationId is honoured only after confirming membership.
+      let convIds: string[];
+      if (input.conversationId) {
+        const member = await db.getDoc(
+          collections.userConversation,
+          `${userId}:${input.conversationId}`,
+        );
+        if (!member) return { items: [] };
+        convIds = [input.conversationId];
+      } else {
+        const ucs = await db.getDocs(collections.userConversation, { userPrivateId: userId });
+        convIds = ucs.map((u) => String(u['conversationId'] ?? '')).filter(Boolean);
+      }
+      if (convIds.length === 0) return { items: [] };
+      const items = await db.searchDocs(collections.message, input.search, {
+        filter: {
+          conversationId: { $in: convIds },
+          onlyUserIds: { $in: ['global', userId] },
+          deleted: { $ne: true },
+        },
+        limit: input.limit ?? 50,
+      });
+      return { items };
+    },
+
     // ── Video call lifecycle ───────────────────────────────────────────────
     conversationVideoJoin: async (userId, input): Promise<CallState> =>
       videoJoin(getDb() as unknown as DbLike, { conversation: collections.conversation }, input.conversationId, userId),
@@ -201,6 +283,23 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       videoEnd(getDb() as unknown as DbLike, { conversation: collections.conversation }, input.conversationId),
     conversationVideoBotJoin: async (_userId, input): Promise<CallState> =>
       videoBotJoin(getDb() as unknown as DbLike, { conversation: collections.conversation }, input.conversationId, input.botId),
+    conversationVideoState: async (_userId, input): Promise<CallState> =>
+      videoState(getDb() as unknown as DbLike, { conversation: collections.conversation }, input.conversationId),
+    conversationVideoPublish: async (userId, input): Promise<CallState> =>
+      videoPublish(
+        getDb() as unknown as DbLike,
+        { conversation: collections.conversation },
+        input.conversationId,
+        userId,
+        input.sessionId,
+        input.tracks,
+      ),
+
+    // ── Cloudflare Realtime broker ─────────────────────────────────────────
+    realtimeIceServers: async () => realtimeIceServers(),
+    realtimeNewSession: async () => realtimeNewSession(),
+    realtimeTracks: async (_userId, input) => realtimeTracks(input.sessionId, input.body),
+    realtimeRenegotiate: async (_userId, input) => realtimeRenegotiate(input.sessionId, input.body),
 
     profilesGet: async (_userId, input): Promise<{ profiles: Profile[] }> => ({
       profiles: await resolveProfiles(getDb(), input.userIds),
@@ -272,6 +371,178 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         { conversationId: input.conversationId, userId, role: 'member', visibility: 'visible' },
         userId,
       ),
+
+    conversationMarkRead: async (userId, input): Promise<{ ok: boolean }> => {
+      await markRead(getDb(), input.conversationId, userId);
+      return { ok: true };
+    },
+
+    conversationReadState: async (userId, input) => {
+      const db = getDb();
+      const self = await db.getDoc(
+        collections.conversationUser,
+        `${input.conversationId}:${userId}`,
+      );
+      if (!self) return { readers: [] };
+      const rows = await db.getDocs(collections.userConversation, {
+        conversationId: input.conversationId,
+      });
+      const readers = rows
+        .map((uc) => ({
+          userId: String(uc['userPrivateId'] ?? ''),
+          viewed: typeof uc['viewed'] === 'number' ? uc['viewed'] : 0,
+        }))
+        .filter((r) => r.userId && r.userId !== userId && !isBot(r.userId) && r.viewed > 0);
+      return { readers };
+    },
+
+    conversationPinMessage: async (userId, input): Promise<{ ok: boolean }> => {
+      const db = getDb();
+      // Members only (the pin is shared by the whole conversation).
+      const member = await db.getDoc(
+        collections.conversationUser,
+        `${input.conversationId}:${userId}`,
+      );
+      if (!member) throw new Error('Not a member of this conversation');
+      const conv = await db.getDoc(collections.conversation, input.conversationId);
+      if (!conv) throw new Error('Conversation not found');
+      await db.setDoc(collections.conversation, {
+        ...conv,
+        pinnedMessageId: input.messageId,
+        updated: new Date(),
+      });
+      return { ok: true };
+    },
+
+    conversationSetPinned: async (userId, input): Promise<{ ok: boolean }> => {
+      const db = getDb();
+      const uc = await db.getDoc(
+        collections.userConversation,
+        `${userId}:${input.conversationId}`,
+      );
+      if (!uc) throw new Error('Not a member of this conversation');
+      // Toggle between pinned and visible — don't resurrect a hidden row.
+      if ((uc['visibility'] as string) === 'hidden') return { ok: false };
+      await db.setDoc(collections.userConversation, {
+        ...uc,
+        visibility: input.pinned ? 'pinned' : 'visible',
+        updated: new Date(),
+      });
+      return { ok: true };
+    },
+
+    // Distinct humans the caller shares conversations with (their "contacts") —
+    // the candidate pool for adding members, no global directory required.
+    userContacts: async (userId) => {
+      const db = getDb();
+      const ucs = await db.getDocs(collections.userConversation, { userPrivateId: userId });
+      const convIds = ucs
+        .map((u) => String(u['conversationId'] ?? ''))
+        .filter(Boolean)
+        .slice(0, 200);
+      if (convIds.length === 0) return { users: [] };
+      const cus = await db.getDocs(collections.conversationUser, {
+        conversationId: { $in: convIds },
+      });
+      const ids = [
+        ...new Set(
+          cus
+            .map((r) => String(r['userId'] ?? ''))
+            .filter((id) => id && id !== userId && !isBot(id)),
+        ),
+      ].slice(0, 100);
+      if (ids.length === 0) return { users: [] };
+      const profiles = await resolveProfiles(db, ids);
+      return {
+        users: profiles
+          .filter((p) => !p.isBot)
+          .map((p) => ({ userId: p.id, name: p.name, avatarUrl: p.avatarUrl })),
+      };
+    },
+
+    // ── Group membership admin ──────────────────────────────────────────────
+    conversationMembers: async (userId, input) => {
+      const db = getDb();
+      // Only members may view the roster.
+      const self = await db.getDoc(
+        collections.conversationUser,
+        `${input.conversationId}:${userId}`,
+      );
+      if (!self) return { members: [] };
+      const rows = await db.getDocs(collections.conversationUser, {
+        conversationId: input.conversationId,
+      });
+      const profiles = await resolveProfiles(
+        db,
+        rows.map((r) => String(r['userId'] ?? '')).filter(Boolean),
+      );
+      const byId = new Map(profiles.map((p) => [p.id, p]));
+      const members = rows
+        .map((r) => {
+          const id = String(r['userId'] ?? '');
+          const p = byId.get(id);
+          return {
+            userId: id,
+            role: String(r['role'] ?? 'member'),
+            name: p?.name ?? id.slice(0, 8),
+            avatarUrl: p?.avatarUrl ?? null,
+            isBot: p?.isBot ?? isBot(id),
+          };
+        })
+        .filter((m) => m.userId);
+      return { members };
+    },
+
+    conversationMemberAdd: async (userId, input) => {
+      const res = await engineConversationUserAdd(
+        {
+          conversationId: input.conversationId,
+          userId: input.userId,
+          role: input.role ?? 'member',
+          visibility: 'visible',
+        },
+        userId,
+      );
+      await postSystemMessage(input.conversationId, 'memberAdd', input.userId);
+      return res;
+    },
+
+    conversationMemberRemove: async (userId, input) => {
+      const res = await engineConversationUserRemove(
+        { conversationId: input.conversationId, userId: input.userId },
+        userId,
+      );
+      // A self-removal reads as "left"; removing someone else reads as "removed".
+      await postSystemMessage(
+        input.conversationId,
+        input.userId === userId ? 'memberLeave' : 'memberRemove',
+        input.userId,
+      );
+      return res;
+    },
+
+    conversationMemberRole: async (userId, input) =>
+      engineConversationUserUpdateRole(
+        { conversationId: input.conversationId, userId: input.userId, role: input.role },
+        userId,
+      ),
+
+    conversationDelete: async (userId, input): Promise<{ ok: boolean }> => {
+      const db = getDb();
+      const self = await db.getDoc(
+        collections.conversationUser,
+        `${input.conversationId}:${userId}`,
+      );
+      if (self?.['role'] !== 'owner') {
+        throw new Error('Only an owner can delete this conversation');
+      }
+      // The typed DB cascades to children (message, messageReaction,
+      // conversationUser, userConversation — all `cascadeFrom: 'conversation'`),
+      // so this single delete removes the conversation from everyone's list and
+      // wipes its messages. trackDocs delete-notifications update clients live.
+      await db.deleteDoc(collections.conversation, input.conversationId);
+      return { ok: true };
+    },
 
     // ── Custom bots (config-only personas) ──────────────────────────────────
     botCreate: async (userId, input): Promise<{ botId: string }> => {
@@ -380,32 +651,22 @@ function deriveOtherUserId(conversationId: string, userId: string): string | nul
   return parts.find((p) => p !== userId) ?? null;
 }
 
-// Flip a member's userConversation from `visibility: 'hidden'` to 'visible' so
-// it appears in conversationListMine. Passing `onlyUserId` un-hides just that
-// member (engagement on open); omitting it un-hides every human member of the
-// conversation (a new message surfaces it for all). Pinned rows are left alone,
-// and bot members never get a visible sidebar row.
-async function unhideMembers(
-  db: DbSurface,
+// Post a membership system message (memberAdd/memberRemove/memberLeave) as the
+// global user. `systemType` messages skip notifications in the engine, and the
+// client renders them as a centered system line (resolving `systemParam` → a
+// display name). Best-effort — a failure here must not fail the membership op.
+async function postSystemMessage(
   conversationId: string,
-  onlyUserId?: string,
+  systemType: string,
+  systemParam: string,
 ): Promise<void> {
-  const rows = onlyUserId
-    ? ([await db.getDoc(collections.userConversation, `${onlyUserId}:${conversationId}`)].filter(
-        Boolean,
-      ) as Record<string, unknown>[])
-    : await db.getDocs(collections.userConversation, { conversationId });
-  await Promise.all(
-    rows.map(async (uc) => {
-      if ((uc['visibility'] as string) !== 'hidden') return;
-      if (isBot(String(uc['userPrivateId'] ?? ''))) return;
-      await db.setDoc(collections.userConversation, {
-        ...uc,
-        visibility: 'visible',
-        updated: new Date(),
-      });
-    }),
-  );
+  await engineConversationMessageCreate(
+    {
+      conversationId,
+      message: { systemType, systemParam, text: '', markdown: '', onlyUserIds: ['global'] },
+    },
+    'global',
+  ).catch((err: unknown) => console.error('[system-message] failed', err));
 }
 
 function toMillis(v: unknown): number {

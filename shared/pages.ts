@@ -20,7 +20,7 @@ export const pages = definePages({
   'bot/:botId': definePage<{ botId: string }>({ auth: true }),
   'auth-demo': definePage<{}>({ auth: false }),
   'user/:userId': definePage<{ userId: string }>(),
-  'search': definePage<{ q?: string }>({ auth: false }),
+  'search': definePage<{ q?: string }>({ auth: true }),
   'test': definePage<{}>({ auth: false }),
   'test/ai': definePage<{}>({ auth: true }),
   'test/ui': definePage<{}>({ auth: false }),

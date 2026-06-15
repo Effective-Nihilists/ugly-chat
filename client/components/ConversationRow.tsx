@@ -9,9 +9,11 @@ export function ConversationRow(props: {
   row: ConvRow;
   selected: boolean;
   onClick: () => void;
+  onTogglePin?: () => void;
 }): React.ReactElement {
-  const { row, selected, onClick } = props;
+  const { row, selected, onClick, onTogglePin } = props;
   return (
+    <div className="uc-convrow" style={{ position: 'relative' }}>
     <button
       type="button"
       onClick={onClick}
@@ -79,7 +81,7 @@ export function ConversationRow(props: {
         ) : null}
       </span>
 
-      {row.pinned ? <Pin size={12} style={{ opacity: 0.45, flexShrink: 0 }} aria-label="Pinned" /> : null}
+      {!onTogglePin && row.pinned ? <Pin size={12} style={{ opacity: 0.45, flexShrink: 0 }} aria-label="Pinned" /> : null}
       {row.unread > 0 ? (
         <span
           style={{
@@ -100,5 +102,20 @@ export function ConversationRow(props: {
         </span>
       ) : null}
     </button>
+      {onTogglePin ? (
+        <button
+          type="button"
+          className={row.pinned ? 'uc-pinbtn uc-pinbtn--on' : 'uc-pinbtn'}
+          onClick={(e) => {
+            e.stopPropagation();
+            onTogglePin();
+          }}
+          title={row.pinned ? 'Unpin' : 'Pin'}
+          aria-label={row.pinned ? 'Unpin' : 'Pin'}
+        >
+          <Pin size={14} fill={row.pinned ? 'currentColor' : 'none'} />
+        </button>
+      ) : null}
+    </div>
   );
 }

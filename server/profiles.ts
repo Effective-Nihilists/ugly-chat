@@ -108,10 +108,7 @@ export async function resolveProfiles(db: DbLike, userIds: string[]): Promise<Pr
   if (toFetch.length > 0) {
     const got = new Set<string>();
     try {
-      const res = await uglyBotRequest<{ profiles: { id: string; name: string | null; avatarUrl: string | null; backgroundUrl?: string | null }[] }>(
-        'userPublicBatch',
-        { userIds: toFetch },
-      );
+      const res = await uglyBotRequest('userPublicBatch', { userIds: toFetch });
       for (const p of res.profiles ?? []) {
         const local = localById.get(p.id);
         // Prefer the (richer) migrated name; fall back to ugly.bot's, then id.

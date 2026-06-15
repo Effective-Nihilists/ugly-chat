@@ -346,6 +346,30 @@ hr {
 /* ── Chat shell interaction states ──────────────────────────────────────── */
 .uc-row { transition: background-color 0.12s ease-out; }
 .uc-row:hover { background: rgba(var(--app-foreground-rgb), 0.06) !important; }
+
+/* Pin toggle: hidden until row hover; always shown (orange) when pinned. */
+.uc-pinbtn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 8px;
+  background: var(--app-main);
+  color: var(--app-foreground);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease-out;
+  z-index: 1;
+}
+.uc-convrow:hover .uc-pinbtn { opacity: 0.6; }
+.uc-pinbtn:hover { opacity: 1 !important; background: var(--app-tertiary); }
+.uc-pinbtn--on { opacity: 0.9 !important; color: var(--app-primary); background: transparent; }
 .uc-iconbtn { transition: background-color 0.12s ease-out; }
 .uc-iconbtn:hover { background: var(--app-tertiary) !important; }
 .uc-footbtn { transition: background-color 0.12s ease-out; }

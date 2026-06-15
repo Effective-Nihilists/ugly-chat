@@ -14,6 +14,11 @@ export interface CallParticipant {
   userId: string;
   isBot: boolean;
   joinedAt: number;
+  /** Cloudflare Realtime SFU session id, once the client has created one. */
+  sessionId?: string;
+  /** Names of the local tracks this participant published to the SFU (the
+   *  things peers pull). Empty/absent until they've pushed media. */
+  tracks?: string[];
 }
 export interface CallState {
   active: boolean;
@@ -41,17 +46,27 @@ export async function videoJoin(
 ): Promise<CallState> {
   const conv = await db.getDoc(collections.conversation, conversationId);
   if (!conv) throw new Error('conversation not found');
-  const call = getCall(conv);
-  if (!call.active) {
-    call.active = true;
-    call.startedAt = Date.now();
-  }
-  call.participants = {
-    ...call.participants,
-    [userId]: { userId, isBot, joinedAt: Date.now() },
-  };
-  await db.setDocFields(collections.conversation, conversationId, { call });
-  return call;
+  // Dot-path writes touch ONLY this participant's subtree — no read-modify-write
+  // of the whole `call`, so concurrent joiners don't clobber each other. The
+  // `$set` operator creates the missing `call`/`call.participants` parents.
+  const participant: CallParticipant = { userId, isBot, joinedAt: Date.now() };
+  await db.setDocFields(collections.conversation, conversationId, {
+    'call.active': true,
+    [`call.participants.${userId}`]: participant,
+  });
+  const updated = await db.getDoc(collections.conversation, conversationId);
+  return getCall(updated);
+}
+
+/** Fresh, server-side read of the call roster (clients poll this — `getDoc` on
+ *  the client only returns the stale trackDoc-cached copy). */
+export async function videoState(
+  db: DbLike,
+  collections: Collections,
+  conversationId: string,
+): Promise<CallState> {
+  const conv = await db.getDoc(collections.conversation, conversationId);
+  return getCall(conv);
 }
 
 export async function videoLeave(
@@ -81,6 +96,29 @@ export async function videoEnd(
   const next: CallState = { active: false, participants: {} };
   await db.setDocFields(collections.conversation, conversationId, { call: next });
   return next;
+}
+
+/**
+ * Advertise the caller's SFU session + published track names on the roster so
+ * other participants (watching `conversation.call` via trackDocs) can pull them.
+ * Merges into the existing participant entry (must already have joined).
+ */
+export async function videoPublish(
+  db: DbLike,
+  collections: Collections,
+  conversationId: string,
+  userId: string,
+  sessionId: string,
+  tracks: string[],
+): Promise<CallState> {
+  // Merge onto this participant's subtree (join already created it). Dot-path
+  // writes avoid the read-modify-write clobber race with concurrent joiners.
+  await db.setDocFields(collections.conversation, conversationId, {
+    [`call.participants.${userId}.sessionId`]: sessionId,
+    [`call.participants.${userId}.tracks`]: tracks,
+  });
+  const updated = await db.getDoc(collections.conversation, conversationId);
+  return getCall(updated);
 }
 
 /** Add a bot to the call as a client-side "fake call" participant. */

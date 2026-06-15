@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-14T19:41:19.539Z",
+  "generatedAt": "2026-06-15T00:14:25.049Z",
   "source": "shared/collections.ts",
   "collections": {
     "errorLog": {
@@ -471,6 +471,11 @@
             ],
             "required": false
           },
+          "pinnedMessageId": {
+            "type": "string",
+            "required": false,
+            "nullable": true
+          },
           "title": {
             "type": "string",
             "required": true,
@@ -628,6 +633,10 @@
               },
               "required": true
             },
+            "required": false
+          },
+          "systemParam": {
+            "type": "string",
             "required": false
           },
           "systemType": {

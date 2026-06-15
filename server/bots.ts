@@ -14,6 +14,7 @@
 import { conversationMessageCreate } from 'ugly-app/conversation/engine';
 import { collections } from '../shared/collections';
 import { UGLY_BOT, UGLY_BOT_USER_ID } from '../shared/bots';
+import { bumpListForMessage } from './listDenorm';
 
 // Workers-safe call to ugly.bot's proxied textGen (importing uglyBotRequest from
 // the 'ugly-app' main entry would drag the Node server into the Workers bundle).
@@ -269,5 +270,12 @@ export async function triggerBotReplies(
       { conversationId, message: { text: reply, markdown: reply, onlyUserIds: ['global'] } },
       botId,
     );
+    // Surface the bot's reply in the sidebar (preview + unread for recipients).
+    await bumpListForMessage(
+      db as unknown as Parameters<typeof bumpListForMessage>[0],
+      conversationId,
+      reply,
+      botId,
+    ).catch((err: unknown) => console.error('[bots] list denorm failed', err));
   }
 }

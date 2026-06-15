@@ -50,6 +50,18 @@ export function Sidebar(): React.ReactElement {
     openNewChatPopup(router, socket, userId, (id) => router.push('chat/:conversationId', { conversationId: id }));
   }, [router, socket, userId]);
 
+  // Pin/unpin a conversation. The userConversation trackDocs subscription
+  // (keyed by userId) picks up the visibility change and refetches the list,
+  // which re-sorts pinned-first — so no manual refetch needed.
+  const togglePin = useCallback(
+    (conversationId: string, pinned: boolean) => {
+      void socket
+        .request('conversationSetPinned', { conversationId, pinned })
+        .catch((err: unknown) => console.error('[sidebar] pin failed', err));
+    },
+    [socket],
+  );
+
   // Drag the right edge to resize (clamped 250–400, persisted).
   const startResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -152,6 +164,7 @@ export function Sidebar(): React.ReactElement {
               row={c}
               selected={c.conversationId === activeId}
               onClick={() => router.push('chat/:conversationId', { conversationId: c.conversationId })}
+              onTogglePin={() => togglePin(c.conversationId, !c.pinned)}
             />
           ))
         )}

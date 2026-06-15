@@ -4,15 +4,15 @@ import {
   Input,
   PageLayout,
   Text,
-  useIsKeyboardOpen,
-  useKeyboardHeight,
   useSafeAreaInsets,
 } from 'ugly-app/client';
 
 export default function SafeAreaTestPage() {
   const insets = useSafeAreaInsets();
-  const [kbHeight] = useKeyboardHeight();
-  const isKbOpen = useIsKeyboardOpen();
+  // ugly-app folded the keyboard into the safe-area object (removed the
+  // standalone useKeyboardHeight/useIsKeyboardOpen hooks).
+  const kbHeight = insets.keyboard.height;
+  const isKbOpen = insets.keyboard.showing;
   const [debug, setDebug] = useState(
     () =>
       typeof window !== 'undefined' &&
@@ -63,7 +63,7 @@ export default function SafeAreaTestPage() {
           <div>safe-area.right: <span data-id="sa-right">{insets.right}</span></div>
           <div>safe-area.bottom: <span data-id="sa-bottom">{insets.bottom}</span></div>
           <div>safe-area.left: <span data-id="sa-left">{insets.left}</span></div>
-          <div>keyboard-height: <span data-id="kb-height">{kbHeight}</span></div>
+          <div>keyboard-open: <span data-id="kb-height">{String(isKbOpen)}</span></div>
           <div>keyboard-open: <span data-id="kb-open">{isKbOpen ? 'true' : 'false'}</span></div>
         </div>
 

@@ -28,6 +28,8 @@ export const ConversationSchema = z
     chargeUserIds: z.array(z.string()).optional(),
     bots: z.record(z.string(), z.unknown()).optional(),
     typing: z.array(z.unknown()).optional(),
+    // The pinned message's full `_id` (`${conversationId}:${shortId}`), or null.
+    pinnedMessageId: z.string().nullable().optional(),
     // Cross-app fields: which app owns this conversation + an optional webhook
     // that receives ALL message events in it (HMAC-signed with webhookSecret).
     appId: z.string().optional(),
@@ -52,6 +54,8 @@ export const MessageSchema = z
     visibility: z.enum(['normal', 'silent', 'hidden']).optional(),
     onlyUserIds: z.array(z.string()).optional(),
     systemType: z.string().optional(),
+    // Target userId for membership system messages (memberAdd/Remove/Leave).
+    systemParam: z.string().optional(),
     mood: z.string().optional(),
     color: z.string().optional(),
     buttons: z.array(z.unknown()).optional(),

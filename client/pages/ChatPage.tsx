@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ThumbsUp, ThumbsDown, Heart, Laugh, HelpCircle, AlertTriangle, Trash2, Video, Paperclip, X, FileText, MoreVertical, Eraser } from 'lucide-react';
-import { useApp, uploadBlob, promoteBlob, downscaleImage } from 'ugly-app/client';
+import { ThumbsUp, ThumbsDown, Heart, Laugh, HelpCircle, AlertTriangle, Trash2, Video, Paperclip, X, FileText, MoreVertical, Eraser, Pencil, Users, Volume2, VolumeX, Pin } from 'lucide-react';
+import { useApp, uploadBlob, promoteBlob, downscaleImage, useSafeAreaInsets } from 'ugly-app/client';
 import { ChatView } from 'ugly-app/conversation/client';
 import { MdastViewer } from 'ugly-app/markdown/client';
 import { ConversationInput } from '../components/ConversationInput';
-import type { ChatMessage, ChatUser } from 'ugly-app/conversation/shared';
+import type { ChatMessage, ChatUser, ChatTypingEntry } from 'ugly-app/conversation/shared';
 import type { DBObject } from 'ugly-app/shared';
 import { VideoCall, type VideoCallHandle } from '../components/VideoCall';
+import { openMembersPopup } from '../components/MembersPopup';
+import { VoiceProvider, useVoice } from '../components/VoiceProvider';
 import { useRouter } from '../router';
 import { Avatar, pingConversationActivity } from '../lib/conversations';
 import { UGLY_BOT_USER_ID } from '../../shared/bots';
@@ -41,6 +43,9 @@ interface MessageDoc extends DBObject {
   parentMessageId?: string | null;
   buttons?: unknown[];
   linkPreviews?: LinkPreview[];
+  edited?: number | null;
+  systemType?: string;
+  systemParam?: string;
 }
 
 // A tappable message button: a custom-bot starter ({label, prompt}) or a generic
@@ -63,7 +68,10 @@ function normalizeButton(b: unknown): { text: string; prompt: string | null; uri
 interface ConversationDoc extends DBObject {
   title?: string;
   image?: unknown;
+  type?: string;
+  typing?: ChatTypingEntry[];
   bots?: Record<string, unknown>;
+  pinnedMessageId?: string | null;
 }
 
 // A file the user has attached to the composer but not yet sent. It's uploaded
@@ -115,10 +123,17 @@ function MessageBody(props: {
   hasBg: boolean;
   onReact: (messageId: string, reaction: string) => void;
   onDelete: (messageId: string) => void;
+  onEdit: (messageId: string, markdown: string) => Promise<void>;
+  onPin: (messageId: string) => void;
+  pinned: boolean;
   onButton: (prompt: string) => void;
 }): React.ReactElement {
-  const { msg, isOwn, rTL, rBL, hasBg, onReact, onDelete, onButton } = props;
+  const { msg, isOwn, rTL, rBL, hasBg, onReact, onDelete, onEdit, onPin, pinned, onButton } = props;
+  const voice = useVoice();
   const [hover, setHover] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
   const reactions = msg.reactionCount
     ? Object.entries(msg.reactionCount).filter(([, n]) => n > 0)
     : [];
@@ -127,6 +142,26 @@ function MessageBody(props: {
     .filter(Boolean)) as { text: string; prompt: string | null; uri: string | null }[];
   const text = msg.markdown ?? msg.text ?? '';
   const hasText = text.trim().length > 0;
+  const startEdit = (): void => {
+    setDraft(text);
+    setEditing(true);
+  };
+  const saveEdit = async (): Promise<void> => {
+    const next = draft.trim();
+    if (!next || next === text.trim()) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      await onEdit(msg.id, next);
+      setEditing(false);
+    } catch {
+      /* keep the editor open on failure so the draft isn't lost */
+    } finally {
+      setSaving(false);
+    }
+  };
   return (
     <div
       onMouseEnter={() => setHover(true)}
@@ -155,7 +190,64 @@ function MessageBody(props: {
           wordBreak: 'break-word',
         }}
       >
-        <MdastViewer markdown={text} width={520} openUri={openLink} />
+        {editing ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 260 }}>
+            <textarea
+              autoFocus
+              value={draft}
+              disabled={saving}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setEditing(false);
+                } else if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  void saveEdit();
+                }
+              }}
+              rows={Math.min(8, Math.max(1, draft.split('\n').length))}
+              style={{
+                resize: 'vertical',
+                width: '100%',
+                font: 'inherit',
+                fontSize: 14,
+                lineHeight: '20px',
+                color: 'var(--app-foreground)',
+                background: 'var(--app-main)',
+                border: '1px solid var(--app-border)',
+                borderRadius: 6,
+                padding: '6px 8px',
+                outline: 'none',
+              }}
+            />
+            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                disabled={saving}
+                style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--app-border)', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void saveEdit()}
+                disabled={saving || !draft.trim()}
+                style={{ fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 6, border: 'none', background: 'var(--app-primary)', color: '#fff', cursor: 'pointer', opacity: saving || !draft.trim() ? 0.6 : 1 }}
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <MdastViewer markdown={text} width={520} openUri={openLink} />
+            {(msg as { edited?: unknown }).edited ? (
+              <span style={{ fontSize: 11, opacity: 0.5, marginLeft: 6 }}>(edited)</span>
+            ) : null}
+          </>
+        )}
       </div>
       ) : null}
 
@@ -268,6 +360,31 @@ function MessageBody(props: {
               </button>
             );
           })}
+          {voice.enabled && hasText && !isOwn ? (
+            <button
+              title={voice.playingId === msg.id ? 'Stop' : 'Read aloud'}
+              onClick={() =>
+                voice.playingId === msg.id ? voice.stop() : voice.speak(msg.id, msg.text ?? text)
+              }
+              style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: 0.6, color: 'var(--app-foreground)' }}
+            >
+              {voice.playingId === msg.id ? <VolumeX size={15} /> : <Volume2 size={15} />}
+            </button>
+          ) : null}
+          {hasText ? (
+            <button
+              title={pinned ? 'Unpin' : 'Pin'}
+              onClick={() => onPin(msg.id)}
+              style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: pinned ? 1 : 0.6, color: pinned ? 'var(--app-primary)' : 'var(--app-foreground)' }}
+            >
+              <Pin size={14} fill={pinned ? 'currentColor' : 'none'} />
+            </button>
+          ) : null}
+          {isOwn && hasText ? (
+            <button title="Edit" onClick={startEdit} style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: 0.6, color: 'var(--app-foreground)' }}>
+              <Pencil size={14} />
+            </button>
+          ) : null}
           {isOwn ? (
             <button title="Delete" onClick={() => onDelete(msg.id)} style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: 0.6, color: 'var(--app-foreground)' }}>
               <Trash2 size={14} />
@@ -277,6 +394,12 @@ function MessageBody(props: {
       ) : null}
     </div>
   );
+}
+
+// One-line preview of a pinned message (markdown/whitespace collapsed).
+function pinnedPreview(d: MessageDoc): string {
+  const raw = (d.text ?? d.markdown ?? '').replace(/[#*_`>~]/g, '').replace(/\s+/g, ' ').trim();
+  return raw.length > 140 ? `${raw.slice(0, 140)}…` : raw || 'Pinned message';
 }
 
 function toChatMessage(d: MessageDoc): ChatMessage {
@@ -294,13 +417,21 @@ function toChatMessage(d: MessageDoc): ChatMessage {
     ...(d.reactionUsers ? { reactionUsers: d.reactionUsers } : {}),
     ...(d.buttons ? { buttons: d.buttons } : {}),
     ...(d.linkPreviews ? { linkPreviews: d.linkPreviews } : {}),
+    ...(d.edited ? { edited: true } : {}),
+    ...(d.systemType ? { systemType: d.systemType, systemParam: d.systemParam } : {}),
   } as ChatMessage;
 }
 
 export default function ChatPage({ conversationId }: { conversationId?: string }): React.ReactElement {
-  const { socket, userId } = useApp();
+  const { socket, userId, uglyBotSocket } = useApp();
   const router = useRouter();
   const narrow = useNarrow();
+  // Keyboard-inclusive bottom inset (home-indicator when closed, keyboard height
+  // when open). The page declares interactive-widget=overlays-content so the
+  // webview never resizes/scrolls for the keyboard — the composer's bottom
+  // padding grows by this instead, and ChatView's flex layout shrinks the
+  // message area above it so the latest message stays visible.
+  const safeArea = useSafeAreaInsets();
   const roomId = conversationId ?? 'demo-room';
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -311,12 +442,20 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const [profiles, setProfiles] = useState<Record<string, ChatUser>>({});
   const videoRef = useRef<VideoCallHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const lastTypingSent = useRef(0);
+  const typingStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pending, setPending] = useState<PendingAttachment[]>([]);
   // Bot-chat extras: the conversation's bot id (if any), its starter buttons
   // (shown persistently above the composer), and the header "⋯" menu state.
   const [botId, setBotId] = useState<string | null>(null);
   const [botButtons, setBotButtons] = useState<{ label: string; prompt: string }[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [typing, setTyping] = useState<ChatTypingEntry[]>([]);
+  const [convType, setConvType] = useState<string>('group');
+  const [pinnedMessageId, setPinnedMessageId] = useState<string | null>(null);
+  const [pinnedMessage, setPinnedMessage] = useState<MessageDoc | null>(null);
+  const [readers, setReaders] = useState<{ userId: string; viewed: number }[]>([]);
+  const [, forceTick] = useState(0);
 
   useEffect(() => {
     setReady(false);
@@ -325,6 +464,10 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     setBotId(null); // re-derived by the dedicated effect below
     setBotButtons([]);
     setMenuOpen(false);
+    setTyping([]);
+    setPinnedMessageId(null);
+    setPinnedMessage(null);
+    setReaders([]);
     let unsubMsg: (() => void) | undefined;
     let unsubConv: (() => void) | undefined;
     let unsubUserConv: (() => void) | undefined;
@@ -380,6 +523,9 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           const ids = Object.keys((doc.bots as Record<string, unknown> | undefined) ?? {});
           const firstBot = ids.find((b) => b.startsWith('bot-')) ?? null;
           setBotId((cur) => cur ?? firstBot);
+          setTyping(((doc as { typing?: ChatTypingEntry[] }).typing ?? []));
+          if (typeof doc.type === 'string') setConvType(doc.type);
+          setPinnedMessageId((doc.pinnedMessageId as string | null | undefined) ?? null);
         }
       });
       // The denormalized userConversation row carries the authoritative sidebar
@@ -407,6 +553,19 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
               .sort((a, b) => a.created - b.created),
           );
           pingConversationActivity();
+          // Viewing the conversation clears its unread (on open + as messages
+          // arrive while it's focused). Skipped for background tabs.
+          if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+            void socket
+              .request('conversationMarkRead', { conversationId: roomId })
+              .then(() => pingConversationActivity())
+              .catch(() => undefined);
+            // Refresh the simple per-user last-read timestamps (for "Seen").
+            void socket
+              .request('conversationReadState', { conversationId: roomId })
+              .then((r) => setReaders((r as { readers?: { userId: string; viewed: number }[] }).readers ?? []))
+              .catch(() => undefined);
+          }
         },
       );
       setReady(true);
@@ -419,9 +578,14 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     };
   }, [socket, userId, roomId]);
 
-  // Resolve participant profiles (real names + avatars + conversation bg).
+  // Resolve participant profiles (real names + avatars + conversation bg). Also
+  // resolve membership system-message targets (`systemParam`) so we can name them.
   useEffect(() => {
-    const unknown = [...new Set(messages.map((m) => m.userId))].filter((id) => id && !profiles[id]);
+    const ids = messages.flatMap((m) => [
+      m.userId,
+      (m as { systemParam?: string }).systemParam ?? '',
+    ]);
+    const unknown = [...new Set(ids)].filter((id) => id && id !== 'global' && !profiles[id]);
     if (unknown.length === 0) return;
     void socket
       .request('profilesGet', { userIds: unknown })
@@ -601,6 +765,53 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     [socket, roomId],
   );
 
+  const handleEdit = useCallback(
+    async (messageId: string, markdown: string): Promise<void> => {
+      await socket
+        .request('conversationMessageEdit', {
+          conversationId: roomId,
+          messageId: splitId(messageId),
+          markdown,
+        })
+        .catch((err: unknown) => {
+          console.error('[ChatPage] edit failed', err);
+          throw err;
+        });
+    },
+    [socket, roomId],
+  );
+
+  // Resolve the pinned message doc for the banner (it may be outside the loaded
+  // window, so fetch it directly by id rather than searching `messages`).
+  useEffect(() => {
+    if (!pinnedMessageId) {
+      setPinnedMessage(null);
+      return;
+    }
+    let cancelled = false;
+    void socket
+      .getDoc('message', pinnedMessageId)
+      .then((d) => {
+        if (!cancelled) setPinnedMessage((d as MessageDoc | null) ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setPinnedMessage(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [socket, pinnedMessageId]);
+
+  const handlePin = useCallback(
+    (messageId: string) => {
+      const next = pinnedMessageId === messageId ? null : messageId;
+      void socket
+        .request('conversationPinMessage', { conversationId: roomId, messageId: next })
+        .catch((err: unknown) => console.error('[ChatPage] pin failed', err));
+    },
+    [socket, roomId, pinnedMessageId],
+  );
+
   const handleClear = useCallback(() => {
     setMenuOpen(false);
     void socket
@@ -608,6 +819,68 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       .then(() => pingConversationActivity())
       .catch((err: unknown) => console.error('[ChatPage] clear failed', err));
   }, [socket, roomId]);
+
+  // Typing indicator. The composer fires `onType` on every edit; we throttle
+  // "start" pings to one / 3s, and after 4s of silence send a "stop" so the
+  // bubble clears even if the user never sends. (A sent message clears it
+  // server-side via the engine.)
+  const signalTyping = useCallback(() => {
+    const now = Date.now();
+    if (now - lastTypingSent.current > 3000) {
+      lastTypingSent.current = now;
+      void socket
+        .request('conversationSetTyping', { conversationId: roomId, start: now })
+        .catch(() => undefined);
+    }
+    if (typingStopTimer.current) clearTimeout(typingStopTimer.current);
+    typingStopTimer.current = setTimeout(() => {
+      lastTypingSent.current = 0;
+      void socket
+        .request('conversationSetTyping', { conversationId: roomId, start: null })
+        .catch(() => undefined);
+    }, 4000);
+  }, [socket, roomId]);
+
+  // Clear our typing flag when leaving the conversation.
+  useEffect(() => {
+    return () => {
+      if (typingStopTimer.current) clearTimeout(typingStopTimer.current);
+      lastTypingSent.current = 0;
+    };
+  }, [roomId]);
+
+  // Typing entries have a fixed `start`; re-render every 2s (only while someone
+  // is typing) so stale ones (>6s) drop out of `typingEntries` below.
+  const someoneElseTyping = typing.some((e) => e.userId !== userId);
+  useEffect(() => {
+    if (!someoneElseTyping) return;
+    const t = setInterval(() => forceTick((x) => x + 1), 2000);
+    return () => clearInterval(t);
+  }, [someoneElseTyping]);
+
+  // Computed inline (not memoized) so the 2s forceTick re-render re-evaluates
+  // freshness and stale entries drop out.
+  const typingEntries = typing.filter(
+    (e) => e.userId !== userId && Date.now() - e.start < 6000,
+  );
+
+  // DM ids are `{a}+{b}` / `{a}:{b}` containing self; everything else that's a
+  // group gets the member-management UI (the ⋯ → Members panel).
+  const isDm = (() => {
+    const sep = roomId.includes(':') ? ':' : roomId.includes('+') ? '+' : '';
+    if (!sep) return false;
+    const parts = roomId.split(sep).filter(Boolean);
+    return parts.length === 2 && parts.includes(userId);
+  })();
+  const canManageMembers = convType === 'group' && !isDm && roomId !== 'demo-room';
+
+  // Simple read receipt: compare each member's single last-read timestamp to my
+  // most recent message. No per-message stamps.
+  const myLastMessage = [...messages].reverse().find((m) => m.userId === userId);
+  const seenCount = myLastMessage
+    ? readers.filter((r) => r.viewed >= myLastMessage.created).length
+    : 0;
+  const seenLine = myLastMessage && seenCount > 0 ? (isDm ? 'Seen' : `Seen by ${seenCount}`) : null;
 
   // @mention candidates = the conversation's resolved participants.
   const mentionSearch = useCallback(
@@ -623,6 +896,25 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
 
   const renderMessage = useCallback(
     (msg: ChatMessage): React.ReactNode => {
+      const sysType = (msg as { systemType?: string }).systemType;
+      if (sysType) {
+        const param = (msg as { systemParam?: string }).systemParam ?? '';
+        const name = profiles[param]?.name ?? param.slice(0, 8) ?? 'Someone';
+        const text =
+          sysType === 'memberAdd'
+            ? `${name} joined`
+            : sysType === 'memberLeave'
+              ? `${name} left`
+              : sysType === 'memberRemove'
+                ? `${name} was removed`
+                : '';
+        if (!text) return null;
+        return (
+          <div style={{ textAlign: 'center', fontSize: 12, color: bgUrl ? '#fff' : 'var(--app-foreground)', opacity: 0.55, padding: '6px 14px', textShadow: bgUrl ? '0 1px 3px rgba(0,0,0,0.5)' : undefined }}>
+            {text}
+          </div>
+        );
+      }
       const idx = messages.findIndex((m) => m.id === msg.id);
       const prev = idx > 0 ? messages[idx - 1] : undefined;
       const next = idx >= 0 && idx < messages.length - 1 ? messages[idx + 1] : undefined;
@@ -635,14 +927,17 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           hasBg={!!bgUrl}
           onReact={handleReact}
           onDelete={handleDelete}
+          onEdit={handleEdit}
+          onPin={handlePin}
+          pinned={pinnedMessageId === msg.id}
           onButton={(prompt) => handleSend(prompt)}
         />
       );
     },
-    [messages, userId, handleReact, handleDelete, bgUrl, handleSend],
+    [messages, userId, handleReact, handleDelete, handleEdit, handlePin, pinnedMessageId, bgUrl, handleSend, profiles],
   );
 
-  return (
+  const body = (
     <div
       style={{
         display: 'flex',
@@ -676,8 +971,8 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         >
           <Video size={19} />
         </button>
-        {/* Overflow menu — bot chats can be wiped clean. */}
-        {botId ? (
+        {/* Overflow menu — group chats manage members; bot chats can be wiped. */}
+        {botId || canManageMembers ? (
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <button
               type="button"
@@ -692,20 +987,57 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
               <>
                 <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 20 }} />
                 <div style={{ position: 'absolute', top: 38, right: 0, zIndex: 21, background: 'var(--app-main)', border: '1px solid var(--app-border)', borderRadius: 10, boxShadow: 'var(--app-shadow-button-default)', minWidth: 168, overflow: 'hidden' }}>
-                  <button
-                    type="button"
-                    className="uc-menuitem"
-                    onClick={handleClear}
-                    style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', color: 'var(--app-error)', cursor: 'pointer', fontSize: 14, fontWeight: 600, textAlign: 'left' }}
-                  >
-                    <Eraser size={16} /> Clear chat
-                  </button>
+                  {canManageMembers ? (
+                    <button
+                      type="button"
+                      className="uc-menuitem"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        openMembersPopup(router, socket, userId, roomId, () => router.push('chat', {}));
+                      }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', fontSize: 14, fontWeight: 600, textAlign: 'left' }}
+                    >
+                      <Users size={16} /> Members
+                    </button>
+                  ) : null}
+                  {botId ? (
+                    <button
+                      type="button"
+                      className="uc-menuitem"
+                      onClick={handleClear}
+                      style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', color: 'var(--app-error)', cursor: 'pointer', fontSize: 14, fontWeight: 600, textAlign: 'left' }}
+                    >
+                      <Eraser size={16} /> Clear chat
+                    </button>
+                  ) : null}
                 </div>
               </>
             ) : null}
           </div>
         ) : null}
       </div>
+
+      {/* Pinned message banner */}
+      {pinnedMessage ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 14px', borderBottom: '1px solid var(--app-border)', background: 'rgba(var(--app-primary-rgb), 0.07)', flexShrink: 0 }}>
+          <Pin size={14} style={{ color: 'var(--app-primary)', flexShrink: 0 }} fill="currentColor" />
+          <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--app-primary)' }}>Pinned</span>
+            <span style={{ fontSize: 13, color: 'var(--app-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {pinnedPreview(pinnedMessage)}
+            </span>
+          </span>
+          <button
+            type="button"
+            title="Unpin"
+            aria-label="Unpin"
+            onClick={() => handlePin(pinnedMessage._id)}
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, flexShrink: 0, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--app-foreground)', opacity: 0.6, cursor: 'pointer' }}
+          >
+            <X size={15} />
+          </button>
+        </div>
+      ) : null}
 
       <VideoCall ref={videoRef} conversationId={roomId} />
 
@@ -720,9 +1052,26 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           onReact={(id, reaction) => handleReact(id, reaction)}
           getUser={getUser}
           renderMessage={renderMessage}
+          typingEntries={typingEntries}
+          onTypingStart={signalTyping}
           onImageBackground={!!bgUrl}
         >
-          <div className="uc-composer" style={{ padding: '8px 16px 16px' }}>
+          <div
+            className="uc-composer"
+            style={{
+              paddingTop: 8,
+              paddingLeft: 16,
+              paddingRight: 16,
+              paddingBottom: Math.max(16, safeArea.bottom),
+              // Ride up smoothly with the keyboard (matches the iOS curve).
+              transition: 'padding-bottom 0.25s cubic-bezier(0.38, 0.7, 0.125, 1)',
+            }}
+          >
+            {seenLine ? (
+              <div style={{ textAlign: 'right', fontSize: 11, color: 'var(--app-foreground)', opacity: 0.5, padding: '0 2px 4px' }}>
+                {seenLine}
+              </div>
+            ) : null}
             {botButtons.length > 0 ? (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
                 {botButtons.map((b, i) => (
@@ -776,6 +1125,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
               placeholder={`Message ${title}…`}
               autoFocus
               onSend={handleSendWithAttachments}
+              onType={signalTyping}
               allowEmpty={pending.some((p) => p.key)}
               mentionSearch={mentionSearch}
               rightActions={
@@ -793,5 +1143,14 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         </ChatView>
       </div>
     </div>
+  );
+
+  // Provide one shared TTS instance (ugly.bot WebSocket) to the message bubbles
+  // when an ugly.bot socket is available; otherwise the speaker affordance is
+  // hidden (VoiceProvider not mounted → useVoice().enabled === false).
+  return uglyBotSocket ? (
+    <VoiceProvider socket={uglyBotSocket}>{body}</VoiceProvider>
+  ) : (
+    body
   );
 }
