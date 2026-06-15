@@ -536,6 +536,34 @@ hr {
 .uc-pill { display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border: 1.5px solid var(--app-primary); color: var(--app-primary); background: transparent; font-family: var(--app-font-mono); font-size: 11.5px; font-weight: 600; cursor: pointer; }
 .uc-pill:hover { background: var(--app-primary); color: var(--app-on-primary); }
 
+/* ---- call transcript panel + subtitle overlay (ported from mockups
+   call-bot.html / call-2p.html). The panel is themed with --app-* tokens; the
+   video stage + subtitle overlay stay dark in ALL themes, so the overlay uses
+   fixed light-on-dark values from the mockup. ---- */
+@keyframes uc-rec { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* Live "recording" dot on the transcript header. */
+.uc-tp-livedot { width: 6px; height: 6px; border-radius: 50%; background: var(--app-success); animation: uc-rec 1.4s ease-in-out infinite; }
+
+/* Composer box (transcript footer). */
+.uc-tp-cbox { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 12px; border: 1px solid var(--app-border); border-radius: 10px; background: var(--app-input); transition: border-color 0.15s ease; }
+.uc-tp-cbox:focus-within { border-color: var(--app-primary); }
+.uc-tp-cbox input { flex: 1; border: none; background: none; outline: none; font-size: 13px; font-family: var(--app-font-body); color: var(--app-foreground); }
+.uc-tp-cbox input::placeholder { color: var(--app-foreground-muted); }
+
+/* Subtitle overlay — fixed light-on-dark (lives over the dark video stage). */
+.uc-subs { position: absolute; left: 16px; right: 16px; z-index: 4; display: flex; flex-direction: column; gap: 7px; text-align: center; pointer-events: none; }
+.uc-sub-line { font-family: var(--app-font-heading); font-weight: 700; font-size: 15px; line-height: 1.35; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7); color: rgba(255, 255, 255, 0.45); }
+.uc-sub-line .who { font-family: var(--app-font-mono); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); margin-right: 7px; }
+.uc-sub-line.past { font-size: 13px; }
+.uc-sub-line.active { color: #fff; }
+
+/* Mobile compose bar overlaid on video — fixed light-on-dark. */
+.uc-mcompose { display: flex; align-items: center; gap: 8px; padding: 5px 5px 5px 12px; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 10px; background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(10px); }
+.uc-mcompose input { flex: 1; border: none; background: none; outline: none; color: #fff; font-size: 13px; font-family: var(--app-font-body); }
+.uc-mcompose input::placeholder { color: rgba(255, 255, 255, 0.4); }
+.uc-mcompose:focus-within { border-color: rgba(255, 255, 255, 0.4); }
+
 /* ---- session telemetry strip (§9 receipts) ---- */
 .uc-telemetry { display: flex; align-items: stretch; border-bottom: 1px solid var(--app-border); background: var(--app-tertiary); overflow-x: auto; flex-shrink: 0; }
 .uc-tel-cell { padding: 7px 15px; border-right: 1px solid var(--app-border); display: flex; flex-direction: column; gap: 3px; white-space: nowrap; }
