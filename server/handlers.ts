@@ -41,6 +41,17 @@ import { requests } from '../shared/api';
 import type { Todo } from '../shared/collections';
 import { collections } from '../shared/collections';
 import { cronTasks } from '../shared/cron';
+import { resolveEmailToUser, type ResolveEnv } from './resolveEmail';
+import { directConversationId } from '../shared/conversationId';
+import { sendInviteEmail } from './invite';
+
+// Server env access mirrors server/bots.ts (`globalThis.process.env`) — both
+// adapters expose ugly.bot creds there.
+function getEnv(): ResolveEnv {
+  const env =
+    (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
+  return { UGLY_BOT_URL: env['UGLY_BOT_URL'], UGLY_BOT_TOKEN: env['UGLY_BOT_TOKEN'] };
+}
 
 /** Minimal db surface the handlers need; both adapters' TypedDB satisfy it. */
 export interface DbSurface {
@@ -542,6 +553,60 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       // wipes its messages. trackDocs delete-notifications update clients live.
       await db.deleteDoc(collections.conversation, input.conversationId);
       return { ok: true };
+    },
+
+    // ── Email-keyed flows ────────────────────────────────────────────────────
+    resolveEmail: async (_userId, input) => resolveEmailToUser(input.email, getEnv()),
+
+    conversationCreateDirect: async (userId, input) => {
+      const r = await resolveEmailToUser(input.email, getEnv());
+      if (r.status === 'invite') {
+        await sendInviteEmail(r.email, userId).catch((err: unknown) =>
+          console.error('[invite] direct invite failed', err),
+        );
+        return { conversationId: '', invited: true };
+      }
+      const id = directConversationId(userId, r.userId);
+      const existing = await getDb().getDoc(collections.conversation, id);
+      if (!existing) {
+        await engineConversationCreate(
+          { id, type: 'direct', title: '', mode: 'private', ownerIds: [userId, r.userId] },
+          userId,
+        );
+        await engineConversationUserAdd(
+          { conversationId: id, userId: r.userId, role: 'member', visibility: 'visible' },
+          userId,
+        );
+      }
+      return { conversationId: id, invited: false };
+    },
+
+    groupCreate: async (userId, input) => {
+      const id = `grp-${userId}-${Date.now().toString(36)}`;
+      await engineConversationCreate(
+        { id, type: 'group', title: input.title ?? 'New group', mode: 'private', ownerIds: [userId] },
+        userId,
+      );
+      const invited: string[] = [];
+      for (const raw of input.emails) {
+        const r = await resolveEmailToUser(raw, getEnv()).catch((err: unknown) => {
+          console.error('[group] resolve failed', err);
+          return null;
+        });
+        if (!r) continue;
+        if (r.status === 'found') {
+          await engineConversationUserAdd(
+            { conversationId: id, userId: r.userId, role: 'member', visibility: 'visible' },
+            userId,
+          );
+        } else {
+          await sendInviteEmail(r.email, userId, id).catch((err: unknown) =>
+            console.error('[invite] group invite failed', err),
+          );
+          invited.push(r.email);
+        }
+      }
+      return { conversationId: id, invited };
     },
 
     // ── Custom bots (config-only personas) ──────────────────────────────────

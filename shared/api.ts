@@ -188,6 +188,32 @@ export const requests = defineRequests({
     output: z.object({ ok: z.boolean() }),
   }),
 
+  // ── Email-keyed flows (start chat / create group / add member) ────────────
+  // Resolve an email to an ugly.bot userId, or signal an invite is needed.
+  resolveEmail: authReq({
+    input: z.object({ email: z.string() }),
+    output: z.union([
+      z.object({ status: z.literal('found'), userId: z.string(), name: z.string() }),
+      z.object({ status: z.literal('invite'), email: z.string() }),
+    ]),
+    rateLimit: { max: 30, window: 60 },
+  }),
+  // Start (or reuse) a 1:1 with the person at `email`. Unknown email → invite.
+  conversationCreateDirect: authReq({
+    input: z.object({ email: z.string() }),
+    output: z.object({ conversationId: z.string(), invited: z.boolean() }),
+    rateLimit: { max: 20, window: 60 },
+  }),
+  // Create a group; resolve each email and add known users, invite the rest.
+  groupCreate: authReq({
+    input: z.object({
+      title: z.string().max(80).optional(),
+      emails: z.array(z.string()).max(50),
+    }),
+    output: z.object({ conversationId: z.string(), invited: z.array(z.string()) }),
+    rateLimit: { max: 10, window: 60 },
+  }),
+
   conversationMessageCreate: authReq({
     input: z
       .object({
