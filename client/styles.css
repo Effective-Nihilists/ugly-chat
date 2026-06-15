@@ -99,7 +99,7 @@
 
 /* Dark mode CSS variable values */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
     --app-primary: #ff5500;
     --app-primary-rgb: 255, 85, 0;
     --app-secondary: #1a1d23;
@@ -127,6 +127,56 @@
     --app-gradient-default: linear-gradient(135deg, #282d36 0%, #1a1d23 100%);
     --app-gradient-debug: linear-gradient(135deg, #2a2832 0%, #1e1c26 100%);
   }
+}
+
+:root[data-theme='dark'] {
+  --app-primary: #ff5500; --app-primary-rgb: 255, 85, 0;
+  --app-secondary: #1a1d23; --app-secondary-rgb: 26, 29, 35;
+  --app-tertiary: #141720; --app-tertiary-rgb: 20, 23, 32;
+  --app-sidebar: #1e2128; --app-main: #0f1115; --app-main-rgb: 15, 17, 21;
+  --app-border: #2a2d35; --app-border-rgb: 42, 45, 53;
+  --app-foreground: #ffffff; --app-foreground-rgb: 255, 255, 255;
+  --app-input: #12141a; --app-error: #e3120b; --app-error-rgb: 227, 18, 11;
+  --app-foreground-10: rgba(255,255,255,0.1); --app-foreground-20: rgba(255,255,255,0.2);
+  --app-foreground-50: rgba(255,255,255,0.5); --app-foreground-60: rgba(255,255,255,0.6);
+  --app-foreground-80: rgba(255,255,255,0.8); --app-primary-20: rgba(255,85,0,0.2);
+  --app-error-20: rgba(227,18,11,0.2); --app-foreground-muted: rgba(255,255,255,0.55);
+  --app-gradient-default: linear-gradient(135deg, #282d36 0%, #1a1d23 100%);
+  --app-gradient-debug: linear-gradient(135deg, #2a2832 0%, #1e1c26 100%);
+}
+
+:root[data-theme='cosmic-latte'] {
+  --app-font-heading: 'Playfair Display', 'Cormorant Garamond', Georgia, serif;
+  --app-font-body: 'Cormorant Garamond', 'EB Garamond', Georgia, serif;
+  --app-font-body-weight: 500; --app-font-body-weight-bold: 700;
+  --app-primary: #ff5500; --app-primary-rgb: 255, 85, 0;
+  --app-secondary: #f5edd6; --app-secondary-rgb: 245, 237, 214;
+  --app-tertiary: #fdf6e3; --app-tertiary-rgb: 253, 246, 227;
+  --app-sidebar: #f5edd6; --app-main: #fff8e7; --app-main-rgb: 255, 248, 231;
+  --app-border: #e6dcc0; --app-border-rgb: 230, 220, 192;
+  --app-foreground: #3a342a; --app-foreground-rgb: 58, 52, 42;
+  --app-input: #fffdf5; --app-error: #a44a3a; --app-error-rgb: 164, 74, 58;
+  --app-foreground-10: rgba(58,52,42,0.1); --app-foreground-20: rgba(58,52,42,0.2);
+  --app-foreground-50: rgba(58,52,42,0.5); --app-foreground-60: rgba(58,52,42,0.6);
+  --app-foreground-80: rgba(58,52,42,0.8); --app-primary-20: rgba(255,85,0,0.2);
+  --app-error-20: rgba(164,74,58,0.2); --app-foreground-muted: rgba(58,52,42,0.55);
+}
+
+:root[data-theme='vim'] {
+  --app-font-heading: 'Space Mono', 'JetBrains Mono', monospace;
+  --app-font-body: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+  --app-primary: #15d34c; --app-primary-rgb: 21, 211, 76;
+  --app-secondary: #0a0a0a; --app-secondary-rgb: 10, 10, 10;
+  --app-tertiary: #050505; --app-tertiary-rgb: 5, 5, 5;
+  --app-sidebar: #0a0a0a; --app-main: #000000; --app-main-rgb: 0, 0, 0;
+  --app-border: #0fa83b; --app-border-rgb: 15, 168, 59;
+  --app-foreground: #15d34c; --app-foreground-rgb: 21, 211, 76;
+  --app-input: #0a0a0a; --app-error: #ff4444; --app-error-rgb: 255, 68, 68;
+  --app-foreground-10: rgba(21,211,76,0.1); --app-foreground-20: rgba(21,211,76,0.2);
+  --app-foreground-50: rgba(21,211,76,0.5); --app-foreground-60: rgba(21,211,76,0.6);
+  --app-foreground-80: rgba(21,211,76,0.8); --app-primary-20: rgba(21,211,76,0.2);
+  --app-error-20: rgba(255,68,68,0.2); --app-foreground-muted: rgba(21,211,76,0.55);
+  --app-on-primary: #000000;
 }
 
 /* ============================================================
