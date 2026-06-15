@@ -3,7 +3,6 @@ import { Flame, MessageSquarePlus, Search } from 'lucide-react';
 import { useApp } from 'ugly-app/client';
 import { useRouter } from '../router';
 import { Avatar, useConversations, type ConvRow } from '../lib/conversations';
-import { openNewChatPopup } from '../components/NewChatPopup';
 import { UGLY_BOT_USER_ID } from '../../shared/bots';
 
 // Every user gets a 1:1 conversation with the canonical Ugly Bot. Same id shape
@@ -132,8 +131,8 @@ export default function ChatHomePage(): React.ReactElement {
                   gradient="linear-gradient(135deg, #00c6fb 0%, #005bea 50%, #6a11cb 100%)"
                   icon={MessageSquarePlus}
                   title="New Group Chat"
-                  subtitle="Start a conversation"
-                  onClick={() => openNewChatPopup(router, socket, userId, open)}
+                  subtitle="Add people by email"
+                  onClick={() => router.push('new-group', {})}
                 />
               </div>
             </div>
@@ -183,7 +182,7 @@ export default function ChatHomePage(): React.ReactElement {
       <div style={{ flexShrink: 0, padding: 12, borderTop: '1px solid var(--app-border)', display: 'flex', justifyContent: 'center' }}>
         <button
           type="button"
-          onClick={() => openNewChatPopup(router, socket, userId, open)}
+          onClick={() => router.push('new', {})}
           style={{
             padding: '10px 22px',
             borderRadius: 12,
@@ -195,7 +194,7 @@ export default function ChatHomePage(): React.ReactElement {
             cursor: 'pointer',
           }}
         >
-          Create Chat
+          New message
         </button>
       </div>
     </div>

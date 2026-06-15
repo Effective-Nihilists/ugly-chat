@@ -5,7 +5,6 @@ import { useRouter } from '../router';
 import { useConversations } from '../lib/conversations';
 import { Avatar } from '../lib/conversations';
 import { ConversationRow } from './ConversationRow';
-import { openNewChatPopup } from './NewChatPopup';
 import { ThemePicker } from './ThemePicker';
 
 // Matches ugly.bot's SidebarInternal: collapsed = 72px (avatar-only), expanded =
@@ -31,7 +30,7 @@ function save(key: string, value: string): void {
 
 export function Sidebar(): React.ReactElement {
   const router = useRouter();
-  const { socket, userId } = useApp();
+  const { socket } = useApp();
   const { conversations, loading } = useConversations();
   const [q, setQ] = useState('');
   const [expanded, setExpandedState] = useState(() => loadBool('leftSidebarExpanded', true));
@@ -48,8 +47,8 @@ export function Sidebar(): React.ReactElement {
   }, []);
 
   const openNew = useCallback(() => {
-    openNewChatPopup(router, socket, userId, (id) => router.push('chat/:conversationId', { conversationId: id }));
-  }, [router, socket, userId]);
+    router.push('new', {});
+  }, [router]);
 
   // Pin/unpin a conversation. The userConversation trackDocs subscription
   // (keyed by userId) picks up the visibility change and refetches the list,
@@ -183,8 +182,8 @@ export function Sidebar(): React.ReactElement {
         <button type="button" className="uc-footbtn" style={footBtnStyle} onClick={() => document.querySelector<HTMLElement>('[data-id="feedback-button"]')?.click()}>
           Feedback
         </button>
-        <button type="button" className="uc-footbtn" style={footBtnStyle} onClick={() => router.push('chat', {})}>
-          All Chats
+        <button type="button" className="uc-footbtn" style={footBtnStyle} onClick={() => router.push('settings', {})}>
+          Settings
         </button>
       </div>
 
