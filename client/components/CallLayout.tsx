@@ -102,7 +102,7 @@ export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(function 
     };
   }, []);
 
-  const { turns, appendTyped } = useCallTranscript(
+  const { turns, appendTyped, upsertExternalTurn } = useCallTranscript(
     socket,
     uglyBotSocket,
     conversationId,
@@ -110,7 +110,16 @@ export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(function 
     active,
   );
 
-  const stage = <VideoCall ref={ref} conversationId={conversationId} />;
+  const stage = (
+    <VideoCall
+      ref={ref}
+      conversationId={conversationId}
+      uglyBotSocket={uglyBotSocket}
+      onBotTurn={(botId, text, final) => {
+        upsertExternalTurn(botId, text, final);
+      }}
+    />
+  );
 
   // No call → render just the (null-rendering) VideoCall so its start() ref and
   // roster subscription stay mounted; no layout chrome.

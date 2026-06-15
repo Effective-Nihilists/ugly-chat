@@ -27,6 +27,12 @@ type AppSocketT = ReturnType<typeof useApp>['socket'];
 interface CallTranscript {
   turns: Turn[];
   appendTyped: (text: string) => void;
+  /**
+   * Inject/replace a turn from an external source (e.g. the bot's TTS caption
+   * revealed word-by-word). Follows the same partial/final upsert semantics as
+   * STT: a non-final turn for `speaker` is replaced until `final` flips true.
+   */
+  upsertExternalTurn: (speaker: string, text: string, final: boolean) => void;
   /** True while the local mic STT is actively listening. */
   listening: boolean;
 }
@@ -130,5 +136,13 @@ export function useCallTranscript(
     [socket, conversationId, meId],
   );
 
-  return { turns, appendTyped, listening: stt.listening };
+  const upsertExternalTurn = useCallback(
+    (speaker: string, text: string, final: boolean) => {
+      if (!text) return;
+      setTurns((t) => upsertTurn(t, { speaker, text, final, at: Date.now() }));
+    },
+    [],
+  );
+
+  return { turns, appendTyped, upsertExternalTurn, listening: stt.listening };
 }
