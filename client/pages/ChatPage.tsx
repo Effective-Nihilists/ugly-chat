@@ -324,7 +324,7 @@ function MessageBody(props: {
           {reactions.map(([r, n]) => {
             const Icon = REACTION_ICON[r];
             return (
-              <span key={r} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, background: 'var(--app-secondary)', border: '1px solid var(--app-border)', borderRadius: 10, padding: '1px 7px' }}>
+              <span key={r} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--app-font-mono)', fontSize: 10, background: 'var(--app-tertiary)', border: '1px solid var(--app-border)', borderRadius: 0, padding: '2px 8px', color: 'var(--app-foreground-muted)' }}>
                 {Icon ? <Icon size={12} /> : r} {n}
               </span>
             );
