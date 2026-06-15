@@ -133,8 +133,15 @@ function MessageBody(props: {
   onPin: (messageId: string) => void;
   pinned: boolean;
   onButton: (prompt: string) => void;
+  // Human DM receipt props (only provided when !hasBot && statsOn)
+  humanIdx?: number;
+  humanSorted?: StatMsg[];
+  humanMeId?: string;
+  humanStatsOn?: boolean;
+  humanSeen?: boolean;
 }): React.ReactElement {
-  const { msg, isOwn, rTL, rBL, onReact, onDelete, onEdit, onPin, pinned, onButton } = props;
+  const { msg, isOwn, rTL, rBL, onReact, onDelete, onEdit, onPin, pinned, onButton,
+    humanIdx, humanSorted, humanMeId, humanStatsOn, humanSeen } = props;
   const voice = useVoice();
   const [hover, setHover] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -333,6 +340,21 @@ function MessageBody(props: {
           ↑{formatTokens((msg as { telemetry?: MsgTelemetry }).telemetry!.inputTokens)} ↓{formatTokens((msg as { telemetry?: MsgTelemetry }).telemetry!.outputTokens)} tok
           <span className="dot">·</span>
           <span className="cost">{formatCost((msg as { telemetry?: MsgTelemetry }).telemetry!.costUsd)}</span>
+        </div>
+      ) : null}
+
+      {/* Human DM per-message receipt (no bot, stats enabled) */}
+      {humanStatsOn && humanSorted && humanIdx != null && humanMeId != null ? (
+        <div className="uc-receipt" style={{ padding: '0 4px', color: 'var(--app-foreground-muted)' }}>
+          {(() => {
+            const lat = replyLatencyMs(humanSorted, humanIdx, humanMeId);
+            if (!isOwn && lat != null) {
+              return lat > 3_600_000
+                ? <span className="cost">left you on read · {formatDuration(lat)}</span>
+                : <span>replied in {formatDuration(lat)}{lat < 30_000 ? ' · personal best' : ''}</span>;
+            }
+            return <span>{humanSeen ? 'seen' : 'delivered'}</span>;
+          })()}
         </div>
       ) : null}
 
@@ -977,6 +999,13 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       const idx = messages.findIndex((m) => m.id === msg.id);
       const prev = idx > 0 ? messages[idx - 1] : undefined;
       const next = idx >= 0 && idx < messages.length - 1 ? messages[idx + 1] : undefined;
+      // For human DM receipts: find this message's position in the StatMsg array
+      // (which is filtered to non-bot messages, same ordering as messages).
+      const humanIdx = !hasBot && statsOn
+        ? statMsgs.findIndex((s) => s.created === msg.created && s.userId === msg.userId)
+        : -1;
+      // "seen" = at least one other reader has a viewed timestamp >= this message's created.
+      const humanSeen = readers.some((r) => r.userId !== userId && r.viewed >= msg.created);
       return (
         <MessageBody
           msg={msg}
@@ -989,10 +1018,14 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           onPin={handlePin}
           pinned={pinnedMessageId === msg.id}
           onButton={(prompt) => handleSend(prompt)}
+          {...(humanIdx >= 0 ? { humanIdx } : {})}
+          {...(!hasBot && statsOn ? { humanSorted: statMsgs, humanMeId: userId, humanStatsOn: true as const } : {})}
+          {...(humanSeen ? { humanSeen: true as const } : {})}
         />
       );
     },
-    [messages, userId, handleReact, handleDelete, handleEdit, handlePin, pinnedMessageId, handleSend, profiles],
+    [messages, userId, handleReact, handleDelete, handleEdit, handlePin, pinnedMessageId, handleSend, profiles,
+      hasBot, statsOn, statMsgs, readers],
   );
 
   const body = (
