@@ -34,9 +34,9 @@ export function buildInviteEmail(
 }
 
 interface InviteEnv {
-  EMAIL_SEND_URL?: string;
-  EMAIL_SEND_TOKEN?: string;
-  APP_URL?: string;
+  EMAIL_SEND_URL?: string | undefined;
+  EMAIL_SEND_TOKEN?: string | undefined;
+  APP_URL?: string | undefined;
 }
 
 function readEnv(): InviteEnv {

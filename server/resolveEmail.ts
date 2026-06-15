@@ -10,8 +10,8 @@ export type ResolveResult =
   | { status: 'invite'; email: string };
 
 export interface ResolveEnv {
-  UGLY_BOT_URL?: string;
-  UGLY_BOT_TOKEN?: string;
+  UGLY_BOT_URL?: string | undefined;
+  UGLY_BOT_TOKEN?: string | undefined;
 }
 
 export async function resolveEmailToUser(
