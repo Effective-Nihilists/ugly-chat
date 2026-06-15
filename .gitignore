@@ -17,3 +17,8 @@ coverage/
 # Local env (never commit)
 .env
 .env.local
+
+# Screenshot verification harness — captured PNGs (regenerate with scripts/screenshots/*)
+screenshots/actual/
+screenshots/mock/
+screenshots/compare.html
