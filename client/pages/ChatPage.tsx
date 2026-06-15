@@ -12,6 +12,9 @@ import { VoiceProvider, useVoice } from '../components/VoiceProvider';
 import { useRouter } from '../router';
 import { Avatar, pingConversationActivity } from '../lib/conversations';
 import { UGLY_BOT_USER_ID } from '../../shared/bots';
+import type { MsgTelemetry } from '../../shared/telemetry';
+import { formatTokens, formatCost } from '../../shared/telemetry';
+import { TelemetryStrip } from '../components/TelemetryStrip';
 
 // Open a markdown link. MdastViewer's default link handler calls
 // `global.open(...)` for non-mention links, which throws in the browser
@@ -46,6 +49,7 @@ interface MessageDoc extends DBObject {
   edited?: number | null;
   systemType?: string;
   systemParam?: string;
+  telemetry?: MsgTelemetry;
 }
 
 // A tappable message button: a custom-bot starter ({label, prompt}) or a generic
@@ -317,6 +321,18 @@ function MessageBody(props: {
         </div>
       ) : null}
 
+      {(msg as { telemetry?: MsgTelemetry }).telemetry ? (
+        <div className="uc-receipt" style={{ padding: '0 4px' }}>
+          <b>{(msg as { telemetry?: MsgTelemetry }).telemetry!.model || 'model'}</b>
+          <span className="dot">·</span>
+          {((msg as { telemetry?: MsgTelemetry }).telemetry!.latencyMs / 1000).toFixed(1)}s
+          <span className="dot">·</span>
+          ↑{formatTokens((msg as { telemetry?: MsgTelemetry }).telemetry!.inputTokens)} ↓{formatTokens((msg as { telemetry?: MsgTelemetry }).telemetry!.outputTokens)} tok
+          <span className="dot">·</span>
+          <span className="cost">{formatCost((msg as { telemetry?: MsgTelemetry }).telemetry!.costUsd)}</span>
+        </div>
+      ) : null}
+
       {reactions.length > 0 ? (
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
           {reactions.map(([r, n]) => {
@@ -414,6 +430,7 @@ function toChatMessage(d: MessageDoc): ChatMessage {
     ...(d.linkPreviews ? { linkPreviews: d.linkPreviews } : {}),
     ...(d.edited ? { edited: true } : {}),
     ...(d.systemType ? { systemType: d.systemType, systemParam: d.systemParam } : {}),
+    ...(d.telemetry ? { telemetry: d.telemetry } : {}),
   } as ChatMessage;
 }
 
@@ -439,6 +456,8 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastTypingSent = useRef(0);
   const typingStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Track when the user opened this conversation (for the session-duration cell).
+  const openedAtRef = useRef(Date.now());
   const [pending, setPending] = useState<PendingAttachment[]>([]);
   // Bot-chat extras: the conversation's bot id (if any), its starter buttons
   // (shown persistently above the composer), and the header "⋯" menu state.
@@ -453,6 +472,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const [, forceTick] = useState(0);
 
   useEffect(() => {
+    openedAtRef.current = Date.now();
     setReady(false);
     setMessages([]);
     setBotId(null); // re-derived by the dedicated effect below
@@ -1046,6 +1066,16 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           </button>
         </div>
       ) : null}
+
+      {/* Session telemetry strip — shown only for bot conversations */}
+      {botId ? (() => {
+        const tel = messages
+          .filter((m) => !!(m as { telemetry?: MsgTelemetry }).telemetry)
+          .map((m) => (m as { telemetry?: MsgTelemetry }).telemetry!);
+        return tel.length > 0 ? (
+          <TelemetryStrip telemetry={tel} openedAt={openedAtRef.current} />
+        ) : null;
+      })() : null}
 
       <VideoCall ref={videoRef} conversationId={roomId} />
 
