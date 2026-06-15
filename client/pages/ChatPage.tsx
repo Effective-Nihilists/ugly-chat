@@ -178,12 +178,10 @@ function MessageBody(props: {
                 ? 'var(--app-secondary)'
                 : 'var(--app-tertiary)',
           color: msg.color === 'error' ? '#fff' : 'var(--app-foreground)',
-          padding: '3px 8px',
-          borderRadius: 4,
-          borderTopLeftRadius: rTL,
-          borderBottomLeftRadius: rBL,
+          padding: '9px 13px',
+          borderRadius: isOwn ? '14px 14px 3px 14px' : '14px 14px 14px 3px',
           fontSize: 14,
-          lineHeight: '20px',
+          lineHeight: '1.5',
           wordBreak: 'break-word',
         }}
       >
@@ -950,7 +948,16 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           </button>
         ) : null}
         <Avatar image={convImage} seed={roomId} label={title} size={30} />
-        <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 15, color: 'var(--app-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--app-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
+          {botId ? (
+            <div className="uc-receipt" style={{ marginTop: 1 }}>
+              <span>{profiles[botId]?.name ?? 'Bot'}</span>
+              <span className="dot">·</span>
+              <span style={{ color: 'var(--app-success)' }}>online</span>
+            </div>
+          ) : null}
+        </div>
         <button
           type="button"
           onClick={() => videoRef.current?.start()}
@@ -1109,24 +1116,26 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                 e.target.value = '';
               }}
             />
-            <ConversationInput
-              placeholder={`Message ${title}…`}
-              autoFocus
-              onSend={handleSendWithAttachments}
-              onType={signalTyping}
-              allowEmpty={pending.some((p) => p.key)}
-              mentionSearch={mentionSearch}
-              rightActions={
-                <button
-                  type="button"
-                  title="Attach image"
-                  onClick={() => fileInputRef.current?.click()}
-                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, flexShrink: 0, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }}
-                >
-                  <Paperclip size={18} />
-                </button>
-              }
-            />
+            <div style={{ border: '2px solid var(--app-primary)', borderRadius: 0, background: 'var(--app-main)' }}>
+              <ConversationInput
+                placeholder={`Message ${title}…`}
+                autoFocus
+                onSend={handleSendWithAttachments}
+                onType={signalTyping}
+                allowEmpty={pending.some((p) => p.key)}
+                mentionSearch={mentionSearch}
+                rightActions={
+                  <button
+                    type="button"
+                    title="Attach image"
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, flexShrink: 0, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }}
+                  >
+                    <Paperclip size={18} />
+                  </button>
+                }
+              />
+            </div>
           </div>
         </ChatView>
       </div>
