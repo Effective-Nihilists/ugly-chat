@@ -41,6 +41,6 @@ export function replyLatencyMs(sorted: StatMsg[], index: number, meId: string): 
   const m = sorted[index];
   if (!m || index === 0) return null;
   const prev = sorted[index - 1];
-  if (prev.userId === m.userId) return null;        // not a reply (same sender)
+  if (!prev || prev.userId === m.userId) return null; // not a reply (same sender)
   return m.created - prev.created;
 }

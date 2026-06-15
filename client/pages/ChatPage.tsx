@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ThumbsUp, ThumbsDown, Heart, Laugh, HelpCircle, AlertTriangle, Trash2, Video, Paperclip, X, FileText, MoreVertical, Eraser, Pencil, Users, Volume2, VolumeX, Pin, Settings } from 'lucide-react';
 import { useApp, uploadBlob, promoteBlob, downscaleImage, useSafeAreaInsets } from 'ugly-app/client';
 import { ChatView } from 'ugly-app/conversation/client';
@@ -15,6 +15,9 @@ import { UGLY_BOT_USER_ID } from '../../shared/bots';
 import type { MsgTelemetry } from '../../shared/telemetry';
 import { formatTokens, formatCost } from '../../shared/telemetry';
 import { TelemetryStrip } from '../components/TelemetryStrip';
+import { HumanTelemetryStrip } from '../components/HumanTelemetryStrip';
+import { type StatMsg, replyLatencyMs } from '../../shared/humanStats';
+import { formatDuration } from '../../shared/duration';
 
 // Open a markdown link. MdastViewer's default link handler calls
 // `global.open(...)` for non-mention links, which throws in the browser
@@ -892,6 +895,52 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     : 0;
   const seenLine = myLastMessage && seenCount > 0 ? (isDm ? 'Seen' : `Seen by ${seenCount}`) : null;
 
+  // Human DM telemetry: derive StatMsg array (sorted by created, bot messages excluded)
+  // and related flags once, shared between the strip and per-message receipts.
+  const hasBot = botId !== null;
+
+  // Read the "Response-time stats" toggle persisted by ChatSettingsPage (Plan 03).
+  // Default ON unless the value is exactly '0'.
+  const statsOn = useMemo(() => {
+    if (typeof localStorage === 'undefined') return true;
+    return localStorage.getItem(`uc-conv-${roomId}-responseStats`) !== '0';
+  }, [roomId]);
+
+  // Build a sorted StatMsg array (non-bot, non-deleted) for the reducers.
+  const statMsgs: StatMsg[] = useMemo(
+    () =>
+      messages
+        .filter((m) => !(m as { isBot?: boolean }).isBot)
+        .map((m) => ({ userId: m.userId, created: m.created }))
+        .sort((a, b) => a.created - b.created),
+    [messages],
+  );
+
+  // Left-on-read proxy (v1, no schema change):
+  // Count my messages where the other reader's `viewed` timestamp is at least 1h
+  // later than my message's `created`, AND the reader sent nothing after that
+  // message for >1h. Since we only have one viewed timestamp per reader (not
+  // per-message), we use the simpler proxy: count runs where I sent a message,
+  // then the other side's next message arrived >1h later (or hasn't arrived yet).
+  // This is computed from statMsgs directly (pure derivation from real timestamps).
+  const leftOnReadCount = useMemo((): number => {
+    if (hasBot || statMsgs.length === 0) return 0;
+    const ONE_HOUR = 3_600_000;
+    let count = 0;
+    for (let i = 0; i < statMsgs.length; i++) {
+      const m = statMsgs[i];
+      if (!m || m.userId !== userId) continue;
+      // Find the next message from the other side after this one.
+      const nextReply = statMsgs.slice(i + 1).find((x) => x.userId !== userId);
+      if (nextReply) {
+        if (nextReply.created - m.created > ONE_HOUR) count++;
+      }
+      // If no reply follows at all and >1h has elapsed since the message, count it.
+      else if (Date.now() - m.created > ONE_HOUR) count++;
+    }
+    return count;
+  }, [hasBot, statMsgs, userId]);
+
   // @mention candidates = the conversation's resolved participants.
   const mentionSearch = useCallback(
     async (q: string): Promise<{ id: string; name: string }[]> => {
@@ -1076,6 +1125,11 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           <TelemetryStrip telemetry={tel} openedAt={openedAtRef.current} />
         ) : null;
       })() : null}
+
+      {/* Response-time totals strip — human DMs only, gated by settings toggle */}
+      {!hasBot && statsOn && statMsgs.length > 1 ? (
+        <HumanTelemetryStrip msgs={statMsgs} meId={userId} leftOnRead={leftOnReadCount} />
+      ) : null}
 
       <VideoCall ref={videoRef} conversationId={roomId} />
 
