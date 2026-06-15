@@ -11,7 +11,7 @@
     "db:migrate": "ugly-app db:migrate",
     "db:schema-gen": "ugly-app db:schema-gen",
     "db:schema-status": "ugly-app db:schema-status",
-    "deploy": "ugly-app deploy",
+    "deploy": "ugly-app publish",
     "prod": "ugly-app prod",
     "versions": "ugly-app versions",
     "versions:prune": "ugly-app versions:prune",
@@ -38,7 +38,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "three": "^0.183.2",
-    "ugly-app": "^0.1.590",
+    "ugly-app": "^0.1.591",
     "yjs": "^13.6.30",
     "zod": "^4.3.6"
   },
