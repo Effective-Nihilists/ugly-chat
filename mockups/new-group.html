@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ugly.chat — new group</title>
+<link rel="stylesheet" href="brand.css">
+<style>
+  .frames { display: flex; gap: 56px; align-items: flex-start; flex-wrap: wrap; justify-content: center; }
+  .desktop .scrim { height: 660px; }
+  .sheet { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+</style>
+</head>
+<body>
+<div class="themebar">
+  <span class="tb-label">theme</span>
+  <button data-set="auto">auto</button>
+  <button data-set="light">light</button>
+  <button data-set="dark">dark</button>
+  <button data-set="cosmic-latte">latte</button>
+  <button data-set="vim">vim</button>
+</div>
+<script>
+(function(){var K='uglychat-theme',t=localStorage.getItem(K)||'auto';
+function set(v){if(v==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',v);
+document.querySelectorAll('.themebar button').forEach(function(b){b.classList.toggle('on',b.dataset.set===v)});localStorage.setItem(K,v);}
+document.querySelectorAll('.themebar button').forEach(function(b){b.addEventListener('click',function(){set(b.dataset.set)})});set(t);})();
+</script>
+
+<div class="stage">
+<div style="width:100%">
+  <div class="cap">ugly.chat &nbsp;·&nbsp; <b>create group chat</b> &nbsp;·&nbsp; members added by email &nbsp;·&nbsp; desktop + mobile</div>
+  <div class="frames">
+
+    <!-- ===================== DESKTOP ===================== -->
+    <div class="desktop">
+      <div class="titlebar">
+        <span class="dot3"></span><span class="dot3"></span><span class="dot3"></span>
+        <span class="url">ugly.chat / new group</span>
+      </div>
+      <div class="scrim">
+        <div class="grid-bg"></div>
+        <div class="modal">
+          <div class="modal-head">
+            <span class="mt">New group</span>
+            <button class="x"><svg class="ic" viewBox="0 0 24 24" width="16" height="16"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
+          </div>
+          <div class="modal-body">
+            <div class="gid">
+              <div class="gav">
+                <svg class="ic" viewBox="0 0 24 24" width="22" height="22"><circle cx="9" cy="9" r="3"/><path d="M3 19a6 6 0 0 1 12 0"/><circle cx="17" cy="8" r="2.5"/><path d="M16 19a5 5 0 0 1 5-5"/></svg>
+                <span class="cam"><svg class="ic" viewBox="0 0 24 24" width="11" height="11"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3"/></svg></span>
+              </div>
+              <div class="field" style="flex:1">
+                <label>Group name <span style="text-transform:none;letter-spacing:0">— optional</span></label>
+                <div class="input"><input placeholder="ship-crew, prod-incidents, …" spellcheck="false"></div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Add people by email</label>
+              <div class="tokens">
+                <span class="chip"><span class="av">DV</span> dana@studio.dev <button class="x"><svg class="ic" viewBox="0 0 24 24" width="11" height="11"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button></span>
+                <span class="chip"><span class="av">PR</span> priya@ply.dev <button class="x"><svg class="ic" viewBox="0 0 24 24" width="11" height="11"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button></span>
+                <input placeholder="add email…" spellcheck="false">
+              </div>
+              <div class="hint">Everyone you add sees the history <b>from the moment they join</b> — nothing before. Not on ugly.chat? They get an invite.</div>
+            </div>
+
+            <div class="field">
+              <div class="seclabel"><span>Members · 3</span></div>
+              <div>
+                <div class="member"><div class="av">JM</div><div class="mid"><div class="nm">Justin (you)</div><div class="em">justin@ugly.bot</div></div><span class="role admin">admin</span></div>
+                <div class="member"><div class="av online">DV</div><div class="mid"><div class="nm">Dana Vega</div><div class="em">dana@studio.dev</div></div></div>
+                <div class="member"><div class="av">PR</div><div class="mid"><div class="nm">Priya Rao</div><div class="em">priya@ply.dev</div></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-foot">
+            <button class="btn-ghost">Cancel</button>
+            <a class="cta" href="chat-settings.html">Create group · 3</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== MOBILE ===================== -->
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="statusbar"><span>9:41</span>
+        <span class="sig"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="14" width="3" height="6"/><rect x="7" y="10" width="3" height="10"/><rect x="12" y="6" width="3" height="14"/><rect x="17" y="2" width="3" height="18"/></svg></span>
+      </div>
+      <div class="sheet">
+        <div class="modal-head">
+          <button class="x"><svg class="ic" viewBox="0 0 24 24" width="16" height="16"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
+          <span class="mt">New group</span>
+        </div>
+        <div class="modal-body" style="flex:1">
+          <div class="gid">
+            <div class="gav"><svg class="ic" viewBox="0 0 24 24" width="22" height="22"><circle cx="9" cy="9" r="3"/><path d="M3 19a6 6 0 0 1 12 0"/><circle cx="17" cy="8" r="2.5"/><path d="M16 19a5 5 0 0 1 5-5"/></svg><span class="cam"><svg class="ic" viewBox="0 0 24 24" width="11" height="11"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3"/></svg></span></div>
+            <div class="field" style="flex:1"><label>Group name — optional</label><div class="input"><input placeholder="ship-crew, …" spellcheck="false"></div></div>
+          </div>
+          <div class="field">
+            <label>Add people by email</label>
+            <div class="tokens">
+              <span class="chip"><span class="av">DV</span> dana@studio.dev <button class="x"><svg class="ic" viewBox="0 0 24 24" width="11" height="11"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button></span>
+              <span class="chip"><span class="av">PR</span> priya@ply.dev <button class="x"><svg class="ic" viewBox="0 0 24 24" width="11" height="11"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button></span>
+              <input placeholder="add email…" spellcheck="false">
+            </div>
+            <div class="hint">New members see history from when they join.</div>
+          </div>
+          <div class="field">
+            <div class="seclabel"><span>Members · 3</span></div>
+            <div>
+              <div class="member"><div class="av">JM</div><div class="mid"><div class="nm">Justin (you)</div><div class="em">justin@ugly.bot</div></div><span class="role admin">admin</span></div>
+              <div class="member"><div class="av online">DV</div><div class="mid"><div class="nm">Dana Vega</div><div class="em">dana@studio.dev</div></div></div>
+              <div class="member"><div class="av">PR</div><div class="mid"><div class="nm">Priya Rao</div><div class="em">priya@ply.dev</div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <a class="cta" href="chat-settings.html" style="flex:1;justify-content:center">Create group · 3</a>
+        </div>
+      </div>
+      <div class="homebar"></div>
+    </div>
+
+  </div>
+</div>
+</div>
+</body>
+</html>

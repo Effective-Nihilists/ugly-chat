@@ -21,4 +21,8 @@ export const allPages = {
   ['bot/:botId']: lazyPage(() => import('./pages/BotEditPage')),
   ['user/:userId']: lazyPage(() => import('./pages/UserPage')),
   ['search']: lazyPage(() => import('./pages/SearchPage')),
+  ['new']: lazyPage(() => import('./pages/NewChatPage')),
+  ['new-group']: lazyPage(() => import('./pages/NewGroupPage')),
+  ['settings/:conversationId']: lazyPage(() => import('./pages/ChatSettingsPage')),
+  ['settings']: lazyPage(() => import('./pages/SettingsPage')),
 } satisfies PageMap<AppPages>;

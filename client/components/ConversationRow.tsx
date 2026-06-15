@@ -38,11 +38,10 @@ export function ConversationRow(props: {
           style={{
             position: 'absolute',
             left: 0,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            width: 4,
-            height: 28,
-            borderRadius: 999,
+            top: 8,
+            bottom: 8,
+            width: 2,
+            borderRadius: 0,
             background: 'var(--app-primary)',
           }}
         />
@@ -85,14 +84,15 @@ export function ConversationRow(props: {
       {row.unread > 0 ? (
         <span
           style={{
-            minWidth: 18,
-            height: 18,
+            minWidth: 20,
+            height: 20,
             padding: '0 5px',
-            borderRadius: 999,
+            borderRadius: 0,
             background: 'var(--app-primary)',
-            color: '#fff',
-            fontSize: 11,
+            color: 'var(--app-on-primary)',
+            fontSize: 10,
             fontWeight: 700,
+            fontFamily: 'var(--app-font-mono)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',

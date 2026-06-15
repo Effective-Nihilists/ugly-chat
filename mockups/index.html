@@ -39,7 +39,7 @@
   .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--border); }
   .card { position: relative; display: block; padding: 28px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); transition: var(--dur) var(--ease); overflow: hidden; }
   .card:nth-child(2n) { border-right: none; }
-  .card.wide { grid-column: 1 / -1; border-right: none; border-bottom: none; }
+  .cards .card:nth-last-child(-n+2) { border-bottom: none; }
   .card::before { content: '/'; position: absolute; top: 18px; left: 18px; font-family: var(--mono); color: var(--brand); font-weight: 700; opacity: 0.5; }
   .card:hover { background: var(--elev); }
   .card:hover .open { color: var(--brand); gap: 12px; }
@@ -88,10 +88,10 @@ document.querySelectorAll('.themebar button').forEach(function(b){b.addEventList
   <div class="wrap inner">
     <div class="eyebrow"><span class="d"></span><span>design mockups · v0.1 · not wired in</span></div>
     <h1>Chat pretty.<br><span class="l2">Talk</span> <span class="l3">ugly.</span></h1>
-    <p class="sub">A redesign of <b>ugly.chat</b> — conversation list, chat, and video calls (with a 3D avatar bot or a real human). Built for the <b>25–35 tech crowd</b>: square chrome, 1px hairlines, the bill on screen, and a face that lip-syncs when the model talks back.</p>
+    <p class="sub">A redesign of <b>ugly.chat</b> — conversation list, chats, video calls (3D avatar bot or human), and the create/group/settings flows. Built for the <b>25–35 tech crowd</b>: square chrome, 1px hairlines, the bill on screen, and a face that lip-syncs when the model talks back.</p>
     <div class="meta-row">
       <a class="cta" href="chat.html"><svg class="ic" viewBox="0 0 24 24" width="16" height="16"><path d="M21 11.5a8.5 8.5 0 0 1-12.5 7.5L3 21l2-5.5A8.5 8.5 0 1 1 21 11.5Z"/></svg> Open the chat screen</a>
-      <span class="receipt"><b>5 screens</b><span class="dot">·</span><b>10 frames</b><span class="dot">·</span>desktop + mobile<span class="dot">·</span><span class="cost">html only</span></span>
+      <span class="receipt"><b>8 screens</b><span class="dot">·</span><b>16 frames</b><span class="dot">·</span>desktop + mobile<span class="dot">·</span><span class="cost">html only</span></span>
     </div>
   </div>
 </div>
@@ -109,38 +109,59 @@ document.querySelectorAll('.themebar button').forEach(function(b){b.addEventList
   <div class="shead"><span class="n">//</span><h2>The screens</h2></div>
   <div class="cards">
     <a class="card" href="conversation-list.html">
-      <span class="num">01 / 05</span>
+      <span class="num">01 / 08</span>
       <div class="ct">Conversation list</div>
       <div class="cd">Pinned, bots, and direct threads in a square-chrome rail. Receipts in the empty state. Mobile gets a tab bar + gradient FAB.</div>
       <div class="tags"><span class="tag-chip">rail + empty state</span><span class="tag-chip">unread badges</span><span class="tag-chip">tab bar</span></div>
       <span class="open">Open →</span>
     </a>
     <a class="card" href="chat.html">
-      <span class="num">02 / 05</span>
+      <span class="num">02 / 08</span>
       <div class="ct">Chat thread · AI</div>
       <div class="cd">Bot DM with full AI telemetry — session totals up top (tokens, model, spend on your key) and per-message ↑↓ tokens · latency · cost. Soft bubbles, code blocks, slash composer.</div>
       <div class="tags"><span class="tag-chip">session totals</span><span class="tag-chip">per-msg tokens</span><span class="tag-chip">billed to your key</span></div>
       <span class="open">Open →</span>
     </a>
     <a class="card" href="call-bot.html">
-      <span class="num">03 / 05</span>
+      <span class="num">03 / 08</span>
       <div class="ct">Call · 3D avatar bot</div>
       <div class="cd">The ugly-bot mascot head, rim-lit and lip-syncing to TTS visemes. A transcript panel runs the chat history as subtitles — collapse it on desktop to fall back to overlay captions, or expand it full-screen on mobile. Type if you'd rather not talk.</div>
       <div class="tags"><span class="tag-chip">lip-sync mascot</span><span class="tag-chip">collapse / expand</span><span class="tag-chip">type or talk</span></div>
       <span class="open">Open →</span>
     </a>
     <a class="card" href="call-2p.html">
-      <span class="num">04 / 05</span>
+      <span class="num">04 / 08</span>
       <div class="ct">Call · two people</div>
       <div class="cd">Two large tiles, active speaker framed in orange with live audio bars. Transcript panel logs both speakers (and typed notes); collapses to subtitles on desktop, expands below the video on mobile. "Add ugly-bot" pulls the avatar in.</div>
       <div class="tags"><span class="tag-chip">active speaker</span><span class="tag-chip">2-speaker transcript</span><span class="tag-chip">add a bot</span></div>
       <span class="open">Open →</span>
     </a>
-    <a class="card wide" href="chat-human.html">
-      <span class="num">05 / 05</span>
-      <div class="ct">Chat thread · human (telemetry, for laughs)</div>
-      <div class="cd">A DM that treats read-receipts like a CI dashboard: session totals (avg reply 4m 12s · fastest 8s · left on read 2× · your share 61%) and per-message receipts — "replied in 8s · personal best", "left you on read · 3h 12m", "typed 4s for 1 word", "double-texted ×2". The honest, slightly rude version of "seen".</div>
-      <div class="tags"><span class="tag-chip">avg reply time</span><span class="tag-chip">left on read</span><span class="tag-chip">your share %</span><span class="tag-chip">double-text count</span></div>
+    <a class="card" href="chat-human.html">
+      <span class="num">05 / 08</span>
+      <div class="ct">Chat thread · human</div>
+      <div class="cd">A DM that treats read-receipts like a CI dashboard: session totals (avg reply, fastest, left on read, your share %) and per-message receipts — "replied in 8s", "left you on read · 3h 12m", "double-texted ×2". The honest, slightly rude version of "seen".</div>
+      <div class="tags"><span class="tag-chip">response-time telemetry</span><span class="tag-chip">left on read</span><span class="tag-chip">your share %</span></div>
+      <span class="open">Open →</span>
+    </a>
+    <a class="card" href="new-chat.html">
+      <span class="num">06 / 08</span>
+      <div class="ct">Start a chat</div>
+      <div class="cd">New 1:1 message. Added by email address — no usernames, no friend requests. Validates the address, invites them if they're not on ugly.chat yet, and shows recent contacts.</div>
+      <div class="tags"><span class="tag-chip">add by email</span><span class="tag-chip">auto-invite</span><span class="tag-chip">recent</span></div>
+      <span class="open">Open →</span>
+    </a>
+    <a class="card" href="new-group.html">
+      <span class="num">07 / 08</span>
+      <div class="ct">Create a group</div>
+      <div class="cd">Optional name + square group avatar, then add members as email chips. Honest note up front: new members see history only from when they join. CTA counts the heads.</div>
+      <div class="tags"><span class="tag-chip">email chips</span><span class="tag-chip">history-from-join</span><span class="tag-chip">member list</span></div>
+      <span class="open">Open →</span>
+    </a>
+    <a class="card" href="chat-settings.html">
+      <span class="num">08 / 08</span>
+      <div class="ct">Chat settings</div>
+      <div class="cd">Group info: rename/avatar, members with roles + add-by-email, square toggles (mute, read receipts, response-time stats), pinned message, shared media, export transcript, and a danger zone.</div>
+      <div class="tags"><span class="tag-chip">members + roles</span><span class="tag-chip">square toggles</span><span class="tag-chip">danger zone</span></div>
       <span class="open">Open →</span>
     </a>
   </div>

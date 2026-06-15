@@ -1,17 +1,24 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ThumbsUp, ThumbsDown, Heart, Laugh, HelpCircle, AlertTriangle, Trash2, Video, Paperclip, X, FileText, MoreVertical, Eraser, Pencil, Users, Volume2, VolumeX, Pin } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ThumbsUp, ThumbsDown, Heart, Laugh, HelpCircle, AlertTriangle, Trash2, Video, Paperclip, X, FileText, MoreVertical, Eraser, Pencil, Users, Volume2, VolumeX, Pin, Settings } from 'lucide-react';
 import { useApp, uploadBlob, promoteBlob, downscaleImage, useSafeAreaInsets } from 'ugly-app/client';
 import { ChatView } from 'ugly-app/conversation/client';
 import { MdastViewer } from 'ugly-app/markdown/client';
 import { ConversationInput } from '../components/ConversationInput';
 import type { ChatMessage, ChatUser, ChatTypingEntry } from 'ugly-app/conversation/shared';
 import type { DBObject } from 'ugly-app/shared';
-import { VideoCall, type VideoCallHandle } from '../components/VideoCall';
+import { type VideoCallHandle } from '../components/VideoCall';
+import { CallLayout } from '../components/CallLayout';
 import { openMembersPopup } from '../components/MembersPopup';
 import { VoiceProvider, useVoice } from '../components/VoiceProvider';
 import { useRouter } from '../router';
 import { Avatar, pingConversationActivity } from '../lib/conversations';
 import { UGLY_BOT_USER_ID } from '../../shared/bots';
+import type { MsgTelemetry } from '../../shared/telemetry';
+import { formatTokens, formatCost } from '../../shared/telemetry';
+import { TelemetryStrip } from '../components/TelemetryStrip';
+import { HumanTelemetryStrip } from '../components/HumanTelemetryStrip';
+import { type StatMsg, replyLatencyMs } from '../../shared/humanStats';
+import { formatDuration } from '../../shared/duration';
 
 // Open a markdown link. MdastViewer's default link handler calls
 // `global.open(...)` for non-mention links, which throws in the browser
@@ -46,6 +53,7 @@ interface MessageDoc extends DBObject {
   edited?: number | null;
   systemType?: string;
   systemParam?: string;
+  telemetry?: MsgTelemetry;
 }
 
 // A tappable message button: a custom-bot starter ({label, prompt}) or a generic
@@ -120,15 +128,21 @@ function MessageBody(props: {
   isOwn: boolean;
   rTL: number;
   rBL: number;
-  hasBg: boolean;
   onReact: (messageId: string, reaction: string) => void;
   onDelete: (messageId: string) => void;
   onEdit: (messageId: string, markdown: string) => Promise<void>;
   onPin: (messageId: string) => void;
   pinned: boolean;
   onButton: (prompt: string) => void;
+  // Human DM receipt props (only provided when !hasBot && statsOn)
+  humanIdx?: number;
+  humanSorted?: StatMsg[];
+  humanMeId?: string;
+  humanStatsOn?: boolean;
+  humanSeen?: boolean;
 }): React.ReactElement {
-  const { msg, isOwn, rTL, rBL, hasBg, onReact, onDelete, onEdit, onPin, pinned, onButton } = props;
+  const { msg, isOwn, rTL, rBL, onReact, onDelete, onEdit, onPin, pinned, onButton,
+    humanIdx, humanSorted, humanMeId, humanStatsOn, humanSeen } = props;
   const voice = useVoice();
   const [hover, setHover] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -175,18 +189,14 @@ function MessageBody(props: {
           background:
             msg.color === 'error'
               ? 'var(--app-error)'
-              : hasBg
-                ? 'var(--app-main)'
-                : isOwn
-                  ? 'var(--app-secondary)'
-                  : 'var(--app-tertiary)',
+              : isOwn
+                ? 'var(--app-secondary)'
+                : 'var(--app-tertiary)',
           color: msg.color === 'error' ? '#fff' : 'var(--app-foreground)',
-          padding: '3px 8px',
-          borderRadius: 4,
-          borderTopLeftRadius: rTL,
-          borderBottomLeftRadius: rBL,
+          padding: '9px 13px',
+          borderRadius: isOwn ? '14px 14px 3px 14px' : '14px 14px 14px 3px',
           fontSize: 14,
-          lineHeight: '20px',
+          lineHeight: '1.5',
           wordBreak: 'break-word',
         }}
       >
@@ -322,12 +332,51 @@ function MessageBody(props: {
         </div>
       ) : null}
 
+      {(msg as { telemetry?: MsgTelemetry }).telemetry ? (
+        <div className="uc-receipt" style={{ padding: '0 4px' }}>
+          <b>{(msg as { telemetry?: MsgTelemetry }).telemetry!.model || 'model'}</b>
+          <span className="dot">·</span>
+          {((msg as { telemetry?: MsgTelemetry }).telemetry!.latencyMs / 1000).toFixed(1)}s
+          <span className="dot">·</span>
+          ↑{formatTokens((msg as { telemetry?: MsgTelemetry }).telemetry!.inputTokens)} ↓{formatTokens((msg as { telemetry?: MsgTelemetry }).telemetry!.outputTokens)} tok
+          <span className="dot">·</span>
+          <span className="cost">{formatCost((msg as { telemetry?: MsgTelemetry }).telemetry!.costUsd)}</span>
+        </div>
+      ) : null}
+
+      {/* Human DM per-message receipt (no bot, stats enabled) */}
+      {humanStatsOn && humanSorted && humanIdx != null && humanMeId != null ? (
+        <div className="uc-receipt" style={{ padding: '0 4px', color: 'var(--app-foreground-muted)' }}>
+          {(() => {
+            const lat = replyLatencyMs(humanSorted, humanIdx, humanMeId);
+            if (!isOwn && lat != null) {
+              return lat > 3_600_000
+                ? <span className="cost">left you on read · {formatDuration(lat)}</span>
+                : <span>replied in {formatDuration(lat)}{lat < 30_000 ? ' · personal best' : ''}</span>;
+            }
+            // Count consecutive run of own messages ending at this index
+            let runLen = 0;
+            for (let i = humanIdx; i >= 0; i--) {
+              const m = humanSorted[i];
+              if (m && m.userId === humanMeId) runLen++;
+              else break;
+            }
+            return (
+              <span>
+                {humanSeen ? 'seen' : 'delivered'}
+                {runLen > 1 ? <><span className="dot">·</span>{`double-texted ×${runLen}`}</> : null}
+              </span>
+            );
+          })()}
+        </div>
+      ) : null}
+
       {reactions.length > 0 ? (
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
           {reactions.map(([r, n]) => {
             const Icon = REACTION_ICON[r];
             return (
-              <span key={r} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, background: 'var(--app-secondary)', border: '1px solid var(--app-border)', borderRadius: 10, padding: '1px 7px' }}>
+              <span key={r} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--app-font-mono)', fontSize: 10, background: 'var(--app-tertiary)', border: '1px solid var(--app-border)', borderRadius: 0, padding: '2px 8px', color: 'var(--app-foreground-muted)' }}>
                 {Icon ? <Icon size={12} /> : r} {n}
               </span>
             );
@@ -419,6 +468,7 @@ function toChatMessage(d: MessageDoc): ChatMessage {
     ...(d.linkPreviews ? { linkPreviews: d.linkPreviews } : {}),
     ...(d.edited ? { edited: true } : {}),
     ...(d.systemType ? { systemType: d.systemType, systemParam: d.systemParam } : {}),
+    ...(d.telemetry ? { telemetry: d.telemetry } : {}),
   } as ChatMessage;
 }
 
@@ -439,12 +489,13 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const [ready, setReady] = useState(false);
   const [title, setTitle] = useState('Conversation');
   const [convImage, setConvImage] = useState<unknown>(null);
-  const [bgUrl, setBgUrl] = useState<string | null>(null);
   const [profiles, setProfiles] = useState<Record<string, ChatUser>>({});
   const videoRef = useRef<VideoCallHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastTypingSent = useRef(0);
   const typingStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Track when the user opened this conversation (for the session-duration cell).
+  const openedAtRef = useRef(Date.now());
   const [pending, setPending] = useState<PendingAttachment[]>([]);
   // Bot-chat extras: the conversation's bot id (if any), its starter buttons
   // (shown persistently above the composer), and the header "⋯" menu state.
@@ -459,9 +510,9 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const [, forceTick] = useState(0);
 
   useEffect(() => {
+    openedAtRef.current = Date.now();
     setReady(false);
     setMessages([]);
-    setBgUrl(null);
     setBotId(null); // re-derived by the dedicated effect below
     setBotButtons([]);
     setMenuOpen(false);
@@ -579,8 +630,8 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     };
   }, [socket, userId, roomId]);
 
-  // Resolve participant profiles (real names + avatars + conversation bg). Also
-  // resolve membership system-message targets (`systemParam`) so we can name them.
+  // Resolve participant profiles (real names + avatars). Also resolve membership
+  // system-message targets (`systemParam`) so we can name them.
   useEffect(() => {
     const ids = messages.flatMap((m) => [
       m.userId,
@@ -591,7 +642,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     void socket
       .request('profilesGet', { userIds: unknown })
       .then((res) => {
-        const list = (res as { profiles?: { id: string; name: string; avatarUrl: string | null; isBot: boolean; backgroundUrl?: string | null }[] }).profiles ?? [];
+        const list = (res as { profiles?: { id: string; name: string; avatarUrl: string | null; isBot: boolean }[] }).profiles ?? [];
         setProfiles((prev) => {
           const next = { ...prev };
           for (const p of list) {
@@ -604,10 +655,6 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           }
           return next;
         });
-        // The conversation background is the other participant's (the bot's)
-        // avatar background — ugly.bot themes each conversation this way.
-        const bg = list.find((p) => p.id !== userId && p.backgroundUrl)?.backgroundUrl;
-        if (bg) setBgUrl(bg);
       })
       .catch((err: unknown) => console.error('[ChatPage] profilesGet failed', err));
   }, [messages, profiles, socket, userId]);
@@ -883,6 +930,52 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     : 0;
   const seenLine = myLastMessage && seenCount > 0 ? (isDm ? 'Seen' : `Seen by ${seenCount}`) : null;
 
+  // Human DM telemetry: derive StatMsg array (sorted by created, bot messages excluded)
+  // and related flags once, shared between the strip and per-message receipts.
+  const hasBot = botId !== null;
+
+  // Read the "Response-time stats" toggle persisted by ChatSettingsPage (Plan 03).
+  // Default ON unless the value is exactly '0'.
+  const statsOn = useMemo(() => {
+    if (typeof localStorage === 'undefined') return true;
+    return localStorage.getItem(`uc-conv-${roomId}-responseStats`) !== '0';
+  }, [roomId]);
+
+  // Build a sorted StatMsg array (non-bot, non-deleted) for the reducers.
+  const statMsgs: StatMsg[] = useMemo(
+    () =>
+      messages
+        .filter((m) => !(m as { isBot?: boolean }).isBot)
+        .map((m) => ({ userId: m.userId, created: m.created }))
+        .sort((a, b) => a.created - b.created),
+    [messages],
+  );
+
+  // Left-on-read proxy (v1, no schema change):
+  // Count my messages where the other reader's `viewed` timestamp is at least 1h
+  // later than my message's `created`, AND the reader sent nothing after that
+  // message for >1h. Since we only have one viewed timestamp per reader (not
+  // per-message), we use the simpler proxy: count runs where I sent a message,
+  // then the other side's next message arrived >1h later (or hasn't arrived yet).
+  // This is computed from statMsgs directly (pure derivation from real timestamps).
+  const leftOnReadCount = useMemo((): number => {
+    if (hasBot || statMsgs.length === 0) return 0;
+    const ONE_HOUR = 3_600_000;
+    let count = 0;
+    for (let i = 0; i < statMsgs.length; i++) {
+      const m = statMsgs[i];
+      if (!m || m.userId !== userId) continue;
+      // Find the next message from the other side after this one.
+      const nextReply = statMsgs.slice(i + 1).find((x) => x.userId !== userId);
+      if (nextReply) {
+        if (nextReply.created - m.created > ONE_HOUR) count++;
+      }
+      // If no reply follows at all and >1h has elapsed since the message, count it.
+      else if (Date.now() - m.created > ONE_HOUR) count++;
+    }
+    return count;
+  }, [hasBot, statMsgs, userId]);
+
   // @mention candidates = the conversation's resolved participants.
   const mentionSearch = useCallback(
     async (q: string): Promise<{ id: string; name: string }[]> => {
@@ -911,7 +1004,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                 : '';
         if (!text) return null;
         return (
-          <div style={{ textAlign: 'center', fontSize: 12, color: bgUrl ? '#fff' : 'var(--app-foreground)', opacity: 0.55, padding: '6px 14px', textShadow: bgUrl ? '0 1px 3px rgba(0,0,0,0.5)' : undefined }}>
+          <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--app-foreground)', opacity: 0.55, padding: '6px 14px' }}>
             {text}
           </div>
         );
@@ -919,23 +1012,33 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       const idx = messages.findIndex((m) => m.id === msg.id);
       const prev = idx > 0 ? messages[idx - 1] : undefined;
       const next = idx >= 0 && idx < messages.length - 1 ? messages[idx + 1] : undefined;
+      // For human DM receipts: find this message's position in the StatMsg array
+      // (which is filtered to non-bot messages, same ordering as messages).
+      const humanIdx = !hasBot && statsOn
+        ? statMsgs.findIndex((s) => s.created === msg.created && s.userId === msg.userId)
+        : -1;
+      // "seen" = at least one other reader has a viewed timestamp >= this message's created.
+      const humanSeen = readers.some((r) => r.userId !== userId && r.viewed >= msg.created);
       return (
         <MessageBody
           msg={msg}
           isOwn={msg.userId === userId}
           rTL={!prev || prev.userId !== msg.userId ? 4 : 0}
           rBL={!next || next.userId !== msg.userId ? 4 : 0}
-          hasBg={!!bgUrl}
           onReact={handleReact}
           onDelete={handleDelete}
           onEdit={handleEdit}
           onPin={handlePin}
           pinned={pinnedMessageId === msg.id}
           onButton={(prompt) => handleSend(prompt)}
+          {...(humanIdx >= 0 ? { humanIdx } : {})}
+          {...(!hasBot && statsOn ? { humanSorted: statMsgs, humanMeId: userId, humanStatsOn: true as const } : {})}
+          {...(humanSeen ? { humanSeen: true as const } : {})}
         />
       );
     },
-    [messages, userId, handleReact, handleDelete, handleEdit, handlePin, pinnedMessageId, bgUrl, handleSend, profiles],
+    [messages, userId, handleReact, handleDelete, handleEdit, handlePin, pinnedMessageId, handleSend, profiles,
+      hasBot, statsOn, statMsgs, readers],
   );
 
   const body = (
@@ -944,13 +1047,11 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        background: bgUrl
-          ? `linear-gradient(var(--app-main-rgb-overlay, rgba(255,255,255,0)), var(--app-main-rgb-overlay, rgba(255,255,255,0))), url(${JSON.stringify(bgUrl)}) center / cover no-repeat`
-          : 'var(--app-main)',
+        background: 'var(--app-main)',
       }}
     >
       {/* Conversation header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderBottom: bgUrl ? 'none' : '1px solid var(--app-border)', flexShrink: 0, background: bgUrl ? 'rgba(var(--app-main-rgb), 0.55)' : 'transparent', backdropFilter: bgUrl ? 'blur(6px)' : undefined }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderBottom: '1px solid var(--app-border)', flexShrink: 0, background: 'transparent' }}>
         {narrow ? (
           <button
             type="button"
@@ -962,7 +1063,16 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           </button>
         ) : null}
         <Avatar image={convImage} seed={roomId} label={title} size={30} />
-        <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 15, color: 'var(--app-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--app-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
+          {botId ? (
+            <div className="uc-receipt" style={{ marginTop: 1 }}>
+              <span>{profiles[botId]?.name ?? 'Bot'}</span>
+              <span className="dot">·</span>
+              <span style={{ color: 'var(--app-success)' }}>online</span>
+            </div>
+          ) : null}
+        </div>
         <button
           type="button"
           onClick={() => videoRef.current?.start()}
@@ -972,6 +1082,18 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         >
           <Video size={19} />
         </button>
+        {/* Group info / settings */}
+        {canManageMembers ? (
+          <button
+            type="button"
+            onClick={() => router.push('settings/:conversationId', { conversationId: roomId })}
+            aria-label="Group info"
+            title="Group info"
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', flexShrink: 0 }}
+          >
+            <Settings size={18} />
+          </button>
+        ) : null}
         {/* Overflow menu — group chats manage members; bot chats can be wiped. */}
         {botId || canManageMembers ? (
           <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -1040,7 +1162,29 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         </div>
       ) : null}
 
-      <VideoCall ref={videoRef} conversationId={roomId} />
+      {/* Session telemetry strip — shown only for bot conversations */}
+      {botId ? (() => {
+        const tel = messages
+          .filter((m) => !!(m as { telemetry?: MsgTelemetry }).telemetry)
+          .map((m) => (m as { telemetry?: MsgTelemetry }).telemetry!);
+        return tel.length > 0 ? (
+          <TelemetryStrip telemetry={tel} openedAt={openedAtRef.current} />
+        ) : null;
+      })() : null}
+
+      {/* Response-time totals strip — human DMs only, gated by settings toggle */}
+      {!hasBot && statsOn && statMsgs.length > 1 ? (
+        <HumanTelemetryStrip msgs={statMsgs} meId={userId} leftOnRead={leftOnReadCount} />
+      ) : null}
+
+      <CallLayout
+        ref={videoRef}
+        conversationId={roomId}
+        meId={userId}
+        socket={socket}
+        uglyBotSocket={uglyBotSocket}
+        profiles={profiles}
+      />
 
       {/* Full-width scroll area (like ugly.bot) so the chat scrollbar sits at the
           pane's right edge, not at a centered column's edge. */}
@@ -1055,7 +1199,6 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           renderMessage={renderMessage}
           typingEntries={typingEntries}
           onTypingStart={signalTyping}
-          onImageBackground={!!bgUrl}
         >
           <div
             className="uc-composer"
@@ -1122,24 +1265,26 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                 e.target.value = '';
               }}
             />
-            <ConversationInput
-              placeholder={`Message ${title}…`}
-              autoFocus
-              onSend={handleSendWithAttachments}
-              onType={signalTyping}
-              allowEmpty={pending.some((p) => p.key)}
-              mentionSearch={mentionSearch}
-              rightActions={
-                <button
-                  type="button"
-                  title="Attach image"
-                  onClick={() => fileInputRef.current?.click()}
-                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, flexShrink: 0, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }}
-                >
-                  <Paperclip size={18} />
-                </button>
-              }
-            />
+            <div style={{ border: '2px solid var(--app-primary)', borderRadius: 0, background: 'var(--app-main)' }}>
+              <ConversationInput
+                placeholder={`Message ${title}…`}
+                autoFocus
+                onSend={handleSendWithAttachments}
+                onType={signalTyping}
+                allowEmpty={pending.some((p) => p.key)}
+                mentionSearch={mentionSearch}
+                rightActions={
+                  <button
+                    type="button"
+                    title="Attach image"
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, flexShrink: 0, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }}
+                  >
+                    <Paperclip size={18} />
+                  </button>
+                }
+              />
+            </div>
           </div>
         </ChatView>
       </div>

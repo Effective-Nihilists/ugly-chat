@@ -385,10 +385,10 @@ a { color: inherit; text-decoration: none; }
 /* session telemetry strip (§9 receipts) */
 .telemetry { display: flex; align-items: stretch; border-bottom: 1px solid var(--border); background: var(--elev); overflow-x: auto; }
 .telemetry .cell { padding: 7px 15px; border-right: 1px solid var(--border); display: flex; flex-direction: column; gap: 3px; white-space: nowrap; }
-.telemetry .cell .k { font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--faint); }
-.telemetry .cell .v { font-family: var(--mono); font-size: 12px; color: var(--text); font-variant-numeric: tabular-nums; }
+.telemetry .cell .k { font-family: var(--body); font-size: 9px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
+.telemetry .cell .v { font-family: var(--body); font-weight: 600; font-size: 13px; color: var(--text); font-variant-numeric: tabular-nums; }
 .telemetry .cell .v.cost { color: var(--brand); }
-.telemetry .tnote { align-self: center; margin-left: auto; padding: 0 14px; font-family: var(--mono); font-size: 9px; color: var(--faint); letter-spacing: 0.08em; text-align: right; }
+.telemetry .tnote { align-self: center; margin-left: auto; padding: 0 14px; font-family: var(--body); font-size: 10px; color: var(--faint); letter-spacing: 0.04em; text-align: right; }
 
 .pinbar { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid var(--border); background: var(--brand-glow); }
 .pinbar svg { color: var(--brand); }
@@ -438,6 +438,78 @@ a { color: inherit; text-decoration: none; }
 .cbtn:hover { color: var(--text); }
 .composer .send { background: var(--brand); color: var(--on-brand); }
 .chint { display: flex; justify-content: space-between; margin-top: 7px; padding: 0 2px; }
+
+/* ============================================================
+   MODALS & FORMS (new chat / new group / chat settings)
+   ============================================================ */
+.scrim { position: absolute; inset: 0; display: grid; place-items: center; padding: 28px;
+  background: color-mix(in srgb, var(--bg) 55%, transparent); backdrop-filter: blur(3px); }
+.scrim .grid-bg { position: absolute; inset: 0; }
+.modal { position: relative; width: 444px; max-width: 100%; max-height: 100%; display: flex; flex-direction: column;
+  background: var(--panel); border: 1px solid var(--border-strong); box-shadow: 0 30px 80px rgba(0,0,0,0.5); }
+.modal-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--border); flex: none; }
+.modal-head .mt { font-family: var(--display); font-weight: 800; font-size: 18px; letter-spacing: -0.02em; flex: 1; }
+.modal-head .x { width: 30px; height: 30px; display: grid; place-items: center; color: var(--muted); border: 1px solid var(--border); }
+.modal-head .x:hover { color: var(--text); border-color: var(--border-strong); }
+.modal-body { padding: 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; }
+.modal-foot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--border); flex: none; }
+.btn-ghost { padding: 11px 18px; border: 1px solid var(--border-strong); font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text); }
+.btn-ghost:hover { border-color: var(--text); }
+
+.field { display: flex; flex-direction: column; gap: 8px; }
+.field > label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--faint); }
+.input { display: flex; align-items: center; gap: 9px; padding: 11px 13px; border: 1px solid var(--border); background: var(--bg); transition: var(--dur) var(--ease); }
+.input:focus-within { border-color: var(--brand); }
+.input svg { color: var(--faint); flex: none; }
+.input input { flex: 1; border: none; background: none; outline: none; font-size: 14px; }
+.input input::placeholder { color: var(--faint); }
+.input .ok { color: var(--ok); display: inline-flex; }
+.hint { font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+.hint b { color: var(--text); font-weight: 600; }
+
+/* email chip token field */
+.tokens { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; padding: 9px; border: 1px solid var(--border); background: var(--bg); }
+.tokens:focus-within { border-color: var(--brand); }
+.chip { display: inline-flex; align-items: center; gap: 7px; padding: 5px 8px; border: 1px solid var(--border-strong); background: var(--elev); font-family: var(--mono); font-size: 11.5px; }
+.chip .av { width: 18px; height: 18px; font-size: 8px; }
+.chip .x { color: var(--faint); display: inline-flex; }
+.chip .x:hover { color: var(--err); }
+.tokens input { flex: 1; min-width: 120px; border: none; background: none; outline: none; font-size: 13px; padding: 4px 2px; }
+.tokens input::placeholder { color: var(--faint); }
+
+/* member / settings rows */
+.seclabel { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--faint); display: flex; align-items: center; justify-content: space-between; }
+.seclabel .add { color: var(--brand); display: inline-flex; align-items: center; gap: 5px; font-size: 10px; letter-spacing: 0.12em; }
+.member { display: flex; align-items: center; gap: 11px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+.member:last-child { border-bottom: none; }
+.member .av { width: 38px; height: 38px; font-size: 13px; }
+.member .mid { flex: 1; min-width: 0; }
+.member .nm { font-family: var(--display); font-weight: 600; font-size: 14px; }
+.member .em { font-family: var(--mono); font-size: 10.5px; color: var(--faint); margin-top: 2px; }
+.member .pick { color: var(--ok); }
+.role { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 7px; border: 1px solid var(--border-strong); color: var(--muted); }
+.role.admin { color: var(--brand); border-color: var(--brand); }
+
+.srow { display: flex; align-items: center; gap: 13px; padding: 13px 0; border-bottom: 1px solid var(--border); }
+.srow svg { color: var(--muted); flex: none; }
+.srow .sl { flex: 1; min-width: 0; }
+.srow .sl .t { font-size: 14px; }
+.srow .sl .d { font-size: 11.5px; color: var(--faint); margin-top: 2px; }
+.srow .val { font-family: var(--mono); font-size: 11px; color: var(--faint); white-space: nowrap; }
+.srow.danger .t, .srow.danger svg { color: var(--err); }
+
+/* square toggle */
+.switch { width: 40px; height: 22px; border: 1px solid var(--border-strong); background: var(--elev); position: relative; flex: none; cursor: pointer; transition: var(--dur) var(--ease); }
+.switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: var(--muted); transition: var(--dur) var(--ease); }
+.switch.on { border-color: var(--brand); background: var(--brand-glow-strong); }
+.switch.on::after { left: auto; right: 2px; background: var(--brand); }
+
+/* group identity / avatar upload */
+.gid { display: flex; align-items: center; gap: 14px; }
+.gid .gav { width: 56px; height: 56px; flex: none; border: 1px solid var(--border-strong); background: var(--elev); display: grid; place-items: center; color: var(--faint); position: relative; }
+.gid .gav .cam { position: absolute; right: -1px; bottom: -1px; width: 20px; height: 20px; background: var(--brand); color: var(--on-brand); display: grid; place-items: center; }
+.idblock { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.idblock .gav { width: 72px; height: 72px; }
 
 /* scrollbars */
 *::-webkit-scrollbar { width: 8px; height: 8px; }

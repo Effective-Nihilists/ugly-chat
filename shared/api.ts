@@ -188,6 +188,32 @@ export const requests = defineRequests({
     output: z.object({ ok: z.boolean() }),
   }),
 
+  // ── Email-keyed flows (start chat / create group / add member) ────────────
+  // Resolve an email to an ugly.bot userId, or signal an invite is needed.
+  resolveEmail: authReq({
+    input: z.object({ email: z.string() }),
+    output: z.union([
+      z.object({ status: z.literal('found'), userId: z.string(), name: z.string() }),
+      z.object({ status: z.literal('invite'), email: z.string() }),
+    ]),
+    rateLimit: { max: 30, window: 60 },
+  }),
+  // Start (or reuse) a 1:1 with the person at `email`. Unknown email → invite.
+  conversationCreateDirect: authReq({
+    input: z.object({ email: z.string() }),
+    output: z.object({ conversationId: z.string(), invited: z.boolean() }),
+    rateLimit: { max: 20, window: 60 },
+  }),
+  // Create a group; resolve each email and add known users, invite the rest.
+  groupCreate: authReq({
+    input: z.object({
+      title: z.string().max(80).optional(),
+      emails: z.array(z.string()).max(50),
+    }),
+    output: z.object({ conversationId: z.string(), invited: z.array(z.string()) }),
+    rateLimit: { max: 10, window: 60 },
+  }),
+
   conversationMessageCreate: authReq({
     input: z
       .object({
@@ -245,6 +271,18 @@ export const requests = defineRequests({
       .catchall(z.unknown()),
     output: z.any(),
     rateLimit: { max: 40, window: 60 },
+  }),
+
+  // Relay a (possibly partial) live call caption to other participants. Fire-
+  // and-forget: writes a transient per-speaker caption onto `conversation.call`
+  // so peers receive it via the same trackDoc('conversation') subscription the
+  // call roster / typing indicator already use. Not persisted as a message.
+  conversationCaption: authReq({
+    input: z
+      .object({ conversationId: z.string(), text: z.string(), final: z.boolean() })
+      .catchall(z.unknown()),
+    output: z.object({ ok: z.boolean() }),
+    rateLimit: { max: 240, window: 60 },
   }),
 
   // Full-text message search. Scoped to one conversation when `conversationId`
@@ -323,7 +361,6 @@ export const requests = defineRequests({
       instruction: z.string().max(8000).optional(),
       model: z.string().optional(),
       avatarUrl: z.string().nullable().optional(),
-      backgroundUrl: z.string().nullable().optional(),
       firstMessage: z.string().max(2000).nullable().optional(),
       buttons: z.array(z.object({ label: z.string().max(40), prompt: z.string().max(2000) })).optional(),
     }),
@@ -336,7 +373,6 @@ export const requests = defineRequests({
       instruction: z.string().max(8000).optional(),
       model: z.string().optional(),
       avatarUrl: z.string().nullable().optional(),
-      backgroundUrl: z.string().nullable().optional(),
       firstMessage: z.string().max(2000).nullable().optional(),
       buttons: z.array(z.object({ label: z.string().max(40), prompt: z.string().max(2000) })).optional(),
     }),

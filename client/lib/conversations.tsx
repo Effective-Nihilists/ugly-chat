@@ -67,11 +67,10 @@ export function resolveImageUrl(image: unknown): string | null {
   return null;
 }
 
-const AVATAR_COLORS = ['#ff5500', '#e0457a', '#7209b7', '#005bea', '#00897b', '#f4511e', '#3949ab', '#00acc1'];
-export function avatarColor(seed: string): string {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-  return AVATAR_COLORS[h % AVATAR_COLORS.length] ?? '#ff5500';
+// Avatars are neutral gray (brand: no rainbow, no orange bot badge). Identity
+// comes from the initial + the name beside it, not color.
+export function avatarColor(_seed: string): string {
+  return 'var(--app-tertiary)';
 }
 function initial(s: string): string {
   const t = s.trim();
@@ -110,7 +109,8 @@ export function Avatar(props: { image?: unknown; seed: string; label?: string; s
         alignItems: 'center',
         justifyContent: 'center',
         background: avatarColor(props.seed),
-        color: '#fff',
+        color: 'var(--app-foreground-muted)',
+        border: '1px solid var(--app-border)',
         fontSize: Math.round(size * 0.45),
         fontWeight: 600,
         lineHeight: 1,

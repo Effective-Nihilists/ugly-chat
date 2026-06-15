@@ -1,9 +1,36 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Button, Text, useApp } from 'ugly-app/client';
+import type { UglyBotSocket } from 'ugly-app/client';
 import type { DBObject } from 'ugly-app/shared';
+import { BotAvatarTile } from './BotAvatarTile';
 
 export interface VideoCallHandle {
   start: () => void;
+}
+
+// A bot message reduced to what the avatar tile needs to speak it. `created` is
+// a Date in the schema but arrives serialized over trackDocs — `toMs` normalizes.
+interface MessageDoc extends DBObject {
+  conversationId: string;
+  userId: string;
+  text?: string | null;
+  markdown?: string | null;
+  deleted?: boolean;
+  systemType?: string;
+}
+
+const toMs = (v: unknown): number =>
+  v instanceof Date ? v.getTime() : typeof v === 'number' ? v : typeof v === 'string' ? Date.parse(v) : 0;
+
+export interface VideoCallProps {
+  conversationId: string;
+  /** ugly.bot socket for bot TTS (null when unavailable → emoji fallback). */
+  uglyBotSocket?: UglyBotSocket | null;
+  /**
+   * Called as the bot's TTS reveals each word, so the caller can mirror the
+   * spoken text into the call transcript (`final` once the turn is done).
+   */
+  onBotTurn?: (botId: string, text: string, final: boolean) => void;
 }
 
 interface CallParticipant {
@@ -49,8 +76,8 @@ const center: React.CSSProperties = {
  * through the server-brokered `realtime*` RPCs. Bots render as a "fake call"
  * avatar tile (no media).
  */
-export const VideoCall = forwardRef<VideoCallHandle, { conversationId: string }>(function VideoCall(
-  { conversationId },
+export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function VideoCall(
+  { conversationId, uglyBotSocket = null, onBotTurn },
   ref,
 ) {
   const { socket, userId } = useApp();
@@ -75,6 +102,43 @@ export const VideoCall = forwardRef<VideoCallHandle, { conversationId: string }>
     });
     return () => unsub?.();
   }, [socket, conversationId]);
+
+  // ── Bot speech ───────────────────────────────────────────────────────────
+  // The bot speaks its newest message once. We watch the message stream and,
+  // when a fresh bot message arrives, stash its text as the tile's `speakText`.
+  // `spokenIds` guards against re-speaking on every trackDocs re-emit. This is
+  // purely additive — it never touches the SFU/track/renegotiation path.
+  const [pendingBotText, setPendingBotText] = useState<{ botId: string; text: string } | null>(null);
+  const spokenIds = useRef<Set<string>>(new Set());
+  const joinedAtRef = useRef<number>(0);
+  useEffect(() => {
+    if (!joined || !uglyBotSocket) return undefined;
+    if (!joinedAtRef.current) joinedAtRef.current = Date.now();
+    const unsub = socket.trackDocs<MessageDoc>(
+      'message',
+      { keys: { conversationId }, sort: { created: -1 }, limit: 20 },
+      (docs) => {
+        const list = Array.isArray(docs) ? docs : [];
+        // Newest bot, non-system, non-deleted message after we joined the call.
+        const latest = list
+          .filter(
+            (d) =>
+              !d.deleted &&
+              !d.systemType &&
+              d.userId.startsWith('bot-') &&
+              (d.text || d.markdown) &&
+              toMs(d.created) >= joinedAtRef.current,
+          )
+          .sort((a, b) => toMs(b.created) - toMs(a.created))[0];
+        if (!latest || spokenIds.current.has(latest._id)) return;
+        spokenIds.current.add(latest._id);
+        setPendingBotText({ botId: latest.userId, text: latest.text ?? latest.markdown ?? '' });
+      },
+    );
+    return () => {
+      unsub();
+    };
+  }, [joined, uglyBotSocket, socket, conversationId]);
 
   // Attach the local stream when the tile mounts.
   useEffect(() => {
@@ -232,6 +296,9 @@ export const VideoCall = forwardRef<VideoCallHandle, { conversationId: string }>
     pulledRef.current.clear();
     midToUserRef.current.clear();
     setRemoteStreams(new Map());
+    spokenIds.current.clear();
+    joinedAtRef.current = 0;
+    setPendingBotText(null);
     await socket.request('conversationVideoLeave', { conversationId });
     setJoined(false);
   }, [socket, conversationId]);
@@ -273,7 +340,30 @@ export const VideoCall = forwardRef<VideoCallHandle, { conversationId: string }>
               {p.userId === userId ? (
                 <video ref={localVideoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : p.isBot ? (
-                <div style={{ ...center, fontSize: 40 }}>🤖</div>
+                uglyBotSocket ? (
+                  <BotAvatarTile
+                    socket={uglyBotSocket}
+                    botId={p.userId}
+                    speakText={
+                      pendingBotText && pendingBotText.botId === p.userId
+                        ? pendingBotText.text
+                        : null
+                    }
+                    onSubtitleIndex={(i) => {
+                      const full =
+                        pendingBotText && pendingBotText.botId === p.userId
+                          ? pendingBotText.text
+                          : '';
+                      if (!full) return;
+                      const revealed = full.slice(0, i);
+                      onBotTurn?.(p.userId, revealed, i >= full.length);
+                    }}
+                  />
+                ) : (
+                  <div style={{ ...center }}>
+                    <Text size="sm" style={{ opacity: 0.5 }}>ugly-bot</Text>
+                  </div>
+                )
               ) : remoteStreams.has(p.userId) ? (
                 <RemoteTile stream={remoteStreams.get(p.userId)!} />
               ) : (
@@ -286,8 +376,7 @@ export const VideoCall = forwardRef<VideoCallHandle, { conversationId: string }>
                 </div>
               )}
               <div style={{ position: 'absolute', bottom: 4, left: 6, color: '#fff', fontSize: 11, textShadow: '0 1px 2px #000' }}>
-                {p.isBot ? '🤖 ' : ''}
-                {p.userId.slice(0, 8)}
+                {p.isBot ? 'ugly-bot' : p.userId.slice(0, 8)}
                 {p.userId === userId ? ' (you)' : ''}
               </div>
             </div>

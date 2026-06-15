@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ugly.chat — chat settings</title>
+<link rel="stylesheet" href="brand.css">
+<style>
+  .frames { display: flex; gap: 56px; align-items: flex-start; flex-wrap: wrap; justify-content: center; }
+  .desktop .scrim { height: 700px; }
+  .desktop .modal { width: 470px; }
+  .sheet { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .modal-body .grp + .grp { margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="themebar">
+  <span class="tb-label">theme</span>
+  <button data-set="auto">auto</button>
+  <button data-set="light">light</button>
+  <button data-set="dark">dark</button>
+  <button data-set="cosmic-latte">latte</button>
+  <button data-set="vim">vim</button>
+</div>
+<script>
+(function(){var K='uglychat-theme',t=localStorage.getItem(K)||'auto';
+function set(v){if(v==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',v);
+document.querySelectorAll('.themebar button').forEach(function(b){b.classList.toggle('on',b.dataset.set===v)});localStorage.setItem(K,v);}
+document.querySelectorAll('.themebar button').forEach(function(b){b.addEventListener('click',function(){set(b.dataset.set)})});set(t);})();
+</script>
+
+<div class="stage">
+<div style="width:100%">
+  <div class="cap">ugly.chat &nbsp;·&nbsp; <b>chat settings</b> &nbsp;·&nbsp; group info &amp; members &nbsp;·&nbsp; desktop + mobile</div>
+  <div class="frames">
+
+    <!-- ===================== DESKTOP ===================== -->
+    <div class="desktop">
+      <div class="titlebar">
+        <span class="dot3"></span><span class="dot3"></span><span class="dot3"></span>
+        <span class="url">ugly.chat / ship-crew / info</span>
+      </div>
+      <div class="scrim">
+        <div class="grid-bg"></div>
+        <div class="modal">
+          <div class="modal-head">
+            <span class="mt">Group info</span>
+            <button class="x"><svg class="ic" viewBox="0 0 24 24" width="16" height="16"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
+          </div>
+          <div class="modal-body">
+            <!-- identity -->
+            <div class="idblock">
+              <div class="gav"><svg class="ic" viewBox="0 0 24 24" width="26" height="26"><circle cx="9" cy="9" r="3"/><path d="M3 19a6 6 0 0 1 12 0"/><circle cx="17" cy="8" r="2.5"/><path d="M16 19a5 5 0 0 1 5-5"/></svg><span class="cam"><svg class="ic" viewBox="0 0 24 24" width="11" height="11"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3"/></svg></span></div>
+              <div style="display:flex;align-items:center;gap:8px"><span style="font-family:var(--display);font-weight:800;font-size:21px;letter-spacing:-0.02em">ship-crew</span><svg class="ic" viewBox="0 0 24 24" width="15" height="15" style="color:var(--faint)"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></div>
+              <div class="receipt"><b>4 members</b><span class="dot">·</span>created jun 2<span class="dot">·</span>by you</div>
+            </div>
+
+            <!-- members -->
+            <div class="field">
+              <div class="seclabel"><span>Members · 4</span><button class="add"><svg class="ic" viewBox="0 0 24 24" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> add by email</button></div>
+              <div class="tokens" style="margin-bottom:4px">
+                <svg class="ic" viewBox="0 0 24 24" width="16" height="16" style="color:var(--faint)"><rect x="3" y="5" width="18" height="14"/><path d="M3 7l9 6 9-6"/></svg>
+                <input placeholder="invite someone — name@email.com" spellcheck="false">
+              </div>
+              <div>
+                <div class="member"><div class="av">JM</div><div class="mid"><div class="nm">Justin (you)</div><div class="em">justin@ugly.bot</div></div><span class="role admin">admin</span></div>
+                <div class="member"><div class="av online">DV</div><div class="mid"><div class="nm">Dana Vega</div><div class="em">dana@studio.dev</div></div><span class="role admin">admin</span></div>
+                <div class="member"><div class="av">PR</div><div class="mid"><div class="nm">Priya Rao</div><div class="em">priya@ply.dev</div></div><span class="role">member</span></div>
+                <div class="member"><div class="av">B</div><div class="mid"><div class="nm">ugly-bot</div><div class="em">DeepSeek v4 pro · reads the diffs</div></div><span class="role">bot</span></div>
+              </div>
+            </div>
+
+            <!-- notifications / behavior -->
+            <div class="field">
+              <div class="seclabel"><span>Notifications &amp; privacy</span></div>
+              <div>
+                <div class="srow">
+                  <svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+                  <div class="sl"><div class="t">Mute notifications</div><div class="d">No pings. The unread count still tells the truth.</div></div>
+                  <div class="switch" onclick="this.classList.toggle('on')"></div>
+                </div>
+                <div class="srow">
+                  <svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M4 6h16M4 12h10M4 18h7"/></svg>
+                  <div class="sl"><div class="t">Show typing</div><div class="d">Others see the three dots while you type.</div></div>
+                  <div class="switch on" onclick="this.classList.toggle('on')"></div>
+                </div>
+                <div class="srow">
+                  <svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M4 12l5 5L20 6"/></svg>
+                  <div class="sl"><div class="t">Read receipts</div><div class="d">They see "seen". You see theirs.</div></div>
+                  <div class="switch on" onclick="this.classList.toggle('on')"></div>
+                </div>
+                <div class="srow">
+                  <svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M4 19V9M9 19V5M14 19v-7M19 19v-11"/></svg>
+                  <div class="sl"><div class="t">Response-time stats</div><div class="d">The slightly rude dashboard: avg reply, left-on-read, your share %.</div></div>
+                  <div class="switch on" onclick="this.classList.toggle('on')"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- conversation -->
+            <div class="field">
+              <div class="seclabel"><span>Conversation</span></div>
+              <div>
+                <div class="srow">
+                  <svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3v8M8 11h8l-1 6H9z M12 17v4"/></svg>
+                  <div class="sl"><div class="t">Pinned message</div></div>
+                  <span class="val">ship spec before code…</span>
+                  <svg class="ic" viewBox="0 0 24 24" width="16" height="16" style="color:var(--faint)"><path d="M9 6l6 6-6 6"/></svg>
+                </div>
+                <div class="srow">
+                  <svg class="ic" viewBox="0 0 24 24" width="18" height="18"><rect x="3" y="4" width="18" height="16"/><path d="M3 14l5-4 4 3 4-5 5 6"/></svg>
+                  <div class="sl"><div class="t">Shared media &amp; files</div></div>
+                  <span class="val">128</span>
+                  <svg class="ic" viewBox="0 0 24 24" width="16" height="16" style="color:var(--faint)"><path d="M9 6l6 6-6 6"/></svg>
+                </div>
+                <div class="srow">
+                  <svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l3 3M15 15l3 3M18 6l-3 3M9 15l-3 3"/></svg>
+                  <div class="sl"><div class="t">Export transcript</div><div class="d">Plain markdown. Your words, your file.</div></div>
+                  <svg class="ic" viewBox="0 0 24 24" width="16" height="16" style="color:var(--faint)"><path d="M9 6l6 6-6 6"/></svg>
+                </div>
+              </div>
+            </div>
+
+            <!-- danger -->
+            <div class="field">
+              <div class="seclabel"><span>Danger zone</span></div>
+              <div>
+                <div class="srow danger">
+                  <svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+                  <div class="sl"><div class="t">Clear my history</div><div class="d">Wipes it for you. Everyone else keeps theirs.</div></div>
+                </div>
+                <div class="srow danger" style="border-bottom:none">
+                  <svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M14 4h5v16h-5M14 12H4M7 9l-3 3 3 3"/></svg>
+                  <div class="sl"><div class="t">Leave group</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== MOBILE ===================== -->
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="statusbar"><span>9:41</span>
+        <span class="sig"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="14" width="3" height="6"/><rect x="7" y="10" width="3" height="10"/><rect x="12" y="6" width="3" height="14"/><rect x="17" y="2" width="3" height="18"/></svg></span>
+      </div>
+      <div class="sheet">
+        <div class="modal-head">
+          <button class="x"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M15 6l-6 6 6 6"/></svg></button>
+          <span class="mt">Group info</span>
+        </div>
+        <div class="modal-body" style="flex:1">
+          <div class="idblock">
+            <div class="gav"><svg class="ic" viewBox="0 0 24 24" width="26" height="26"><circle cx="9" cy="9" r="3"/><path d="M3 19a6 6 0 0 1 12 0"/><circle cx="17" cy="8" r="2.5"/><path d="M16 19a5 5 0 0 1 5-5"/></svg><span class="cam"><svg class="ic" viewBox="0 0 24 24" width="11" height="11"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3"/></svg></span></div>
+            <div style="font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-0.02em">ship-crew</div>
+            <div class="receipt"><b>4 members</b><span class="dot">·</span>created jun 2</div>
+          </div>
+          <div class="field">
+            <div class="seclabel"><span>Members · 4</span><button class="add"><svg class="ic" viewBox="0 0 24 24" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> add</button></div>
+            <div class="tokens" style="margin-bottom:4px"><svg class="ic" viewBox="0 0 24 24" width="16" height="16" style="color:var(--faint)"><rect x="3" y="5" width="18" height="14"/><path d="M3 7l9 6 9-6"/></svg><input placeholder="name@email.com" spellcheck="false"></div>
+            <div>
+              <div class="member"><div class="av">JM</div><div class="mid"><div class="nm">Justin (you)</div><div class="em">justin@ugly.bot</div></div><span class="role admin">admin</span></div>
+              <div class="member"><div class="av online">DV</div><div class="mid"><div class="nm">Dana Vega</div><div class="em">dana@studio.dev</div></div><span class="role admin">admin</span></div>
+              <div class="member"><div class="av">PR</div><div class="mid"><div class="nm">Priya Rao</div><div class="em">priya@ply.dev</div></div><span class="role">member</span></div>
+              <div class="member"><div class="av">B</div><div class="mid"><div class="nm">ugly-bot</div><div class="em">DeepSeek v4 pro</div></div><span class="role">bot</span></div>
+            </div>
+          </div>
+          <div class="field">
+            <div class="seclabel"><span>Notifications &amp; privacy</span></div>
+            <div>
+              <div class="srow"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><div class="sl"><div class="t">Mute</div></div><div class="switch" onclick="this.classList.toggle('on')"></div></div>
+              <div class="srow"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M4 12l5 5L20 6"/></svg><div class="sl"><div class="t">Read receipts</div></div><div class="switch on" onclick="this.classList.toggle('on')"></div></div>
+              <div class="srow"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M4 19V9M9 19V5M14 19v-7M19 19v-11"/></svg><div class="sl"><div class="t">Response-time stats</div><div class="d">avg reply · left-on-read · your share</div></div><div class="switch on" onclick="this.classList.toggle('on')"></div></div>
+            </div>
+          </div>
+          <div class="field">
+            <div class="seclabel"><span>Conversation</span></div>
+            <div>
+              <div class="srow"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3v8M8 11h8l-1 6H9z M12 17v4"/></svg><div class="sl"><div class="t">Pinned message</div></div><svg class="ic" viewBox="0 0 24 24" width="16" height="16" style="color:var(--faint)"><path d="M9 6l6 6-6 6"/></svg></div>
+              <div class="srow"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><rect x="3" y="4" width="18" height="16"/><path d="M3 14l5-4 4 3 4-5 5 6"/></svg><div class="sl"><div class="t">Shared media</div></div><span class="val">128</span><svg class="ic" viewBox="0 0 24 24" width="16" height="16" style="color:var(--faint)"><path d="M9 6l6 6-6 6"/></svg></div>
+            </div>
+          </div>
+          <div class="field">
+            <div class="seclabel"><span>Danger zone</span></div>
+            <div>
+              <div class="srow danger"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg><div class="sl"><div class="t">Clear my history</div></div></div>
+              <div class="srow danger" style="border-bottom:none"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M14 4h5v16h-5M14 12H4M7 9l-3 3 3 3"/></svg><div class="sl"><div class="t">Leave group</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="homebar"></div>
+    </div>
+
+  </div>
+</div>
+</div>
+</body>
+</html>

@@ -5,7 +5,7 @@ import { useRouter } from '../router';
 import { useConversations } from '../lib/conversations';
 import { Avatar } from '../lib/conversations';
 import { ConversationRow } from './ConversationRow';
-import { openNewChatPopup } from './NewChatPopup';
+import { ThemePicker } from './ThemePicker';
 
 // Matches ugly.bot's SidebarInternal: collapsed = 72px (avatar-only), expanded =
 // resizable 250–400px persisted to localStorage 'leftSidebarWidth'; the
@@ -30,7 +30,7 @@ function save(key: string, value: string): void {
 
 export function Sidebar(): React.ReactElement {
   const router = useRouter();
-  const { socket, userId } = useApp();
+  const { socket } = useApp();
   const { conversations, loading } = useConversations();
   const [q, setQ] = useState('');
   const [expanded, setExpandedState] = useState(() => loadBool('leftSidebarExpanded', true));
@@ -47,8 +47,8 @@ export function Sidebar(): React.ReactElement {
   }, []);
 
   const openNew = useCallback(() => {
-    openNewChatPopup(router, socket, userId, (id) => router.push('chat/:conversationId', { conversationId: id }));
-  }, [router, socket, userId]);
+    router.push('new', {});
+  }, [router]);
 
   // Pin/unpin a conversation. The userConversation trackDocs subscription
   // (keyed by userId) picks up the visibility change and refetches the list,
@@ -137,7 +137,7 @@ export function Sidebar(): React.ReactElement {
 
       {/* Search + create */}
       <div style={{ padding: '2px 10px 8px', display: 'flex', gap: 8, alignItems: 'center' }}>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '0 10px', height: 38, borderRadius: 16, border: '2px solid var(--app-foreground-20)', background: 'rgba(var(--app-tertiary-rgb), 0.5)' }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '0 10px', height: 38, borderRadius: 0, border: '1px solid var(--app-border)', background: 'var(--app-tertiary)' }}>
           <SearchIcon />
           <input
             value={q}
@@ -153,6 +153,7 @@ export function Sidebar(): React.ReactElement {
 
       {/* Conversation list */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '2px 0 16px' }}>
+        <div className="uc-mono-label" style={{ padding: '10px 14px 4px' }}><span style={{ color: 'var(--app-primary)' }}>//</span> conversations</div>
         {loading && conversations.length === 0 ? (
           <EmptyHint text="Loading…" />
         ) : filtered.length === 0 ? (
@@ -170,6 +171,9 @@ export function Sidebar(): React.ReactElement {
         )}
       </div>
 
+      {/* Theme picker */}
+      <ThemePicker />
+
       {/* Footer */}
       <div style={{ padding: 10, display: 'flex', gap: 8, borderTop: '1px solid var(--app-border)', flexShrink: 0 }}>
         <button type="button" className="uc-footbtn" style={footBtnStyle} onClick={() => router.push('bots', {})}>
@@ -178,8 +182,8 @@ export function Sidebar(): React.ReactElement {
         <button type="button" className="uc-footbtn" style={footBtnStyle} onClick={() => document.querySelector<HTMLElement>('[data-id="feedback-button"]')?.click()}>
           Feedback
         </button>
-        <button type="button" className="uc-footbtn" style={footBtnStyle} onClick={() => router.push('chat', {})}>
-          All Chats
+        <button type="button" className="uc-footbtn" style={footBtnStyle} onClick={() => router.push('settings', {})}>
+          Settings
         </button>
       </div>
 
@@ -219,12 +223,15 @@ const iconBtnStyle: React.CSSProperties = {
 const footBtnStyle: React.CSSProperties = {
   flex: 1,
   height: 36,
-  borderRadius: 8,
+  borderRadius: 0,
   border: '1px solid var(--app-border)',
   background: 'var(--app-main)',
   color: 'var(--app-foreground)',
-  fontSize: 13,
+  fontSize: 11,
   fontWeight: 600,
+  fontFamily: 'var(--app-font-mono)',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.06em',
   cursor: 'pointer',
 };
 

@@ -21,7 +21,6 @@ export const ConversationSchema = z
     type: z.string().default('chat'),
     title: z.string().default(''),
     image: z.unknown().nullable().optional(),
-    background: z.unknown().nullable().optional(),
     mode: z.enum(['public', 'private', 'restricted']).optional(),
     lastHuman: z.number().optional(),
     lastUser: z.number().optional(),
@@ -75,6 +74,16 @@ export const MessageSchema = z
         }),
       )
       .optional(),
+    // AI usage metadata, written by the bot reply handler for bot messages.
+    telemetry: z
+      .object({
+        model: z.string(),
+        inputTokens: z.number(),
+        outputTokens: z.number(),
+        costUsd: z.number(),
+        latencyMs: z.number(),
+      })
+      .optional(),
   })
   .catchall(z.unknown());
 export type Message = InferDocType<typeof MessageSchema>;
@@ -115,7 +124,6 @@ export const UserConversationSchema = z
     title: z.string().optional(),
     type: z.string().optional(),
     image: z.unknown().nullable().optional(),
-    background: z.unknown().nullable().optional(),
     notificationText: z.string().optional(),
     notificationCount: z.number().optional(),
     viewed: z.number().optional(),
@@ -161,7 +169,6 @@ export const BotSchema = z
     ownerId: z.string(),
     name: z.string().default('Bot'),
     avatarUrl: z.string().nullable().optional(),
-    backgroundUrl: z.string().nullable().optional(),
     instruction: z.string().default(''),
     model: z.string().default('deepseek_v4_flash'),
     firstMessage: z.string().nullable().optional(),
