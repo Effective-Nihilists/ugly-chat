@@ -138,7 +138,7 @@ export function Sidebar(): React.ReactElement {
 
       {/* Search + create */}
       <div style={{ padding: '2px 10px 8px', display: 'flex', gap: 8, alignItems: 'center' }}>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '0 10px', height: 38, borderRadius: 16, border: '2px solid var(--app-foreground-20)', background: 'rgba(var(--app-tertiary-rgb), 0.5)' }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '0 10px', height: 38, borderRadius: 0, border: '1px solid var(--app-border)', background: 'var(--app-tertiary)' }}>
           <SearchIcon />
           <input
             value={q}
@@ -154,6 +154,7 @@ export function Sidebar(): React.ReactElement {
 
       {/* Conversation list */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '2px 0 16px' }}>
+        <div className="uc-mono-label" style={{ padding: '10px 14px 4px' }}><span style={{ color: 'var(--app-primary)' }}>//</span> conversations</div>
         {loading && conversations.length === 0 ? (
           <EmptyHint text="Loading…" />
         ) : filtered.length === 0 ? (
@@ -223,12 +224,15 @@ const iconBtnStyle: React.CSSProperties = {
 const footBtnStyle: React.CSSProperties = {
   flex: 1,
   height: 36,
-  borderRadius: 8,
+  borderRadius: 0,
   border: '1px solid var(--app-border)',
   background: 'var(--app-main)',
   color: 'var(--app-foreground)',
-  fontSize: 13,
+  fontSize: 11,
   fontWeight: 600,
+  fontFamily: 'var(--app-font-mono)',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.06em',
   cursor: 'pointer',
 };
 
