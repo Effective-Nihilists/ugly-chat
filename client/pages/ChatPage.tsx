@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ThumbsUp, ThumbsDown, Heart, Laugh, HelpCircle, AlertTriangle, Trash2, Video, Paperclip, X, FileText, MoreVertical, Eraser, Pencil, Users, Volume2, VolumeX, Pin } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Heart, Laugh, HelpCircle, AlertTriangle, Trash2, Video, Paperclip, X, FileText, MoreVertical, Eraser, Pencil, Users, Volume2, VolumeX, Pin, Settings } from 'lucide-react';
 import { useApp, uploadBlob, promoteBlob, downscaleImage, useSafeAreaInsets } from 'ugly-app/client';
 import { ChatView } from 'ugly-app/conversation/client';
 import { MdastViewer } from 'ugly-app/markdown/client';
@@ -967,6 +967,18 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         >
           <Video size={19} />
         </button>
+        {/* Group info / settings */}
+        {canManageMembers ? (
+          <button
+            type="button"
+            onClick={() => router.push('settings/:conversationId', { conversationId: roomId })}
+            aria-label="Group info"
+            title="Group info"
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', flexShrink: 0 }}
+          >
+            <Settings size={18} />
+          </button>
+        ) : null}
         {/* Overflow menu — group chats manage members; bot chats can be wiped. */}
         {botId || canManageMembers ? (
           <div style={{ position: 'relative', flexShrink: 0 }}>
