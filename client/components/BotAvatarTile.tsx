@@ -37,6 +37,18 @@ const TalkingAvatar = React.lazy(() =>
 // hosted, so a failed load must never wedge the call).
 const READY_TIMEOUT_MS = 8000;
 
+// Cheap WebGL-availability probe — if the browser can't make a GL context there's
+// no point loading the three.js chunk; go straight to the neutral fallback.
+function webglAvailable(): boolean {
+  if (typeof document === 'undefined') return false;
+  try {
+    const c = document.createElement('canvas');
+    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+  } catch {
+    return false;
+  }
+}
+
 interface BotAvatarTileProps {
   socket: UglyBotSocket;
   botId: string;
@@ -117,7 +129,31 @@ export function BotAvatarTile({
 }: BotAvatarTileProps): React.ReactElement {
   const tts = useTTS(socket);
   const [ready, setReady] = useState(false);
-  const [failed, setFailed] = useState(false);
+  // Pre-fail when WebGL is unavailable so we never load the heavy chunk.
+  const [failed, setFailed] = useState(() => !webglAvailable());
+  // Pause the avatar (unmount the render loop) when the tab is hidden — saves
+  // battery; remounting on re-show reloads fast from the warm chunk cache.
+  const [hidden, setHidden] = useState(
+    () => typeof document !== 'undefined' && document.hidden,
+  );
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    const onVis = (): void => setHidden(document.hidden);
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, []);
+  // Stop any in-flight speech on unmount (call end) so audio doesn't outlive the
+  // tile. TalkingAvatar disposes its three.js context on its own unmount.
+  const stopRef = useRef(tts.stop);
+  stopRef.current = tts.stop;
+  useEffect(
+    () => () => {
+      stopRef.current();
+    },
+    [],
+  );
 
   // Warm the AudioContext on mount (BotAvatarTile only mounts once the user has
   // already gestured to join/add-bot, so the context can unlock here on Safari).
@@ -148,7 +184,7 @@ export function BotAvatarTile({
   // If onReady never fires within the timeout (slow/missing GLB, no WebGL),
   // fall back to the neutral tile. Cleared if it does become ready.
   useEffect(() => {
-    if (ready || failed) return undefined;
+    if (ready || failed || hidden) return undefined;
     const t = setTimeout(() => {
       console.warn('[BotAvatarTile] avatar not ready in time, falling back');
       setFailed(true);
@@ -156,7 +192,7 @@ export function BotAvatarTile({
     return () => {
       clearTimeout(t);
     };
-  }, [ready, failed]);
+  }, [ready, failed, hidden]);
 
   const label = 'ugly-bot';
 
@@ -165,7 +201,7 @@ export function BotAvatarTile({
       data-id="bot-avatar-tile"
       style={{ position: 'relative', width: '100%', height: '100%', background: '#07080B' }}
     >
-      {failed ? (
+      {failed || hidden ? (
         <NeutralBotTile label={label} />
       ) : (
         <AvatarErrorBoundary
