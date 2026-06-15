@@ -6,6 +6,7 @@ import { useConversations } from '../lib/conversations';
 import { Avatar } from '../lib/conversations';
 import { ConversationRow } from './ConversationRow';
 import { openNewChatPopup } from './NewChatPopup';
+import { ThemePicker } from './ThemePicker';
 
 // Matches ugly.bot's SidebarInternal: collapsed = 72px (avatar-only), expanded =
 // resizable 250–400px persisted to localStorage 'leftSidebarWidth'; the
@@ -169,6 +170,9 @@ export function Sidebar(): React.ReactElement {
           ))
         )}
       </div>
+
+      {/* Theme picker */}
+      <ThemePicker />
 
       {/* Footer */}
       <div style={{ padding: 10, display: 'flex', gap: 8, borderTop: '1px solid var(--app-border)', flexShrink: 0 }}>
