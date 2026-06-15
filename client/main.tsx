@@ -12,6 +12,8 @@ applyTheme(loadTheme());
 
 bootstrapApp({
   requests,
+  // Apex domain (ugly.chat) — adopt an existing ugly.bot session silently.
+  silentSso: true,
   RouterProvider,
   render: () => (
     <>
