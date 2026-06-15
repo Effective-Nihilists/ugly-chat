@@ -74,6 +74,16 @@ export const MessageSchema = z
         }),
       )
       .optional(),
+    // AI usage metadata, written by the bot reply handler for bot messages.
+    telemetry: z
+      .object({
+        model: z.string(),
+        inputTokens: z.number(),
+        outputTokens: z.number(),
+        costUsd: z.number(),
+        latencyMs: z.number(),
+      })
+      .optional(),
   })
   .catchall(z.unknown());
 export type Message = InferDocType<typeof MessageSchema>;
