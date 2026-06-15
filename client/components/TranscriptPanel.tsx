@@ -34,6 +34,7 @@ export function TranscriptPanel({
   profiles,
   onSend,
   onCollapse,
+  fill = false,
 }: {
   turns: Turn[];
   meId: string;
@@ -41,6 +42,8 @@ export function TranscriptPanel({
   onSend: (text: string) => void;
   /** Optional collapse control (desktop). Hidden when omitted. */
   onCollapse?: () => void;
+  /** Fill the parent (mobile expanded sheet) instead of the fixed desktop rail. */
+  fill?: boolean;
 }): React.ReactElement {
   const [draft, setDraft] = useState('');
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -67,13 +70,13 @@ export function TranscriptPanel({
   return (
     <div
       style={{
-        width: 332,
-        flex: 'none',
+        ...(fill
+          ? { width: '100%', flex: 1, borderTop: '1px solid var(--app-border)' }
+          : { width: 332, flex: 'none', borderLeft: '1px solid var(--app-border)' }),
         display: 'flex',
         flexDirection: 'column',
         minHeight: 0,
         background: 'var(--app-main)',
-        borderLeft: '1px solid var(--app-border)',
       }}
     >
       {/* Header */}
