@@ -30,7 +30,7 @@ import { unfurlMessageLinks } from './linkPreview';
 import { bumpListForMessage, markRead } from './listDenorm';
 import { UGLY_BOT_USER_ID } from '../shared/bots';
 import { resolveProfiles, type Profile } from './profiles';
-import { videoJoin, videoLeave, videoEnd, videoBotJoin, videoPublish, videoState, type CallState, type DbLike } from './video';
+import { videoJoin, videoLeave, videoEnd, videoBotJoin, videoPublish, videoState, videoCaption, type CallState, type DbLike } from './video';
 import {
   realtimeIceServers,
   realtimeNewSession,
@@ -305,6 +305,18 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         input.sessionId,
         input.tracks,
       ),
+
+    conversationCaption: async (userId, input): Promise<{ ok: boolean }> => {
+      await videoCaption(
+        getDb() as unknown as DbLike,
+        { conversation: collections.conversation },
+        input.conversationId,
+        userId,
+        input.text,
+        input.final,
+      );
+      return { ok: true };
+    },
 
     // ── Cloudflare Realtime broker ─────────────────────────────────────────
     realtimeIceServers: async () => realtimeIceServers(),

@@ -20,10 +20,21 @@ export interface CallParticipant {
    *  things peers pull). Empty/absent until they've pushed media. */
   tracks?: string[];
 }
+/** A transient live caption (most recent partial/final per speaker). Overwritten
+ *  in place on the call subtree so peers receive it via trackDoc without growing
+ *  the doc — it is signaling, not history. */
+export interface CallCaption {
+  userId: string;
+  text: string;
+  final: boolean;
+  at: number;
+}
 export interface CallState {
   active: boolean;
   startedAt?: number;
   participants: Record<string, CallParticipant>;
+  /** Last caption per speaker; clients merge these into the local transcript. */
+  captions?: Record<string, CallCaption>;
 }
 
 export interface DbLike {
@@ -119,6 +130,26 @@ export async function videoPublish(
   });
   const updated = await db.getDoc(collections.conversation, conversationId);
   return getCall(updated);
+}
+
+/**
+ * Relay a live caption from one speaker. Writes ONLY this speaker's subtree on
+ * `call.captions.{userId}` (dot-path, like videoPublish) so concurrent speakers
+ * don't clobber each other and peers watching `conversation.call` via trackDoc
+ * receive it. Transient — overwritten on every partial, never appended.
+ */
+export async function videoCaption(
+  db: DbLike,
+  collections: Collections,
+  conversationId: string,
+  userId: string,
+  text: string,
+  final: boolean,
+): Promise<void> {
+  const caption: CallCaption = { userId, text, final, at: Date.now() };
+  await db.setDocFields(collections.conversation, conversationId, {
+    [`call.captions.${userId}`]: caption,
+  });
 }
 
 /** Add a bot to the call as a client-side "fake call" participant. */

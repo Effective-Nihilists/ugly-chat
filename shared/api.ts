@@ -273,6 +273,18 @@ export const requests = defineRequests({
     rateLimit: { max: 40, window: 60 },
   }),
 
+  // Relay a (possibly partial) live call caption to other participants. Fire-
+  // and-forget: writes a transient per-speaker caption onto `conversation.call`
+  // so peers receive it via the same trackDoc('conversation') subscription the
+  // call roster / typing indicator already use. Not persisted as a message.
+  conversationCaption: authReq({
+    input: z
+      .object({ conversationId: z.string(), text: z.string(), final: z.boolean() })
+      .catchall(z.unknown()),
+    output: z.object({ ok: z.boolean() }),
+    rateLimit: { max: 240, window: 60 },
+  }),
+
   // Full-text message search. Scoped to one conversation when `conversationId`
   // is given, otherwise across all of the caller's conversations.
   conversationMessageSearch: authReq({
