@@ -120,7 +120,6 @@ function MessageBody(props: {
   isOwn: boolean;
   rTL: number;
   rBL: number;
-  hasBg: boolean;
   onReact: (messageId: string, reaction: string) => void;
   onDelete: (messageId: string) => void;
   onEdit: (messageId: string, markdown: string) => Promise<void>;
@@ -128,7 +127,7 @@ function MessageBody(props: {
   pinned: boolean;
   onButton: (prompt: string) => void;
 }): React.ReactElement {
-  const { msg, isOwn, rTL, rBL, hasBg, onReact, onDelete, onEdit, onPin, pinned, onButton } = props;
+  const { msg, isOwn, rTL, rBL, onReact, onDelete, onEdit, onPin, pinned, onButton } = props;
   const voice = useVoice();
   const [hover, setHover] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -175,11 +174,9 @@ function MessageBody(props: {
           background:
             msg.color === 'error'
               ? 'var(--app-error)'
-              : hasBg
-                ? 'var(--app-main)'
-                : isOwn
-                  ? 'var(--app-secondary)'
-                  : 'var(--app-tertiary)',
+              : isOwn
+                ? 'var(--app-secondary)'
+                : 'var(--app-tertiary)',
           color: msg.color === 'error' ? '#fff' : 'var(--app-foreground)',
           padding: '3px 8px',
           borderRadius: 4,
@@ -439,7 +436,6 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const [ready, setReady] = useState(false);
   const [title, setTitle] = useState('Conversation');
   const [convImage, setConvImage] = useState<unknown>(null);
-  const [bgUrl, setBgUrl] = useState<string | null>(null);
   const [profiles, setProfiles] = useState<Record<string, ChatUser>>({});
   const videoRef = useRef<VideoCallHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -461,7 +457,6 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   useEffect(() => {
     setReady(false);
     setMessages([]);
-    setBgUrl(null);
     setBotId(null); // re-derived by the dedicated effect below
     setBotButtons([]);
     setMenuOpen(false);
@@ -579,8 +574,8 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     };
   }, [socket, userId, roomId]);
 
-  // Resolve participant profiles (real names + avatars + conversation bg). Also
-  // resolve membership system-message targets (`systemParam`) so we can name them.
+  // Resolve participant profiles (real names + avatars). Also resolve membership
+  // system-message targets (`systemParam`) so we can name them.
   useEffect(() => {
     const ids = messages.flatMap((m) => [
       m.userId,
@@ -591,7 +586,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     void socket
       .request('profilesGet', { userIds: unknown })
       .then((res) => {
-        const list = (res as { profiles?: { id: string; name: string; avatarUrl: string | null; isBot: boolean; backgroundUrl?: string | null }[] }).profiles ?? [];
+        const list = (res as { profiles?: { id: string; name: string; avatarUrl: string | null; isBot: boolean }[] }).profiles ?? [];
         setProfiles((prev) => {
           const next = { ...prev };
           for (const p of list) {
@@ -604,10 +599,6 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           }
           return next;
         });
-        // The conversation background is the other participant's (the bot's)
-        // avatar background — ugly.bot themes each conversation this way.
-        const bg = list.find((p) => p.id !== userId && p.backgroundUrl)?.backgroundUrl;
-        if (bg) setBgUrl(bg);
       })
       .catch((err: unknown) => console.error('[ChatPage] profilesGet failed', err));
   }, [messages, profiles, socket, userId]);
@@ -911,7 +902,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                 : '';
         if (!text) return null;
         return (
-          <div style={{ textAlign: 'center', fontSize: 12, color: bgUrl ? '#fff' : 'var(--app-foreground)', opacity: 0.55, padding: '6px 14px', textShadow: bgUrl ? '0 1px 3px rgba(0,0,0,0.5)' : undefined }}>
+          <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--app-foreground)', opacity: 0.55, padding: '6px 14px' }}>
             {text}
           </div>
         );
@@ -925,7 +916,6 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           isOwn={msg.userId === userId}
           rTL={!prev || prev.userId !== msg.userId ? 4 : 0}
           rBL={!next || next.userId !== msg.userId ? 4 : 0}
-          hasBg={!!bgUrl}
           onReact={handleReact}
           onDelete={handleDelete}
           onEdit={handleEdit}
@@ -935,7 +925,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         />
       );
     },
-    [messages, userId, handleReact, handleDelete, handleEdit, handlePin, pinnedMessageId, bgUrl, handleSend, profiles],
+    [messages, userId, handleReact, handleDelete, handleEdit, handlePin, pinnedMessageId, handleSend, profiles],
   );
 
   const body = (
@@ -944,13 +934,11 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        background: bgUrl
-          ? `linear-gradient(var(--app-main-rgb-overlay, rgba(255,255,255,0)), var(--app-main-rgb-overlay, rgba(255,255,255,0))), url(${JSON.stringify(bgUrl)}) center / cover no-repeat`
-          : 'var(--app-main)',
+        background: 'var(--app-main)',
       }}
     >
       {/* Conversation header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderBottom: bgUrl ? 'none' : '1px solid var(--app-border)', flexShrink: 0, background: bgUrl ? 'rgba(var(--app-main-rgb), 0.55)' : 'transparent', backdropFilter: bgUrl ? 'blur(6px)' : undefined }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderBottom: '1px solid var(--app-border)', flexShrink: 0, background: 'transparent' }}>
         {narrow ? (
           <button
             type="button"
@@ -1055,7 +1043,6 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           renderMessage={renderMessage}
           typingEntries={typingEntries}
           onTypingStart={signalTyping}
-          onImageBackground={!!bgUrl}
         >
           <div
             className="uc-composer"

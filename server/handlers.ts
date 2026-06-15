@@ -554,7 +554,6 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         instruction: input.instruction ?? '',
         model: input.model ?? 'deepseek_v4_flash',
         avatarUrl: input.avatarUrl ?? null,
-        backgroundUrl: input.backgroundUrl ?? null,
         firstMessage: input.firstMessage ?? null,
         buttons: input.buttons ?? [],
         ...dbDefaults(),
@@ -566,7 +565,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       const existing = await getDb().getDoc(collections.bot, input.botId);
       if (!existing || existing['ownerId'] !== userId) throw new Error('Bot not found');
       const patch: Record<string, unknown> = {};
-      for (const k of ['name', 'instruction', 'model', 'avatarUrl', 'backgroundUrl', 'firstMessage', 'buttons'] as const) {
+      for (const k of ['name', 'instruction', 'model', 'avatarUrl', 'firstMessage', 'buttons'] as const) {
         if (input[k] !== undefined) patch[k] = input[k];
       }
       await getDb().setDoc(collections.bot, { ...existing, ...patch, ...dbDefaults() });
