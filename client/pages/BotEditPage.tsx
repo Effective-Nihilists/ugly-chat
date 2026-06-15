@@ -21,7 +21,6 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
   const [instruction, setInstruction] = useState('');
   const [model, setModel] = useState(BOT_MODELS[0]!.id);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
   const [firstMessage, setFirstMessage] = useState('');
   const [buttons, setButtons] = useState<ButtonRow[]>([]);
   const [loaded, setLoaded] = useState(!editing);
@@ -38,7 +37,6 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
         setInstruction(b.instruction ?? '');
         setModel(b.model ?? BOT_MODELS[0]!.id);
         setAvatarUrl(b.avatarUrl ?? null);
-        setBackgroundUrl(b.backgroundUrl ?? null);
         setFirstMessage(b.firstMessage ?? '');
         setButtons(b.buttons ?? []);
       })
@@ -55,7 +53,6 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
         instruction,
         model,
         avatarUrl,
-        backgroundUrl,
         firstMessage: firstMessage.trim() || null,
         buttons: buttons.filter((b) => b.label.trim() && b.prompt.trim()),
       };
@@ -79,7 +76,7 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
         setSaving(false);
       }
     },
-    [name, instruction, model, avatarUrl, backgroundUrl, firstMessage, buttons, saving, editId, socket, userId, router],
+    [name, instruction, model, avatarUrl, firstMessage, buttons, saving, editId, socket, userId, router],
   );
 
   if (!loaded) {
@@ -102,10 +99,9 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
           </h1>
         </div>
 
-        {/* Avatar + background side by side */}
+        {/* Avatar */}
         <div style={{ display: 'flex', gap: 14, marginBottom: 18 }}>
           <ImageField label="Avatar" url={avatarUrl} onChange={setAvatarUrl} round size={96} socket={socket} />
-          <ImageField label="Background" url={backgroundUrl} onChange={setBackgroundUrl} size={96} wide socket={socket} />
         </div>
 
         <Field label="Name">
