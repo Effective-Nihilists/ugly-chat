@@ -15,6 +15,42 @@ import { conversationMessageCreate } from 'ugly-app/conversation/engine';
 import { collections } from '../shared/collections';
 import { UGLY_BOT, UGLY_BOT_USER_ID } from '../shared/bots';
 import { bumpListForMessage } from './listDenorm';
+import type { MsgTelemetry } from '../shared/telemetry';
+
+/**
+ * Pure parser for ugly.bot `/request` responses. Exported for unit-testing.
+ * Extracts the reply text and any usage metadata, defaulting to zeros when
+ * the provider envelope does not include usage fields.
+ */
+export function parseTextGenResponse(data: unknown): { text: string; usage: MsgTelemetry } {
+  const d = data as Record<string, unknown> | null | undefined;
+  const msg = (d?.['message'] ?? (d?.['result'] as Record<string, unknown> | undefined)?.['message']) as Record<string, unknown> | undefined;
+  const content = msg?.['content'];
+  let text = '';
+  if (typeof content === 'string') {
+    text = content.trim();
+  } else if (Array.isArray(content)) {
+    text = content
+      .filter(
+        (b): b is { type: string; text: string } =>
+          !!b && typeof b === 'object' &&
+          (b as { type?: string }).type === 'text' &&
+          typeof (b as { text?: unknown }).text === 'string',
+      )
+      .map((b) => b.text)
+      .join('')
+      .trim();
+  }
+  const u = (d?.['usage'] ?? (d?.['result'] as Record<string, unknown> | undefined)?.['usage'] ?? {}) as Record<string, unknown>;
+  const usage: MsgTelemetry = {
+    model: String(u['model'] ?? d?.['model'] ?? ''),
+    inputTokens: Number(u['inputTokens'] ?? u['promptTokens'] ?? 0),
+    outputTokens: Number(u['outputTokens'] ?? u['completionTokens'] ?? 0),
+    costUsd: Number(u['costUsd'] ?? u['cost'] ?? 0),
+    latencyMs: 0,
+  };
+  return { text, usage };
+}
 
 // Workers-safe call to ugly.bot's proxied textGen (importing uglyBotRequest from
 // the 'ugly-app' main entry would drag the Node server into the Workers bundle).
@@ -22,40 +58,24 @@ async function uglyBotTextGen(
   model: string,
   messages: { role: string; content: string }[],
   maxTokens: number,
-): Promise<string> {
+): Promise<{ text: string; usage: MsgTelemetry }> {
   const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
   const base = env['UGLY_BOT_LOCAL'] === '1' ? 'http://localhost:3000' : env['UGLY_BOT_URL'] ?? 'https://ugly.bot';
   const token = env['UGLY_BOT_TOKEN'];
   if (!token) throw new Error('UGLY_BOT_TOKEN not set');
+  const t0 = Date.now();
   const res = await fetch(`${base}/request`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ op: 'textGen', input: { model, messages, options: { maxTokens } }, sessionId: 'server' }),
   });
   if (!res.ok) throw new Error(`textGen HTTP ${res.status}`);
-  const data = (await res.json()) as {
-    error?: string;
-    detail?: string;
-    message?: { content?: unknown };
-    result?: { message?: { content?: unknown } };
-  };
-  if (data.error) throw new Error(`textGen ${data.error}: ${data.detail ?? ''}`);
-  // ugly.bot returns content as a string OR an array of blocks
-  // ([{type:'thinking',…}, {type:'text', text:'…'}]). Extract the text blocks.
-  const content = data.message?.content ?? data.result?.message?.content;
-  if (typeof content === 'string') return content.trim();
-  if (Array.isArray(content)) {
-    return content
-      .filter(
-        (b): b is { type: string; text: string } =>
-          !!b && typeof b === 'object' && (b as { type?: string }).type === 'text' &&
-          typeof (b as { text?: unknown }).text === 'string',
-      )
-      .map((b) => b.text)
-      .join('')
-      .trim();
-  }
-  return '';
+  const data = await res.json() as Record<string, unknown>;
+  if (data['error']) throw new Error(`textGen ${String(data['error'])}: ${String(data['detail'] ?? '')}`);
+  const parsed = parseTextGenResponse(data);
+  parsed.usage.latencyMs = Date.now() - t0;
+  if (!parsed.usage.model) parsed.usage.model = model;
+  return parsed;
 }
 
 export interface BotDef {
@@ -247,8 +267,9 @@ export async function triggerBotReplies(
     const bot = await getBotConfig(db, botId);
     if (!bot) continue;
     let reply = '';
+    let usage: MsgTelemetry | undefined;
     try {
-      reply = await uglyBotTextGen(
+      const out = await uglyBotTextGen(
         bot.model,
         [
           ...(bot.systemPrompt ? [{ role: 'system', content: bot.systemPrompt }] : []),
@@ -259,6 +280,8 @@ export async function triggerBotReplies(
         // it room for the reasoning plus a real reply.
         1200,
       );
+      reply = out.text;
+      usage = out.usage;
     } catch (err) {
       console.warn(`[bots] textGen unavailable for ${botId}; using fallback:`, (err as Error).message);
     }
@@ -267,7 +290,7 @@ export async function triggerBotReplies(
       reply = `Hi, I'm ${bot.name}. You said: "${last.slice(0, 120)}"`;
     }
     await conversationMessageCreate(
-      { conversationId, message: { text: reply, markdown: reply, onlyUserIds: ['global'] } },
+      { conversationId, message: { text: reply, markdown: reply, onlyUserIds: ['global'], ...(usage ? { telemetry: usage } : {}) } },
       botId,
     );
     // Surface the bot's reply in the sidebar (preview + unread for recipients).
