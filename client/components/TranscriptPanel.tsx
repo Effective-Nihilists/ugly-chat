@@ -109,6 +109,7 @@ export function TranscriptPanel({
         {onCollapse ? (
           <button
             type="button"
+            data-id="call-collapse-transcript"
             onClick={onCollapse}
             aria-label="Collapse transcript"
             title="Collapse transcript"
@@ -210,8 +211,11 @@ export function TranscriptPanel({
       <div style={{ padding: '12px 14px', borderTop: '1px solid var(--app-border)', flexShrink: 0 }}>
         <div className="uc-tp-cbox">
           <input
+            data-id="call-transcript-input"
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {
+              setDraft(e.target.value);
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
@@ -223,6 +227,7 @@ export function TranscriptPanel({
           />
           <button
             type="button"
+            data-id="call-transcript-send"
             className="send"
             onClick={submit}
             aria-label="Send"

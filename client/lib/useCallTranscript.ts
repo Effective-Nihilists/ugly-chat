@@ -46,7 +46,7 @@ export function useCallTranscript(
   // useSTT is a hook → must be called unconditionally. When there's no ugly.bot
   // socket we still call it (with a never-started instance) and simply never
   // invoke start(); the realtime stream stays dormant.
-  const stt = useSTT(uglyBotSocket as UglyBotSocket, { mode: 'realtime' });
+  const stt = useSTT(uglyBotSocket!, { mode: 'realtime' });
 
   // Start/stop the mic stream with the call.
   const startRef = useRef(stt.start);
@@ -56,7 +56,9 @@ export function useCallTranscript(
   useEffect(() => {
     if (active && uglyBotSocket) {
       void startRef.current();
-      return () => stopRef.current();
+      return () => {
+        stopRef.current();
+      };
     }
     return undefined;
   }, [active, uglyBotSocket]);
@@ -95,7 +97,9 @@ export function useCallTranscript(
         );
       }
     });
-    return () => unsub?.();
+    return () => {
+      unsub();
+    };
   }, [active, socket, conversationId, meId]);
 
   // Reset the transcript when a call ends so the next call starts fresh.
@@ -119,7 +123,9 @@ export function useCallTranscript(
           conversationId,
           message: { markdown: t, text: t },
         })
-        .catch((err: unknown) => console.error('[useCallTranscript] send failed', err));
+        .catch((err: unknown) => {
+          console.error('[useCallTranscript] send failed', err);
+        });
     },
     [socket, conversationId, meId],
   );

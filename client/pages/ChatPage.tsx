@@ -6,7 +6,8 @@ import { MdastViewer } from 'ugly-app/markdown/client';
 import { ConversationInput } from '../components/ConversationInput';
 import type { ChatMessage, ChatUser, ChatTypingEntry } from 'ugly-app/conversation/shared';
 import type { DBObject } from 'ugly-app/shared';
-import { VideoCall, type VideoCallHandle } from '../components/VideoCall';
+import { type VideoCallHandle } from '../components/VideoCall';
+import { CallLayout } from '../components/CallLayout';
 import { openMembersPopup } from '../components/MembersPopup';
 import { VoiceProvider, useVoice } from '../components/VoiceProvider';
 import { useRouter } from '../router';
@@ -1176,7 +1177,14 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         <HumanTelemetryStrip msgs={statMsgs} meId={userId} leftOnRead={leftOnReadCount} />
       ) : null}
 
-      <VideoCall ref={videoRef} conversationId={roomId} />
+      <CallLayout
+        ref={videoRef}
+        conversationId={roomId}
+        meId={userId}
+        socket={socket}
+        uglyBotSocket={uglyBotSocket}
+        profiles={profiles}
+      />
 
       {/* Full-width scroll area (like ugly.bot) so the chat scrollbar sits at the
           pane's right edge, not at a centered column's edge. */}
