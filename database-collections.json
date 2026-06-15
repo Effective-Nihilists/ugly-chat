@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-15T00:14:25.049Z",
+  "generatedAt": "2026-06-15T20:56:04.276Z",
   "source": "shared/collections.ts",
   "collections": {
     "errorLog": {
@@ -428,11 +428,6 @@
             "type": "string",
             "required": false
           },
-          "background": {
-            "type": "unknown",
-            "required": false,
-            "nullable": true
-          },
           "bots": {
             "type": "record",
             "valueType": {
@@ -643,6 +638,32 @@
             "type": "string",
             "required": false
           },
+          "telemetry": {
+            "type": "object",
+            "fields": {
+              "costUsd": {
+                "type": "number",
+                "required": true
+              },
+              "inputTokens": {
+                "type": "number",
+                "required": true
+              },
+              "latencyMs": {
+                "type": "number",
+                "required": true
+              },
+              "model": {
+                "type": "string",
+                "required": true
+              },
+              "outputTokens": {
+                "type": "number",
+                "required": true
+              }
+            },
+            "required": false
+          },
           "text": {
             "type": "string",
             "required": false,
@@ -751,11 +772,6 @@
       "name": "userConversation",
       "schema": {
         "fields": {
-          "background": {
-            "type": "unknown",
-            "required": false,
-            "nullable": true
-          },
           "conversationId": {
             "type": "string",
             "required": true
@@ -883,11 +899,6 @@
             "required": false
           },
           "avatarUrl": {
-            "type": "string",
-            "required": false,
-            "nullable": true
-          },
-          "backgroundUrl": {
             "type": "string",
             "required": false,
             "nullable": true
