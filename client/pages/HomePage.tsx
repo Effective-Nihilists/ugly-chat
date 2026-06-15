@@ -51,6 +51,11 @@ function useDesktop(): boolean {
 // ── Home / landing page. The '' route (auth:false) in shared/pages.ts maps here.
 export default function HomePage(): React.ReactElement {
   const desktop = useDesktop();
+  // Already signed in (e.g. arrived here via the ugly.bot SSO redirect)? Skip
+  // the marketing landing and go straight to the app.
+  useEffect(() => {
+    if (hasSessionCookie()) window.location.replace('/chat');
+  }, []);
   return (
     <div
       style={{

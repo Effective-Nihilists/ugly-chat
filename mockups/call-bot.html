@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ugly.chat — video call · 3D avatar bot</title>
+<link rel="stylesheet" href="brand.css">
+<style>
+  .frames { display: flex; gap: 56px; align-items: flex-start; flex-wrap: wrap; justify-content: center; }
+  .callrow { display: flex; width: 100%; height: 700px; }
+  .callstage { flex: 1; min-width: 0; }
+  .mstage { flex: 1; position: relative; }
+
+  /* ---- the 3D ugly-bot head (CSS mascot, orange identity in all themes) ---- */
+  .botwrap { position: absolute; left: 50%; top: 43%; transform: translate(-50%,-50%); display: grid; place-items: center; }
+  .floor { position: absolute; bottom: -70px; width: 230px; height: 46px; left: 50%; transform: translateX(-50%);
+    background: radial-gradient(ellipse, rgba(255,85,0,0.3), transparent 70%); filter: blur(6px); }
+  .head {
+    --d: 230px; width: var(--d); height: calc(var(--d) * 1.04);
+    border-radius: 46% 46% 44% 44% / 50% 50% 46% 46%;
+    background: radial-gradient(circle at 36% 30%, #ffc69e 0%, #ff8a4d 26%, #f0571d 52%, #9a3414 82%, #5c1f0c 100%);
+    box-shadow:
+      inset -26px -16px 52px rgba(0,0,0,0.55),
+      inset 18px 16px 40px rgba(255,196,150,0.40),
+      inset 22px 0 38px rgba(59,130,246,0.22),
+      inset -24px 0 30px rgba(255,120,40,0.30),
+      0 0 70px rgba(255,85,0,0.25);
+    position: relative; animation: float 6s var(--ease) infinite;
+  }
+  .head::before { content:''; position:absolute; inset:0; border-radius: inherit; opacity:0.16;
+    background: conic-gradient(from 210deg at 60% 40%, transparent, rgba(0,0,0,0.6) 25%, transparent 50%, rgba(255,255,255,0.25) 70%, transparent 90%); }
+  .ant { position: absolute; top: -26px; left: 50%; transform: translateX(-50%); width: 2px; height: 26px; background: rgba(255,255,255,0.25); }
+  .ant::after { content:''; position:absolute; top:-7px; left:50%; transform:translateX(-50%); width:9px; height:9px; background: #FF5500; box-shadow: 0 0 12px #FF5500; animation: blip 2.4s steps(1) infinite; }
+  .face { position: absolute; inset: 0; }
+  .eye { position: absolute; top: 41%; width: 30px; height: 34px; background: #1c0d06; border-radius: 40% 40% 46% 46%;
+    box-shadow: inset 0 -4px 6px rgba(0,0,0,0.6), 0 0 14px rgba(255,150,80,0.4); animation: blink 5.2s steps(1) infinite; overflow: hidden; }
+  .eye::after { content:''; position:absolute; top:7px; left:7px; width:11px; height:11px; background:#ffd9b8; border-radius:50%; box-shadow: 0 0 8px #ff8a4d; }
+  .eye.l { left: 27%; } .eye.r { right: 27%; }
+  .mouth { position: absolute; bottom: 24%; left: 50%; transform: translateX(-50%); width: 54px; height: 8px;
+    background: linear-gradient(#3a160a, #1c0d06); border-radius: 3px; box-shadow: inset 0 -2px 4px rgba(0,0,0,0.6), 0 0 10px rgba(255,120,40,0.3);
+    transform-origin: center; animation: talk 0.42s steps(1) infinite; }
+  @keyframes float { 0%,100% { transform: translateY(0) rotate(-0.6deg); } 50% { transform: translateY(-12px) rotate(0.6deg); } }
+  @keyframes blink { 0%,95%,100% { transform: scaleY(1); } 97% { transform: scaleY(0.08); } }
+  @keyframes blip { 0%,80%,100% { opacity:1; } 85% { opacity:0.25; } }
+  @keyframes talk {
+    0%{transform:translateX(-50%) scaleY(0.5)} 25%{transform:translateX(-50%) scaleY(2.6) scaleX(0.7);border-radius:50%}
+    50%{transform:translateX(-50%) scaleY(1.1)} 75%{transform:translateX(-50%) scaleY(3.2) scaleX(0.6);border-radius:50%}
+    100%{transform:translateX(-50%) scaleY(0.6)} }
+  .spkring { position: absolute; left:50%; top:43%; transform: translate(-50%,-50%); width: 310px; height: 320px; border: 1px solid #FF5500; border-radius: 46%; opacity: 0; animation: pulse 1.8s ease-out infinite; }
+  @keyframes pulse { 0%{transform:translate(-50%,-50%) scale(0.85);opacity:0.5} 100%{transform:translate(-50%,-50%) scale(1.18);opacity:0} }
+</style>
+</head>
+<body>
+<div class="themebar">
+  <span class="tb-label">theme</span>
+  <button data-set="auto">auto</button>
+  <button data-set="light">light</button>
+  <button data-set="dark">dark</button>
+  <button data-set="cosmic-latte">latte</button>
+  <button data-set="vim">vim</button>
+</div>
+<script>
+(function(){var K='uglychat-theme',t=localStorage.getItem(K)||'auto';
+function set(v){if(v==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',v);
+document.querySelectorAll('.themebar button').forEach(function(b){b.classList.toggle('on',b.dataset.set===v)});localStorage.setItem(K,v);}
+document.querySelectorAll('.themebar button').forEach(function(b){b.addEventListener('click',function(){set(b.dataset.set)})});set(t);})();
+</script>
+
+<div class="stage">
+<div style="width:100%">
+  <div class="cap">ugly.chat &nbsp;·&nbsp; <b>video call — 3D avatar bot</b> &nbsp;·&nbsp; live transcript = subtitles &nbsp;·&nbsp; desktop + mobile</div>
+  <div class="frames">
+
+    <!-- ===================== DESKTOP ===================== -->
+    <div class="desktop">
+      <div class="titlebar">
+        <span class="dot3"></span><span class="dot3"></span><span class="dot3"></span>
+        <span class="url">ugly.chat / call · ugly-bot</span>
+      </div>
+      <div class="callrow" id="drow-bot">
+        <!-- video stage -->
+        <div class="callstage">
+          <div class="vp"></div>
+          <span class="vp-corner tl"></span><span class="vp-corner tr"></span><span class="vp-corner bl"></span><span class="vp-corner br"></span>
+          <div class="hud-tl">
+            <span class="live-chip"><span class="rec"></span>LIVE · 02:14</span>
+            <span class="hud-stat"><b>DeepSeek v4 pro</b> · 412ms · 60fps</span>
+            <span class="hud-stat">visemes on · <span class="cost">$0.021</span></span>
+          </div>
+          <div class="name-chip"><div class="av">B</div><div><div class="nm">ugly-bot</div><div class="md">speaking</div></div></div>
+
+          <div class="spkring"></div>
+          <div class="botwrap">
+            <div class="floor"></div>
+            <div class="head"><span class="ant"></span><div class="face"><span class="eye l"></span><span class="eye r"></span><span class="mouth"></span></div></div>
+          </div>
+
+          <div class="pip" style="right:18px; bottom:88px; width:132px; height:92px;">
+            <div class="me"><div class="av" style="width:40px;height:40px;font-size:14px">JM</div></div>
+            <span class="tag">you</span>
+            <span class="mic-off"><svg class="ic" viewBox="0 0 24 24" width="14" height="14"><path d="M9 9v3a3 3 0 0 0 5 2M15 9V6a3 3 0 0 0-6 0"/><path d="M5 11a7 7 0 0 0 11 5.5"/><line x1="4" y1="3" x2="20" y2="21"/></svg></span>
+          </div>
+
+          <!-- collapsed state: subtitle overlay (mobile-style) -->
+          <div class="subs" style="bottom:104px;">
+            <div class="sub-line past"><span class="who">you</span>Bill first. Always the bill.</div>
+            <div class="sub-line active"><span class="who">ugly-bot</span>I won't tell you the tests <span class="now">passed</span> when they never ran.</div>
+          </div>
+
+          <div class="ctrls">
+            <button class="cbig"><svg class="ic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+            <button class="cbig off"><svg class="ic" viewBox="0 0 24 24"><rect x="2" y="6" width="14" height="12"/><path d="M16 10l6-3v10l-6-3z"/><line x1="3" y1="3" x2="21" y2="21"/></svg></button>
+            <button class="cbig on" title="captions"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12"/><path d="M7 11h2M7 14h6"/></svg></button>
+            <span class="sep"></span>
+            <button class="cbig" title="add person"><svg class="ic" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19a6 6 0 0 1 12 0"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg></button>
+            <button class="cbig on" data-tbtn title="show / hide transcript" onclick="tcol('drow-bot')"><svg class="ic" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.5 7.5L3 21l2-5.5A8.5 8.5 0 1 1 21 11.5Z"/></svg></button>
+            <span class="sep"></span>
+            <a class="end" href="chat.html"><svg class="ic" viewBox="0 0 24 24" width="22" height="22" style="transform:rotate(135deg)"><path d="M5 4l3 5-2 2a11 11 0 0 0 5 5l2-2 5 3v3a2 2 0 0 1-2 2A17 17 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></a>
+          </div>
+        </div>
+
+        <!-- transcript / chat history (themed) -->
+        <aside class="tpanel">
+          <div class="tp-head">
+            <svg class="ic" viewBox="0 0 24 24" width="16" height="16"><rect x="3" y="6" width="18" height="12"/><path d="M7 11h2M7 14h6"/></svg>
+            <span class="lbl">transcript</span>
+            <span class="live"><span class="d"></span>live</span>
+            <button class="tp-collapse" title="collapse to subtitles" onclick="tcol('drow-bot')"><svg class="ic" viewBox="0 0 24 24" width="13" height="13"><path d="M9 6l6 6-6 6"/></svg></button>
+          </div>
+          <div class="tp-body">
+            <div class="tp-turn">
+              <div class="who"><div class="av">JM</div><span class="nm">you</span><span class="t">02:01</span></div>
+              <div class="txt">Did the deploy go green?</div>
+            </div>
+            <div class="tp-turn">
+              <div class="who"><div class="av">B</div><span class="nm">ugly-bot</span><span class="t">02:03</span></div>
+              <div class="txt">It went green. Cost fourteen cents and broke two tests on the way — both fixed.</div>
+            </div>
+            <div class="tp-turn">
+              <div class="who"><div class="av">JM</div><span class="nm">you</span>
+                <span class="typed" title="typed, not spoken"><svg class="ic" viewBox="0 0 24 24" width="11" height="11"><rect x="3" y="6" width="18" height="12"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg></span>
+                <span class="t">02:10</span></div>
+              <div class="txt">Bill first. Always the bill.</div>
+            </div>
+            <div class="tp-turn active">
+              <div class="who"><div class="av">B</div><span class="nm">ugly-bot</span><span class="t">now</span></div>
+              <div class="txt">I won't tell you the tests <span class="now">passed</span> when they never ran.</div>
+            </div>
+          </div>
+          <div class="tp-foot">
+            <div class="tp-cbox">
+              <input placeholder="Type instead of talk…">
+              <button class="send"><svg class="ic" viewBox="0 0 24 24" width="16" height="16"><line x1="12" y1="20" x2="12" y2="5"/><path d="M5 12l7-7 7 7"/></svg></button>
+            </div>
+            <div class="tp-hint"><span class="mono-label">live transcription on</span><span class="mono-label">⌘↩ send</span></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <!-- ===================== MOBILE ===================== -->
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="statusbar" style="color:var(--text)"><span>9:41</span>
+        <span class="sig"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="14" width="3" height="6"/><rect x="7" y="10" width="3" height="10"/><rect x="12" y="6" width="3" height="14"/><rect x="17" y="2" width="3" height="18"/></svg></span>
+      </div>
+      <div class="mcall" id="mcall-bot">
+      <div class="callstage mstage">
+        <div class="vp"></div>
+        <span class="vp-corner tl"></span><span class="vp-corner tr"></span><span class="vp-corner bl"></span><span class="vp-corner br"></span>
+        <div class="hud-tl" style="top:14px;left:14px;">
+          <span class="live-chip" style="font-size:10px"><span class="rec"></span>LIVE · 02:14</span>
+          <span class="hud-stat">v4 pro · 412ms · <span class="cost">$0.021</span></span>
+        </div>
+        <div class="name-chip" style="top:14px;right:14px;padding:5px 8px;"><div class="nm" style="font-size:11px">ugly-bot</div></div>
+
+        <div class="botwrap" style="top:34%;">
+          <div class="floor" style="bottom:-48px;width:160px;"></div>
+          <div class="head" style="--d:158px;"><span class="ant"></span><div class="face"><span class="eye l"></span><span class="eye r"></span><span class="mouth" style="width:38px;"></span></div></div>
+        </div>
+
+        <div class="pip" style="right:14px;top:64px;width:90px;height:120px;">
+          <div class="me"><div class="av" style="width:34px;height:34px;font-size:13px">JM</div></div>
+          <span class="tag">you</span>
+        </div>
+
+        <!-- chat history as subtitles -->
+        <div class="subs" style="bottom:124px;">
+          <div class="sub-line past"><span class="who">you</span>Bill first. Always the bill.</div>
+          <div class="sub-line active"><span class="who">ugly-bot</span>I won't tell you the tests <span class="now">passed</span> when they never ran.</div>
+        </div>
+
+        <!-- optional typing -->
+        <div class="mcompose" style="bottom:70px;">
+          <input placeholder="Type instead of talk…">
+          <button class="send"><svg class="ic" viewBox="0 0 24 24" width="16" height="16"><line x1="12" y1="20" x2="12" y2="5"/><path d="M5 12l7-7 7 7"/></svg></button>
+        </div>
+
+        <div class="ctrls" style="bottom:14px;gap:7px;padding:7px;">
+          <button class="cbig" style="width:42px;height:42px"><svg class="ic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+          <button class="cbig off" style="width:42px;height:42px"><svg class="ic" viewBox="0 0 24 24"><rect x="2" y="6" width="14" height="12"/><path d="M16 10l6-3v10l-6-3z"/><line x1="3" y1="3" x2="21" y2="21"/></svg></button>
+          <button class="cbig on" style="width:42px;height:42px" title="expand chat" onclick="document.getElementById('mcall-bot').classList.add('expanded')"><svg class="ic" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.5 7.5L3 21l2-5.5A8.5 8.5 0 1 1 21 11.5Z"/></svg></button>
+          <a class="end" href="chat.html" style="height:42px;padding:0 16px"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" style="transform:rotate(135deg)"><path d="M5 4l3 5-2 2a11 11 0 0 0 5 5l2-2 5 3v3a2 2 0 0 1-2 2A17 17 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></a>
+        </div>
+      </div>
+      <!-- expanded chat history below the video -->
+      <div class="mchat">
+        <div class="mch-head">
+          <span class="grab"></span>
+          <button class="ico" style="width:28px;height:28px" title="collapse" onclick="document.getElementById('mcall-bot').classList.remove('expanded')"><svg class="ic" viewBox="0 0 24 24" width="16" height="16"><path d="M6 9l6 6 6-6"/></svg></button>
+          <span class="mono-label">chat history</span>
+          <span class="mono-label" style="margin-left:auto;color:var(--ok)">● live</span>
+        </div>
+        <div class="tp-body">
+          <div class="tp-turn"><div class="who"><div class="av">JM</div><span class="nm">you</span><span class="t">02:01</span></div><div class="txt">Did the deploy go green?</div></div>
+          <div class="tp-turn"><div class="who"><div class="av">B</div><span class="nm">ugly-bot</span><span class="t">02:03</span></div><div class="txt">It went green. Cost fourteen cents and broke two tests — both fixed.</div></div>
+          <div class="tp-turn"><div class="who"><div class="av">JM</div><span class="nm">you</span><span class="typed"><svg class="ic" viewBox="0 0 24 24" width="11" height="11"><rect x="3" y="6" width="18" height="12"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg></span><span class="t">02:10</span></div><div class="txt">Bill first. Always the bill.</div></div>
+          <div class="tp-turn active"><div class="who"><div class="av">B</div><span class="nm">ugly-bot</span><span class="t">now</span></div><div class="txt">I won't tell you the tests <span class="now">passed</span> when they never ran.</div></div>
+        </div>
+        <div class="composer" style="padding:10px 12px">
+          <div class="cbox">
+            <button class="cbtn"><svg class="ic" viewBox="0 0 24 24" width="20" height="20"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+            <div class="ta"><span class="ph">Type instead of talk…</span></div>
+            <button class="cbtn send"><svg class="ic" viewBox="0 0 24 24" width="20" height="20"><line x1="12" y1="20" x2="12" y2="5"/><path d="M5 12l7-7 7 7"/></svg></button>
+          </div>
+        </div>
+      </div>
+      </div>
+      <div class="homebar"></div>
+    </div>
+
+  </div>
+</div>
+</div>
+<script>
+function tcol(id){var r=document.getElementById(id);var c=r.classList.toggle('collapsed');
+r.querySelectorAll('[data-tbtn]').forEach(function(b){b.classList.toggle('on',!c)});}
+</script>
+</body>
+</html>

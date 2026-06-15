@@ -432,6 +432,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   // padding grows by this instead, and ChatView's flex layout shrinks the
   // message area above it so the latest message stays visible.
   const safeArea = useSafeAreaInsets();
+
   const roomId = conversationId ?? 'demo-room';
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);

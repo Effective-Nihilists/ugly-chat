@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ugly.chat — human DM (response-time telemetry)</title>
+<link rel="stylesheet" href="brand.css">
+<style>
+  .frames { display: flex; gap: 56px; align-items: flex-start; flex-wrap: wrap; justify-content: center; }
+  .app { display: flex; height: 720px; }
+  .minirail { width: 64px; flex: none; background: var(--rail); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding: 14px 0; gap: 12px; }
+  .minirail .logo { font-family: var(--display); font-weight: 800; font-size: 22px; color: var(--brand); }
+  .minirail .mav { width: 40px; height: 40px; position: relative; }
+  .minirail .mav.sel::before { content:''; position:absolute; left:-14px; top:4px; bottom:4px; width:2px; background:var(--brand); }
+  .minirail .sp { flex: 1; }
+  .convo { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .m-back { display: grid; place-items: center; width: 30px; height: 30px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="themebar">
+  <span class="tb-label">theme</span>
+  <button data-set="auto">auto</button>
+  <button data-set="light">light</button>
+  <button data-set="dark">dark</button>
+  <button data-set="cosmic-latte">latte</button>
+  <button data-set="vim">vim</button>
+</div>
+<script>
+(function(){var K='uglychat-theme',t=localStorage.getItem(K)||'auto';
+function set(v){if(v==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',v);
+document.querySelectorAll('.themebar button').forEach(function(b){b.classList.toggle('on',b.dataset.set===v)});localStorage.setItem(K,v);}
+document.querySelectorAll('.themebar button').forEach(function(b){b.addEventListener('click',function(){set(b.dataset.set)})});set(t);})();
+</script>
+
+<div class="stage">
+<div style="width:100%">
+  <div class="cap">ugly.chat &nbsp;·&nbsp; <b>human DM — response-time telemetry</b> &nbsp;·&nbsp; desktop + mobile</div>
+  <div class="frames">
+
+    <!-- ===================== DESKTOP ===================== -->
+    <div class="desktop">
+      <div class="titlebar">
+        <span class="dot3"></span><span class="dot3"></span><span class="dot3"></span>
+        <span class="url">ugly.chat / Dana Vega</span>
+      </div>
+      <div class="app">
+        <nav class="minirail">
+          <div class="logo">u</div>
+          <div class="av mav online">DV</div>
+          <div class="av mav bot">B</div>
+          <div class="av mav online">JM</div>
+          <div class="av mav bot">RM</div>
+          <div class="sp"></div>
+          <button class="ico"><svg class="ic" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        </nav>
+        <section class="convo">
+          <header class="chead">
+            <div class="av online">DV</div>
+            <div class="who">
+              <div class="nm">Dana Vega</div>
+              <div class="st receipt"><span class="live">online</span> <span class="dot">·</span> typically replies in 4m</div>
+            </div>
+            <div class="acts">
+              <a class="ico active" href="call-2p.html" title="video call"><svg class="ic" viewBox="0 0 24 24"><rect x="2" y="6" width="14" height="12"/><path d="M16 10l6-3v10l-6-3z"/></svg></a>
+              <button class="ico"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg></button>
+            </div>
+          </header>
+
+          <!-- human telemetry — the honest, slightly rude version of read receipts -->
+          <div class="telemetry">
+            <div class="cell"><span class="k">avg reply</span><span class="v">4m 12s</span></div>
+            <div class="cell"><span class="k">fastest</span><span class="v">8s</span></div>
+            <div class="cell"><span class="k">left on read</span><span class="v cost">2×</span></div>
+            <div class="cell"><span class="k">msgs / day</span><span class="v">37</span></div>
+            <div class="cell"><span class="k">your share</span><span class="v cost">61%</span></div>
+            <span class="tnote">you talk more.<br>the data doesn't lie.</span>
+          </div>
+
+          <div class="thread">
+            <div class="daysep"><span>today · jun 15</span></div>
+
+            <!-- me, double-text -->
+            <div class="msg me">
+              <div class="av">JM</div>
+              <div class="col">
+                <div class="grp">
+                  <div class="bub stack">deploy's green.</div>
+                  <div class="bub stack">you around?</div>
+                </div>
+                <div class="rfoot receipt" style="color:var(--faint)">seen 09:01 <span class="dot">·</span> double-texted ×2</div>
+              </div>
+            </div>
+
+            <!-- Dana, slow reply -->
+            <div class="msg">
+              <div class="av">DV</div>
+              <div class="col">
+                <div class="meta-row"><span class="sender">Dana</span><span class="t">12:13</span></div>
+                <div class="bub">sorry, was heads-down on the migration</div>
+                <div class="rfoot receipt"><span class="late">left you on read · 3h 12m</span></div>
+              </div>
+            </div>
+
+            <!-- me, fast -->
+            <div class="msg me">
+              <div class="av">JM</div>
+              <div class="col">
+                <div class="bub">rude</div>
+                <div class="rfoot receipt" style="color:var(--faint)">seen <span class="dot">·</span> typed 4s for 1 word</div>
+              </div>
+            </div>
+
+            <!-- Dana, fastest -->
+            <div class="msg">
+              <div class="av">DV</div>
+              <div class="col">
+                <div class="meta-row"><span class="sender">Dana</span><span class="t">12:13</span></div>
+                <div class="bub">watch this</div>
+                <div class="rfoot receipt"><span class="cost">replied in 8s</span> <span class="dot">·</span> new personal best</div>
+                <div class="reacts"><span class="react mine"><svg viewBox="0 0 24 24"><path d="M7 11V21H3V11M21 10h-7l1-5-5 6v10h9l3-8z"/></svg>1</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="composer">
+            <div class="cbox">
+              <button class="cbtn"><svg class="ic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+              <div class="ta"><span class="ph">message Dana…</span></div>
+              <button class="cbtn"><svg class="ic" viewBox="0 0 24 24"><path d="M21 11l-9 9a5 5 0 0 1-7-7l9-9a3.5 3.5 0 0 1 5 5l-9 9a2 2 0 0 1-3-3l8-8"/></svg></button>
+              <button class="cbtn send"><svg class="ic" viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="5"/><path d="M5 12l7-7 7 7"/></svg></button>
+            </div>
+            <div class="chint">
+              <span class="mono-label">she'll see you typing in real time</span>
+              <span class="mono-label">⌘↩ send</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- ===================== MOBILE ===================== -->
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="statusbar"><span>9:41</span>
+        <span class="sig"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="14" width="3" height="6"/><rect x="7" y="10" width="3" height="10"/><rect x="12" y="6" width="3" height="14"/><rect x="17" y="2" width="3" height="18"/></svg></span>
+      </div>
+      <header class="chead" style="padding:0 12px">
+        <button class="m-back"><svg class="ic" viewBox="0 0 24 24" width="20" height="20"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <div class="av online">DV</div>
+        <div class="who">
+          <div class="nm">Dana Vega</div>
+          <div class="st receipt"><span class="live">online</span></div>
+        </div>
+        <a class="ico active" href="call-2p.html"><svg class="ic" viewBox="0 0 24 24"><rect x="2" y="6" width="14" height="12"/><path d="M16 10l6-3v10l-6-3z"/></svg></a>
+      </header>
+      <div class="telemetry">
+        <div class="cell"><span class="k">avg reply</span><span class="v">4m 12s</span></div>
+        <div class="cell"><span class="k">on read</span><span class="v cost">2×</span></div>
+        <div class="cell"><span class="k">your share</span><span class="v cost">61%</span></div>
+        <span class="tnote">you talk more</span>
+      </div>
+      <div class="thread" style="padding:14px 12px 6px">
+        <div class="daysep"><span>today</span></div>
+        <div class="msg me" style="max-width:90%">
+          <div class="av">JM</div>
+          <div class="col">
+            <div class="grp"><div class="bub stack">deploy's green.</div><div class="bub stack">you around?</div></div>
+            <div class="rfoot receipt" style="color:var(--faint)">seen · double-texted ×2</div>
+          </div>
+        </div>
+        <div class="msg" style="max-width:90%">
+          <div class="av">DV</div>
+          <div class="col">
+            <div class="bub">sorry, was heads-down on the migration</div>
+            <div class="rfoot receipt"><span class="late">left you on read · 3h 12m</span></div>
+          </div>
+        </div>
+        <div class="msg me" style="max-width:90%">
+          <div class="av">JM</div>
+          <div class="col">
+            <div class="bub">rude</div>
+            <div class="rfoot receipt" style="color:var(--faint)">typed 4s for 1 word</div>
+          </div>
+        </div>
+        <div class="msg" style="max-width:90%">
+          <div class="av">DV</div>
+          <div class="col">
+            <div class="bub">watch this</div>
+            <div class="rfoot receipt"><span class="cost">replied in 8s</span> · personal best</div>
+          </div>
+        </div>
+      </div>
+      <div class="composer" style="padding:10px 12px">
+        <div class="cbox">
+          <button class="cbtn"><svg class="ic" viewBox="0 0 24 24" width="20" height="20"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+          <div class="ta"><span class="ph">message…</span></div>
+          <button class="cbtn send"><svg class="ic" viewBox="0 0 24 24" width="20" height="20"><line x1="12" y1="20" x2="12" y2="5"/><path d="M5 12l7-7 7 7"/></svg></button>
+        </div>
+      </div>
+      <div class="homebar"></div>
+    </div>
+
+  </div>
+</div>
+</div>
+</body>
+</html>

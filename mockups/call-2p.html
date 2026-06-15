@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ugly.chat — video call · two people</title>
+<link rel="stylesheet" href="brand.css">
+<style>
+  .frames { display: flex; gap: 56px; align-items: flex-start; flex-wrap: wrap; justify-content: center; }
+  .callrow { display: flex; width: 100%; height: 700px; }
+  .callstage { flex: 1; min-width: 0; }
+  .mstage { flex: 1; position: relative; }
+
+  /* tile grid */
+  .tiles { position: absolute; inset: 58px 16px 86px; display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+  .tile { position: relative; border: 1px solid rgba(255,255,255,0.1); overflow: hidden; display: grid; place-items: center; }
+  .tile.speaking { border: 2px solid var(--brand); box-shadow: inset 0 0 60px var(--brand-glow), 0 0 30px var(--brand-glow); }
+  .feed-a { position:absolute; inset:0; background: radial-gradient(circle at 42% 38%, #6b4a3a, #2a1d18 60%, #120b09 100%); }
+  .feed-b { position:absolute; inset:0; background: radial-gradient(circle at 55% 45%, #2f3b4a, #182230 60%, #0b1018 100%); }
+  .silhouette { position: relative; width: 120px; height: 120px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.12);
+    background: radial-gradient(circle at 45% 35%, rgba(255,255,255,0.16), rgba(255,255,255,0.02)); display:grid; place-items:center; }
+  .silhouette .av { width: 64px; height: 64px; border-radius: 50%; font-size: 22px; border-color: rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color:#fff; }
+
+  .tlabel { position: absolute; left: 12px; bottom: 12px; display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: rgba(0,0,0,0.55); backdrop-filter: blur(8px); }
+  .tlabel .nm { font-family: var(--display); font-weight: 700; font-size: 13px; color: #fff; }
+  .tlabel .ms { font-family: var(--mono); font-size: 9px; color: rgba(255,255,255,0.45); letter-spacing: 0.08em; }
+  .tlabel .mic { color: var(--err); display: grid; place-items: center; }
+  .tlabel .mic.on { color: #fff; }
+
+  .bars { position: absolute; right: 12px; bottom: 14px; display: flex; align-items: flex-end; gap: 3px; height: 18px; }
+  .bars i { width: 3px; background: var(--brand); box-shadow: 0 0 8px var(--brand); animation: eq 0.9s ease-in-out infinite; }
+  .bars i:nth-child(1){animation-delay:0s}.bars i:nth-child(2){animation-delay:.15s}.bars i:nth-child(3){animation-delay:.3s}.bars i:nth-child(4){animation-delay:.1s}
+  @keyframes eq { 0%,100%{height:4px} 50%{height:18px} }
+
+  .corner-pip { position: absolute; right: 18px; top: 18px; padding: 4px 8px; background: rgba(0,0,0,0.5);
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; color: rgba(255,255,255,0.45); border: 1px solid rgba(255,255,255,0.12); z-index: 4; }
+</style>
+</head>
+<body>
+<div class="themebar">
+  <span class="tb-label">theme</span>
+  <button data-set="auto">auto</button>
+  <button data-set="light">light</button>
+  <button data-set="dark">dark</button>
+  <button data-set="cosmic-latte">latte</button>
+  <button data-set="vim">vim</button>
+</div>
+<script>
+(function(){var K='uglychat-theme',t=localStorage.getItem(K)||'auto';
+function set(v){if(v==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',v);
+document.querySelectorAll('.themebar button').forEach(function(b){b.classList.toggle('on',b.dataset.set===v)});localStorage.setItem(K,v);}
+document.querySelectorAll('.themebar button').forEach(function(b){b.addEventListener('click',function(){set(b.dataset.set)})});set(t);})();
+</script>
+
+<div class="stage">
+<div style="width:100%">
+  <div class="cap">ugly.chat &nbsp;·&nbsp; <b>video call — two people</b> &nbsp;·&nbsp; live transcript = subtitles &nbsp;·&nbsp; desktop + mobile</div>
+  <div class="frames">
+
+    <!-- ===================== DESKTOP ===================== -->
+    <div class="desktop">
+      <div class="titlebar">
+        <span class="dot3"></span><span class="dot3"></span><span class="dot3"></span>
+        <span class="url">ugly.chat / call · Dana Vega</span>
+      </div>
+      <div class="callrow" id="drow-2p">
+        <div class="callstage">
+          <div class="hud-tl">
+            <span class="live-chip"><span class="rec"></span>LIVE · 05:32</span>
+            <span class="hud-stat"><b>p2p</b> · cloudflare sfu · 38ms · 1080p</span>
+          </div>
+          <div class="corner-pip">e2e · srtp · no recording</div>
+
+          <div class="tiles">
+            <div class="tile speaking">
+              <div class="feed-a"></div>
+              <div class="silhouette"><div class="av">DV</div></div>
+              <div class="tlabel">
+                <span class="mic on"><svg class="ic" viewBox="0 0 24 24" width="14" height="14"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></span>
+                <span class="nm">Dana Vega</span><span class="ms">· host</span>
+              </div>
+              <div class="bars"><i></i><i></i><i></i><i></i></div>
+            </div>
+            <div class="tile">
+              <div class="feed-b"></div>
+              <div class="silhouette"><div class="av">JM</div></div>
+              <div class="tlabel">
+                <span class="mic"><svg class="ic" viewBox="0 0 24 24" width="14" height="14"><path d="M9 9v3a3 3 0 0 0 5 2M15 9V6a3 3 0 0 0-6 0"/><path d="M5 11a7 7 0 0 0 11 5.5"/><line x1="4" y1="3" x2="20" y2="21"/></svg></span>
+                <span class="nm">Justin (you)</span><span class="ms">· muted</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- collapsed state: subtitle overlay (mobile-style) -->
+          <div class="subs" style="bottom:104px;">
+            <div class="sub-line past"><span class="who">Dana</span>Sent it in chat. Statement timeout held.</div>
+            <div class="sub-line active"><span class="who">Dana</span>Deploy's <span class="now">green</span> — let's add ugly-bot to read the diff.</div>
+          </div>
+
+          <div class="ctrls">
+            <button class="cbig"><svg class="ic" viewBox="0 0 24 24"><path d="M9 9v3a3 3 0 0 0 5 2M15 9V6a3 3 0 0 0-6 0"/><path d="M5 11a7 7 0 0 0 11 5.5"/><line x1="4" y1="3" x2="20" y2="21"/></svg></button>
+            <button class="cbig on"><svg class="ic" viewBox="0 0 24 24"><rect x="2" y="6" width="14" height="12"/><path d="M16 10l6-3v10l-6-3z"/></svg></button>
+            <button class="cbig"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13"/><path d="M8 21h8M12 17v4"/></svg></button>
+            <span class="sep"></span>
+            <button class="cbig add" title="add ugly-bot"><svg class="ic" viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="11"/><path d="M9 11h6M12 4v3"/></svg></button>
+            <button class="cbig on" data-tbtn title="show / hide transcript" onclick="tcol('drow-2p')"><svg class="ic" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.5 7.5L3 21l2-5.5A8.5 8.5 0 1 1 21 11.5Z"/></svg></button>
+            <span class="sep"></span>
+            <a class="end" href="chat.html"><svg class="ic" viewBox="0 0 24 24" width="22" height="22" style="transform:rotate(135deg)"><path d="M5 4l3 5-2 2a11 11 0 0 0 5 5l2-2 5 3v3a2 2 0 0 1-2 2A17 17 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></a>
+          </div>
+        </div>
+
+        <!-- transcript / chat history (themed) -->
+        <aside class="tpanel">
+          <div class="tp-head">
+            <svg class="ic" viewBox="0 0 24 24" width="16" height="16"><rect x="3" y="6" width="18" height="12"/><path d="M7 11h2M7 14h6"/></svg>
+            <span class="lbl">transcript</span>
+            <span class="live"><span class="d"></span>live</span>
+            <button class="tp-collapse" title="collapse to subtitles" onclick="tcol('drow-2p')"><svg class="ic" viewBox="0 0 24 24" width="13" height="13"><path d="M9 6l6 6-6 6"/></svg></button>
+          </div>
+          <div class="tp-body">
+            <div class="tp-turn">
+              <div class="who"><div class="av">DV</div><span class="nm">Dana</span><span class="t">05:12</span></div>
+              <div class="txt">Okay, pushing the migration now. Watch the error panel.</div>
+            </div>
+            <div class="tp-turn">
+              <div class="who"><div class="av">JM</div><span class="nm">you</span>
+                <span class="typed" title="typed, not spoken"><svg class="ic" viewBox="0 0 24 24" width="11" height="11"><rect x="3" y="6" width="18" height="12"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg></span>
+                <span class="t">05:20</span></div>
+              <div class="txt">link to the dashboard? (muted, typing)</div>
+            </div>
+            <div class="tp-turn">
+              <div class="who"><div class="av">DV</div><span class="nm">Dana</span><span class="t">05:24</span></div>
+              <div class="txt">Sent it in chat. Statement timeout held — no slow queries.</div>
+            </div>
+            <div class="tp-turn active">
+              <div class="who"><div class="av">DV</div><span class="nm">Dana</span><span class="t">now</span></div>
+              <div class="txt">Deploy's <span class="now">green</span>. Call me paranoid but let's add ugly-bot to read the diff.</div>
+            </div>
+          </div>
+          <div class="tp-foot">
+            <div class="tp-cbox">
+              <input placeholder="Type a message…">
+              <button class="send"><svg class="ic" viewBox="0 0 24 24" width="16" height="16"><line x1="12" y1="20" x2="12" y2="5"/><path d="M5 12l7-7 7 7"/></svg></button>
+            </div>
+            <div class="tp-hint"><span class="mono-label">transcribing 2 speakers</span><span class="mono-label">⌘↩ send</span></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <!-- ===================== MOBILE ===================== -->
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="statusbar" style="color:var(--text)"><span>9:41</span>
+        <span class="sig"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="14" width="3" height="6"/><rect x="7" y="10" width="3" height="10"/><rect x="12" y="6" width="3" height="14"/><rect x="17" y="2" width="3" height="18"/></svg></span>
+      </div>
+      <div class="mcall" id="mcall-2p">
+      <div class="callstage mstage">
+        <!-- remote fills -->
+        <div class="tile speaking" style="position:absolute;inset:0;border-width:0;">
+          <div class="feed-a"></div>
+          <div class="silhouette" style="width:150px;height:150px;"><div class="av" style="width:80px;height:80px;font-size:28px;">DV</div></div>
+        </div>
+        <div class="hud-tl" style="top:14px;left:14px;">
+          <span class="live-chip" style="font-size:10px"><span class="rec"></span>LIVE · 05:32</span>
+          <span class="hud-stat"><b>p2p</b> · 38ms · 1080p</span>
+        </div>
+        <!-- self PiP -->
+        <div class="tile" style="position:absolute;right:14px;top:64px;width:104px;height:140px;">
+          <div class="feed-b"></div>
+          <div class="silhouette" style="width:60px;height:60px;"><div class="av" style="width:36px;height:36px;font-size:14px;">JM</div></div>
+          <div class="tlabel" style="left:6px;bottom:6px;padding:3px 6px;">
+            <span class="mic"><svg class="ic" viewBox="0 0 24 24" width="12" height="12"><path d="M9 9v3a3 3 0 0 0 5 2M15 9V6a3 3 0 0 0-6 0"/><path d="M5 11a7 7 0 0 0 11 5.5"/><line x1="4" y1="3" x2="20" y2="21"/></svg></span>
+            <span class="nm" style="font-size:10px">you</span>
+          </div>
+        </div>
+
+        <!-- chat history as subtitles -->
+        <div class="subs" style="bottom:124px;">
+          <div class="sub-line past"><span class="who">Dana</span>Sent it in chat. Statement timeout held.</div>
+          <div class="sub-line active"><span class="who">Dana</span>Deploy's <span class="now">green</span> — let's add ugly-bot to read the diff.</div>
+        </div>
+
+        <!-- optional typing -->
+        <div class="mcompose" style="bottom:70px;">
+          <input placeholder="Type a message…">
+          <button class="send"><svg class="ic" viewBox="0 0 24 24" width="16" height="16"><line x1="12" y1="20" x2="12" y2="5"/><path d="M5 12l7-7 7 7"/></svg></button>
+        </div>
+
+        <div class="ctrls" style="bottom:14px;gap:8px;padding:8px;">
+          <button class="cbig" style="width:42px;height:42px"><svg class="ic" viewBox="0 0 24 24"><path d="M9 9v3a3 3 0 0 0 5 2M15 9V6a3 3 0 0 0-6 0"/><path d="M5 11a7 7 0 0 0 11 5.5"/><line x1="4" y1="3" x2="20" y2="21"/></svg></button>
+          <button class="cbig on" style="width:42px;height:42px"><svg class="ic" viewBox="0 0 24 24"><rect x="2" y="6" width="14" height="12"/><path d="M16 10l6-3v10l-6-3z"/></svg></button>
+          <button class="cbig on" style="width:42px;height:42px" title="expand chat" onclick="document.getElementById('mcall-2p').classList.add('expanded')"><svg class="ic" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.5 7.5L3 21l2-5.5A8.5 8.5 0 1 1 21 11.5Z"/></svg></button>
+          <a class="end" href="chat.html" style="height:42px;padding:0 16px"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" style="transform:rotate(135deg)"><path d="M5 4l3 5-2 2a11 11 0 0 0 5 5l2-2 5 3v3a2 2 0 0 1-2 2A17 17 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></a>
+        </div>
+      </div>
+      <!-- expanded chat history below the video -->
+      <div class="mchat">
+        <div class="mch-head">
+          <span class="grab"></span>
+          <button class="ico" style="width:28px;height:28px" title="collapse" onclick="document.getElementById('mcall-2p').classList.remove('expanded')"><svg class="ic" viewBox="0 0 24 24" width="16" height="16"><path d="M6 9l6 6 6-6"/></svg></button>
+          <span class="mono-label">chat history</span>
+          <span class="mono-label" style="margin-left:auto;color:var(--ok)">● live</span>
+        </div>
+        <div class="tp-body">
+          <div class="tp-turn"><div class="who"><div class="av">DV</div><span class="nm">Dana</span><span class="t">05:12</span></div><div class="txt">Okay, pushing the migration now. Watch the error panel.</div></div>
+          <div class="tp-turn"><div class="who"><div class="av">JM</div><span class="nm">you</span><span class="typed"><svg class="ic" viewBox="0 0 24 24" width="11" height="11"><rect x="3" y="6" width="18" height="12"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg></span><span class="t">05:20</span></div><div class="txt">link to the dashboard? (muted, typing)</div></div>
+          <div class="tp-turn"><div class="who"><div class="av">DV</div><span class="nm">Dana</span><span class="t">05:24</span></div><div class="txt">Sent it in chat. Statement timeout held — no slow queries.</div></div>
+          <div class="tp-turn active"><div class="who"><div class="av">DV</div><span class="nm">Dana</span><span class="t">now</span></div><div class="txt">Deploy's <span class="now">green</span>. Call me paranoid but let's add ugly-bot to read the diff.</div></div>
+        </div>
+        <div class="composer" style="padding:10px 12px">
+          <div class="cbox">
+            <button class="cbtn"><svg class="ic" viewBox="0 0 24 24" width="20" height="20"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+            <div class="ta"><span class="ph">Type a message…</span></div>
+            <button class="cbtn send"><svg class="ic" viewBox="0 0 24 24" width="20" height="20"><line x1="12" y1="20" x2="12" y2="5"/><path d="M5 12l7-7 7 7"/></svg></button>
+          </div>
+        </div>
+      </div>
+      </div>
+      <div class="homebar"></div>
+    </div>
+
+  </div>
+</div>
+</div>
+<script>
+function tcol(id){var r=document.getElementById(id);var c=r.classList.toggle('collapsed');
+r.querySelectorAll('[data-tbtn]').forEach(function(b){b.classList.toggle('on',!c)});}
+</script>
+</body>
+</html>
