@@ -353,7 +353,19 @@ function MessageBody(props: {
                 ? <span className="cost">left you on read · {formatDuration(lat)}</span>
                 : <span>replied in {formatDuration(lat)}{lat < 30_000 ? ' · personal best' : ''}</span>;
             }
-            return <span>{humanSeen ? 'seen' : 'delivered'}</span>;
+            // Count consecutive run of own messages ending at this index
+            let runLen = 0;
+            for (let i = humanIdx; i >= 0; i--) {
+              const m = humanSorted[i];
+              if (m && m.userId === humanMeId) runLen++;
+              else break;
+            }
+            return (
+              <span>
+                {humanSeen ? 'seen' : 'delivered'}
+                {runLen > 1 ? <><span className="dot">·</span>{`double-texted ×${runLen}`}</> : null}
+              </span>
+            );
           })()}
         </div>
       ) : null}
