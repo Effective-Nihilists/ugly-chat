@@ -72,6 +72,7 @@
   --app-font-heading-weight: 700;
   --app-font-body-weight: 400;
   --app-font-body-weight-bold: 600;
+  --app-font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', ui-monospace, monospace;
   --app-font-size-large: 17px;
   --app-font-size-medium: 15px;
   --app-font-size-small: 12px;
@@ -526,3 +527,11 @@ hr {
 .uc-composer .ProseMirror[data-placeholder]:empty::before {
   line-height: 24px;
 }
+
+/* ---- brand utilities (ported from mockups/brand.css) ---- */
+.uc-mono-label { font-family: var(--app-font-mono); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.22em; color: var(--app-foreground-muted); }
+.uc-receipt { font-family: var(--app-font-mono); font-size: 10.5px; letter-spacing: 0.02em; color: var(--app-foreground-muted); display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.uc-receipt .cost { color: var(--app-primary); }
+.uc-receipt .dot { color: var(--app-border); }
+.uc-pill { display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border: 1.5px solid var(--app-primary); color: var(--app-primary); background: transparent; font-family: var(--app-font-mono); font-size: 11.5px; font-weight: 600; cursor: pointer; }
+.uc-pill:hover { background: var(--app-primary); color: var(--app-on-primary); }
