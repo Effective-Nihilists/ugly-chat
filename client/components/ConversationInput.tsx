@@ -229,7 +229,7 @@ const containerStyle: CSSProperties = {
   alignItems: 'flex-end',
   gap: 6,
   padding: '4px 6px 4px 10px',
-  borderRadius: 22,
+  borderRadius: 0,
   border: '2px solid var(--app-primary)',
   background: 'var(--app-main)',
 };
@@ -241,7 +241,7 @@ const sendButtonStyle: CSSProperties = {
   width: 32,
   height: 32,
   flexShrink: 0,
-  borderRadius: '50%',
+  borderRadius: 0,
   border: 'none',
   background: 'transparent',
   color: 'var(--app-primary)',
