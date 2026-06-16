@@ -44,6 +44,13 @@ export interface VideoCallProps {
   profiles?: CallProfiles;
   /** The bot's configured model label, for the HUD stat line (no fabrication). */
   botModel?: string | null;
+  /**
+   * The conversation's bot id (bot DMs / custom-bot rooms). When set, the bot
+   * auto-joins once the local user has joined the call — so the centered 3D
+   * BotAvatarTile mounts without the user clicking "Add ugly-bot". Null for
+   * human DMs / groups (the manual add button still works).
+   */
+  autoJoinBotId?: string | null;
   /** Whether the transcript panel is collapsed (controls the captions toggle). */
   transcriptCollapsed?: boolean;
   /** Toggle the transcript panel / subtitles (owned by CallLayout). */
@@ -130,6 +137,7 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
     onBotTurn,
     profiles = {},
     botModel = null,
+    autoJoinBotId = null,
     transcriptCollapsed = false,
     onToggleTranscript,
     onAddPerson,
@@ -360,11 +368,33 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
     setJoined(false);
   }, [socket, conversationId]);
 
-  const addBot = useCallback(() => {
-    void socket
-      .request('conversationVideoBotJoin', { conversationId, botId: 'bot-ugly' })
-      .catch((err: unknown) => console.error('[VideoCall] add bot failed', err));
-  }, [socket, conversationId]);
+  const addBot = useCallback(
+    (botId = 'bot-ugly') => {
+      void socket
+        .request('conversationVideoBotJoin', { conversationId, botId })
+        .catch((err: unknown) => console.error('[VideoCall] add bot failed', err));
+    },
+    [socket, conversationId],
+  );
+
+  // Auto-join the conversation's bot once, after the local user joins a call in a
+  // bot conversation, so the centered 3D BotAvatarTile mounts (without the user
+  // clicking "Add ugly-bot"). Guarded by a ref so the roster poll can't re-fire
+  // it. Purely invokes the existing bot-join RPC — no SFU/track changes.
+  const autoJoinedRef = useRef(false);
+  useEffect(() => {
+    if (!joined || !autoJoinBotId) return;
+    if (autoJoinedRef.current) return;
+    const hasBot = Object.values(call.participants).some((p) => p.isBot);
+    if (hasBot) return;
+    autoJoinedRef.current = true;
+    addBot(autoJoinBotId);
+  }, [joined, autoJoinBotId, call.participants, addBot]);
+
+  // Reset the auto-join guard when leaving so a re-join re-invites the bot.
+  useEffect(() => {
+    if (!joined) autoJoinedRef.current = false;
+  }, [joined]);
 
   useImperativeHandle(ref, () => ({ start: () => void join() }), [join]);
 
@@ -683,7 +713,7 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
           </CtrlButton>
         ) : null}
         {joined ? (
-          <CtrlButton dataId="call-add-bot" label="Add ugly-bot" active={false} off={false} dashed onClick={addBot}>
+          <CtrlButton dataId="call-add-bot" label="Add ugly-bot" active={false} off={false} dashed onClick={() => addBot()}>
             <BotIcon size={21} />
           </CtrlButton>
         ) : null}

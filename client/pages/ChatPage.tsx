@@ -1298,6 +1298,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         uglyBotSocket={uglyBotSocket}
         profiles={profiles}
         botModel={headerModel}
+        autoJoinBotId={botId}
         onActiveChange={setCallActive}
       />
 

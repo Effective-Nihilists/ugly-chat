@@ -45,12 +45,18 @@ export interface CallLayoutProps {
   profiles: SpeakerProfiles;
   /** The bot's configured model label, for the HUD stat line. */
   botModel?: string | null;
+  /**
+   * The conversation's bot id (bot DMs / custom-bot rooms). When set, the bot
+   * auto-joins the call once the local user has joined, so its 3D avatar tile
+   * mounts. Null for human DMs / groups (manual "Add ugly-bot" still works).
+   */
+  autoJoinBotId?: string | null;
   /** Notifies the host (ChatPage) so it can hide the thread + composer. */
   onActiveChange?: (active: boolean) => void;
 }
 
 export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(function CallLayout(
-  { conversationId, meId, socket, uglyBotSocket, profiles, botModel = null, onActiveChange },
+  { conversationId, meId, socket, uglyBotSocket, profiles, botModel = null, autoJoinBotId = null, onActiveChange },
   ref,
 ) {
   const [active, setActive] = useState(false);
@@ -110,6 +116,7 @@ export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(function 
       uglyBotSocket={uglyBotSocket}
       profiles={callProfiles}
       botModel={botModel}
+      autoJoinBotId={autoJoinBotId}
       transcriptCollapsed={transcriptCollapsed}
       {...(onToggle ? { onToggleTranscript: onToggle } : {})}
       subtitleSlot={
