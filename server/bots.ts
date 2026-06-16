@@ -91,6 +91,40 @@ async function uglyBotTextGen(
   return parsed;
 }
 
+// Image generation via ugly.bot's user-billed image endpoint (same auth model as
+// uglyBotTextGen). Returns the generated image URL, or '' on failure.
+async function uglyBotImageGen(model: string, prompt: string, size: string): Promise<string> {
+  const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
+  const base = env['UGLY_BOT_LOCAL'] === '1' ? 'http://localhost:3000' : env['UGLY_BOT_URL'] ?? 'https://ugly.bot';
+  const userToken = getUserToken();
+  const endpoint = userToken ? `${base}/v1/ai/user-billed/image` : `${base}/v1/ai/image`;
+  const bearer = userToken ?? env['UGLY_BOT_TOKEN'];
+  if (!bearer) throw new Error('no end-user token and UGLY_BOT_TOKEN not set');
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${bearer}` },
+    body: JSON.stringify({ model, prompt, options: { aspectRatio: size } }),
+  });
+  if (!res.ok) throw new Error(`imageGen HTTP ${res.status}`);
+  const data = (await res.json()) as Record<string, unknown>;
+  if (data['error']) throw new Error(String(data['error']));
+  const url = data['url'] ?? data['imageUrl'] ?? (data['result'] as Record<string, unknown> | undefined)?.['url'];
+  return typeof url === 'string' ? url : '';
+}
+
+// Ugly Bot persona overrides for the non-default text modes (mirrors the old
+// uglyBot `mean`/`lies` modes). `chat` and custom bots use their own prompt.
+const MODE_PROMPTS: Record<string, string> = {
+  honest:
+    'You are Ugly Bot, but in Honest mode: drop the roasting and snark and be ' +
+    'genuinely helpful, clear, and direct. Just give a straight, useful answer.',
+  lie:
+    'You are Ugly Bot roleplaying as a satirical liar. Always answer with a ' +
+    'confidently WRONG but funny, plausible-sounding answer. Keep it light and ' +
+    'satirical; never lie harmfully about real people, products, or companies. ' +
+    'Do not add disclaimers or notes.',
+};
+
 export interface BotDef {
   id: string;
   name: string;
@@ -156,9 +190,12 @@ export async function getBotConfig(db: MinimalDb, botId: string): Promise<BotCon
   if (builtin) {
     return { ...builtin, firstMessage: null, buttons: [], avatarUrl: null, avatarGlbUrl: null, backgroundUrl: null };
   }
-  if (botId.startsWith('bot-')) {
-    const doc = await db.getDoc(collections.bot, botId);
-    if (!doc) return null;
+  // Any id with a `bot` collection row is an editable config bot. This covers
+  // `bot-` custom bots AND migrated plain-userId bots we've upgraded to editable
+  // config (so the user can edit name/avatar/instruction/model in "My Bots"
+  // without re-keying the bot's existing conversations).
+  const doc = await db.getDoc(collections.bot, botId);
+  if (doc) {
     return {
       id: botId,
       name: String(doc['name'] ?? 'Bot'),
@@ -171,7 +208,8 @@ export async function getBotConfig(db: MinimalDb, botId: string): Promise<BotCon
       backgroundUrl: (doc['backgroundUrl'] as string | null | undefined) ?? null,
     };
   }
-  // Migrated bot — plain userId flagged isBot in userPublic.
+  if (botId.startsWith('bot-')) return null;
+  // Migrated bot with no editable row yet — plain userId flagged isBot in userPublic.
   const up = await db.getDoc(collections.userPublic, botId);
   if (up && asBool(up['isBot'])) {
     const name = String(up['name'] ?? 'Bot');
@@ -260,35 +298,55 @@ export async function triggerBotReplies(
     }))
     .filter((m) => m.content.length > 0);
 
-  const convBots = (conv?.['bots'] as Record<string, { model?: string }> | undefined) ?? {};
+  type BotCfg = { model?: string; mode?: string; imageModel?: string; imageSize?: string };
+  const convBots = (conv?.['bots'] as Record<string, BotCfg> | undefined) ?? {};
   for (const botId of botIds) {
     const bot = await getBotConfig(db, botId);
     if (!bot) continue;
-    // Per-conversation model override (set via the bot DM's model picker),
-    // stored on conversation.bots[botId].model; falls back to the bot's default.
-    const model = convBots[botId]?.model ?? bot.model;
+    // Per-conversation bot config (the bot DM's ⋯ menu): mode + models + size.
+    const cfg = convBots[botId] ?? {};
+    const mode = cfg.mode ?? 'chat';
+    const model = cfg.model ?? bot.model;
     let reply = '';
     let usage: MsgTelemetry | undefined;
-    try {
-      const out = await uglyBotTextGen(
-        model,
-        [
-          ...(bot.systemPrompt ? [{ role: 'system', content: bot.systemPrompt }] : []),
-          ...history,
-        ],
-        // DeepSeek is a reasoning model — it burns tokens on a hidden "thinking"
-        // block before the visible answer, so a small cap leaves no text. Give
-        // it room for the reasoning plus a real reply.
-        1200,
-      );
-      reply = out.text;
-      usage = out.usage;
-    } catch (err) {
-      console.warn(`[bots] textGen unavailable for ${botId}; using fallback:`, (err as Error).message);
-    }
-    if (!reply) {
-      const last = history[history.length - 1]?.content ?? '';
-      reply = `Hi, I'm ${bot.name}. You said: "${last.slice(0, 120)}"`;
+
+    if (mode === 'image') {
+      // Image mode: generate an image from the user's latest prompt.
+      const prompt = history[history.length - 1]?.content ?? '';
+      try {
+        if (prompt) {
+          const url = await uglyBotImageGen(cfg.imageModel ?? 'flux_1_dev', prompt, cfg.imageSize ?? 'square');
+          if (url) reply = `![${prompt.slice(0, 80).replace(/[\[\]]/g, '')}](${url})`;
+        }
+      } catch (err) {
+        console.warn(`[bots] imageGen failed for ${botId}:`, (err as Error).message);
+      }
+      if (!reply) reply = "Couldn't generate an image for that — try again, or switch back to Chat mode.";
+    } else {
+      // Text modes. The Ugly Bot's `honest`/`lie` personas override its system
+      // prompt; every other bot just uses its own instruction.
+      const systemPrompt = MODE_PROMPTS[mode] ?? bot.systemPrompt;
+      try {
+        const out = await uglyBotTextGen(
+          model,
+          [
+            ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+            ...history,
+          ],
+          // DeepSeek is a reasoning model — it burns tokens on a hidden "thinking"
+          // block before the visible answer, so a small cap leaves no text. Give
+          // it room for the reasoning plus a real reply.
+          1200,
+        );
+        reply = out.text;
+        usage = out.usage;
+      } catch (err) {
+        console.warn(`[bots] textGen unavailable for ${botId}; using fallback:`, (err as Error).message);
+      }
+      if (!reply) {
+        const last = history[history.length - 1]?.content ?? '';
+        reply = `Hi, I'm ${bot.name}. You said: "${last.slice(0, 120)}"`;
+      }
     }
     await conversationMessageCreate(
       { conversationId, message: { text: reply, markdown: reply, onlyUserIds: ['global'], ...(usage ? { telemetry: usage } : {}) } },

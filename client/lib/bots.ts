@@ -32,6 +32,34 @@ export function modelLabel(id: string | null | undefined): string {
   return MODEL_LABELS[id] ?? id;
 }
 
+// Ugly Bot reply MODES (mirrors the old uglyBot mode menu). `chat` = the snarky
+// default; `honest` = helpful, no roast; `lie` = satirical liar; `image` =
+// generate an image from your prompt. The personas (honest/lie) only apply to
+// the built-in Ugly Bot; custom bots use their own instruction.
+export const BOT_MODES: { id: string; label: string; persona: boolean }[] = [
+  { id: 'chat', label: 'Chat', persona: true },
+  { id: 'honest', label: 'Honest', persona: true },
+  { id: 'lie', label: 'Lie', persona: true },
+  { id: 'image', label: 'Image', persona: false },
+];
+
+// Image-gen models ugly.bot serves (via /v1/ai/user-billed/image).
+export const IMAGE_MODELS: { id: string; label: string }[] = [
+  { id: 'flux_1_dev', label: 'Flux Dev' },
+  { id: 'flux_1_pro', label: 'Flux Pro' },
+  { id: 'nano_banana', label: 'Nano' },
+  { id: 'nano_banana_pro', label: 'Nano Pro' },
+];
+
+// Image aspect ratios (maps to the proxy's `options.aspectRatio`).
+export const IMAGE_SIZES: { id: string; label: string }[] = [
+  { id: 'square', label: '1:1 Square' },
+  { id: 'portrait_4_3', label: '4:3 Portrait' },
+  { id: 'portrait_16_9', label: '16:9 Portrait' },
+  { id: 'landscape_4_3', label: '4:3 Landscape' },
+  { id: 'landscape_16_9', label: '16:9 Landscape' },
+];
+
 export interface BotDoc {
   _id: string;
   ownerId: string;

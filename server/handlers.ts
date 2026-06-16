@@ -24,6 +24,7 @@ import {
 import type { WorkerHandlers } from 'ugly-app/shared';
 import { dbDefaults } from 'ugly-app/shared';
 import { nanoid } from 'nanoid';
+import { getUserToken } from 'ugly-app/server/adapter/workers';
 import { triggerBotReplies, getBotConfig, isBot } from './bots';
 import { fireMessageWebhooks } from './webhooks';
 import { unfurlMessageLinks } from './linkPreview';
@@ -466,9 +467,63 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       if (!conv) throw new Error('Conversation not found');
       const bots = { ...((conv['bots'] as Record<string, Record<string, unknown>> | undefined) ?? {}) };
       if (!bots[input.botId]) throw new Error('Bot is not a member of this conversation');
-      bots[input.botId] = { ...bots[input.botId], model: input.model };
+      // Patch only the provided fields (mode / text model / image model / size).
+      const patch: Record<string, unknown> = { ...bots[input.botId] };
+      if (input.model !== undefined) patch['model'] = input.model;
+      if (input.mode !== undefined) patch['mode'] = input.mode;
+      if (input.imageModel !== undefined) patch['imageModel'] = input.imageModel;
+      if (input.imageSize !== undefined) patch['imageSize'] = input.imageSize;
+      bots[input.botId] = patch;
       await db.setDoc(collections.conversation, { ...conv, bots, updated: new Date() });
       return { ok: true };
+    },
+
+    // The caller's own profile (name + avatar), resolved like any participant.
+    userProfileGet: async (userId): Promise<{ name: string | null; avatarUrl: string | null }> => {
+      const [p] = await resolveProfiles(getDb(), [userId]);
+      return { name: p?.name ?? null, avatarUrl: p?.avatarUrl ?? null };
+    },
+
+    // Update the caller's name/avatar: write through to ugly.bot's federated
+    // profile (userUpdate, authed as the end user) AND refresh the local
+    // userPublic cache so the change shows in this session without re-login.
+    userProfileUpdate: async (
+      userId,
+      input,
+    ): Promise<{ ok: boolean; name: string | null; avatarUrl: string | null }> => {
+      const db = getDb();
+      const base = getEnv().UGLY_BOT_URL ?? 'https://ugly.bot';
+      const token = getUserToken();
+      if (token) {
+        const fields: Record<string, unknown> = {};
+        if (input.name !== undefined) fields['name'] = input.name;
+        if (input.avatarUrl !== undefined) fields['avatar'] = input.avatarUrl;
+        if (Object.keys(fields).length > 0) {
+          const res = await fetch(`${base}/api/userUpdate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ input: fields }),
+          });
+          if (!res.ok) throw new Error(`userUpdate HTTP ${res.status}`);
+        }
+      }
+      // Refresh the local cache (resolved fresh now) so the new name/avatar is
+      // used immediately by every conversation render this session.
+      const existing = (await db.getDoc(collections.userPublic, userId)) ?? {};
+      const name = input.name ?? (existing['name'] as string | undefined) ?? null;
+      const avatarUrl =
+        input.avatarUrl !== undefined
+          ? input.avatarUrl
+          : ((existing['avatarResolved'] as string | null | undefined) ?? null);
+      await db.setDoc(collections.userPublic, {
+        ...existing,
+        _id: userId,
+        name,
+        avatarResolved: avatarUrl,
+        avatarFetchedAt: Date.now(),
+        ...dbDefaults(),
+      });
+      return { ok: true, name, avatarUrl };
     },
 
     // Distinct humans the caller shares conversations with (their "contacts") —

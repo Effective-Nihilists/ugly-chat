@@ -88,11 +88,36 @@ export const requests = defineRequests({
     output: z.object({ ok: z.boolean() }),
   }),
 
-  // Set the model a bot uses in THIS conversation (the bot DM's model picker).
-  // Persisted on conversation.bots[botId].model; read by triggerBotReplies.
+  // Set the bot's per-conversation config (the bot DM's ⋯ menu): chat mode,
+  // text model, image model, image size. Persisted on conversation.bots[botId]
+  // and read by triggerBotReplies. All fields optional — patch what's provided.
   conversationSetBotModel: authReq({
-    input: z.object({ conversationId: z.string(), botId: z.string(), model: z.string() }).catchall(z.unknown()),
+    input: z
+      .object({
+        conversationId: z.string(),
+        botId: z.string(),
+        model: z.string().optional(),
+        mode: z.string().optional(),
+        imageModel: z.string().optional(),
+        imageSize: z.string().optional(),
+      })
+      .catchall(z.unknown()),
     output: z.object({ ok: z.boolean() }),
+  }),
+
+  // The caller's own federated profile (name + avatar), for the settings editor.
+  userProfileGet: authReq({
+    input: z.object({}).catchall(z.unknown()),
+    output: z.object({ name: z.string().nullable(), avatarUrl: z.string().nullable() }).catchall(z.unknown()),
+  }),
+
+  // Update the caller's own name/avatar. Writes through to ugly.bot (federated
+  // profile) and refreshes the local cache so it shows in-session immediately.
+  userProfileUpdate: authReq({
+    input: z
+      .object({ name: z.string().max(80).optional(), avatarUrl: z.string().nullable().optional() })
+      .catchall(z.unknown()),
+    output: z.object({ ok: z.boolean(), name: z.string().nullable(), avatarUrl: z.string().nullable() }),
   }),
 
   // Each other member's single last-read timestamp for a conversation (the

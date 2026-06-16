@@ -79,6 +79,23 @@ export async function resolveProfiles(db: DbLike, userIds: string[]): Promise<Pr
     }
     const cached = await db.getDoc(collections.userPublic, id);
     if (cached) localById.set(id, cached);
+    // A migrated bot upgraded to an editable config bot has a `bot` collection
+    // row keyed by its plain userId — that row is authoritative for its
+    // name/avatar (so edits + a valid image win over the stale federated one).
+    if (cached && asBool(cached['isBot'])) {
+      const botDoc = await db.getDoc(collections.bot, id);
+      if (botDoc) {
+        out.push({
+          id,
+          name: (botDoc['name'] as string | undefined) ?? (cached['name'] as string | undefined) ?? fallbackName(id),
+          avatarUrl: (botDoc['avatarUrl'] as string | null | undefined) ?? null,
+          isBot: true,
+          backgroundUrl: (botDoc['backgroundUrl'] as string | null | undefined) ?? null,
+          avatarGlbUrl: (botDoc['avatarGlbUrl'] as string | null | undefined) ?? null,
+        });
+        continue;
+      }
+    }
     // The migration carried names but almost no avatars (ugly.bot's avatars are
     // 3D models with a separate 2D thumbnail that wasn't migrated). So a row is
     // only "done" once we've resolved its avatar from ugly.bot at least once
