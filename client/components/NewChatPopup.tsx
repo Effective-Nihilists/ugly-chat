@@ -1,39 +1,88 @@
 import React, { useCallback, useState } from 'react';
-import { Flame, MessageSquarePlus, Users } from 'lucide-react';
+import { Mail, Check, MessageSquarePlus, X, Users } from 'lucide-react';
+import { Avatar, type ConvRow } from '../lib/conversations';
+import { isValidEmail, normalizeEmail } from '../../shared/email';
 
-// The popup renders in the router's popup portal, which is OUTSIDE <AppProvider>,
-// so it can't use useApp()/useRouter(). Deps are passed in by the opener instead.
+// Popups render in the router's portal, OUTSIDE <AppProvider>, so they can't
+// use useApp()/useRouter() — deps are passed in by the opener instead.
 interface PopupSocket {
-  request: (name: 'conversationCreate', input: Record<string, unknown>) => Promise<unknown>;
-  getDoc: (collection: 'conversation', id: string) => Promise<unknown>;
+  request: (name: string, input: Record<string, unknown>) => Promise<unknown>;
+}
+
+interface PopupOpener {
+  openPopup: (
+    content: React.ReactNode,
+    opts?: { mode?: 'block' | 'transient' | 'contextMenu' },
+  ) => { hide: () => void };
 }
 
 interface NewChatPopupProps {
   onClose: () => void;
   socket: PopupSocket;
-  userId: string;
+  recent: ConvRow[];
   navigate: (conversationId: string) => void;
 }
 
-interface PopupOpener {
-  openPopup: (content: React.ReactNode, opts?: { mode?: 'block' | 'transient' | 'contextMenu' }) => { hide: () => void };
-}
-
-/** Open the new-chat popup with deps captured from the caller's (in-context) scope. */
-export function openNewChatPopup(router: PopupOpener, socket: PopupSocket, userId: string, navigate: (id: string) => void): void {
+/** Open the merged new-chat (direct + group) popup with deps from the caller's scope. */
+export function openNewChatPopup(
+  router: PopupOpener,
+  socket: PopupSocket,
+  recent: ConvRow[],
+  navigate: (conversationId: string) => void,
+): void {
   const handle = router.openPopup(
-    <NewChatPopup onClose={() => handle.hide()} socket={socket} userId={userId} navigate={navigate} />,
+    <NewChatPopup onClose={() => handle.hide()} socket={socket} recent={recent} navigate={navigate} />,
     { mode: 'transient' },
   );
 }
 
 /**
- * New-chat configuration popup (ugly.bot opens a flow rather than creating
- * silently). Name a group, or start a 1:1 with Ugly Bot, then navigate in.
+ * New chat — start a 1:1 OR a group from the same modal. Add people by email as
+ * chips: exactly one recipient → "Start chat" (conversationCreateDirect); two or
+ * more → reveal an optional group name + "Create group · N" (groupCreate). Known
+ * emails join immediately; unknown ones get an invite. Layout ported from
+ * mockups/new-chat.html + new-group.html → app tokens.
  */
-export function NewChatPopup({ onClose, socket, userId, navigate }: NewChatPopupProps): React.ReactElement {
-  const [name, setName] = useState('');
+export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopupProps): React.ReactElement {
+  const [emails, setEmails] = useState<string[]>([]);
+  const [draft, setDraft] = useState('');
+  const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState(false);
+
+  const draftValid = isValidEmail(normalizeEmail(draft));
+
+  const addChip = useCallback((raw: string) => {
+    const e = normalizeEmail(raw);
+    if (!e) return false;
+    if (!isValidEmail(e)) {
+      setStatus(`"${raw.trim()}" is not a valid email`);
+      setStatusError(true);
+      return false;
+    }
+    setStatus(null);
+    setStatusError(false);
+    setEmails((prev) => (prev.includes(e) ? prev : [...prev, e]));
+    setDraft('');
+    return true;
+  }, []);
+
+  const removeChip = useCallback((e: string) => {
+    setEmails((prev) => prev.filter((x) => x !== e));
+  }, []);
+
+  const onKeyDown = useCallback(
+    (ev: React.KeyboardEvent<HTMLInputElement>) => {
+      if (ev.key === 'Enter' || ev.key === ',') {
+        ev.preventDefault();
+        addChip(draft);
+      } else if (ev.key === 'Backspace' && draft === '' && emails.length > 0) {
+        setEmails((prev) => prev.slice(0, -1));
+      }
+    },
+    [addChip, draft, emails.length],
+  );
 
   const go = useCallback(
     (conversationId: string) => {
@@ -43,106 +92,325 @@ export function NewChatPopup({ onClose, socket, userId, navigate }: NewChatPopup
     [navigate, onClose],
   );
 
-  const createGroup = useCallback(async () => {
-    if (busy) return;
-    setBusy(true);
-    try {
-      const id = `g-${userId}-${Date.now().toString(36)}`;
-      await socket.request('conversationCreate', {
-        id,
-        type: 'group',
-        title: name.trim() || 'New Chat',
-        mode: 'public',
-        ownerIds: [userId],
-      });
-      go(id);
-    } catch (err) {
-      console.error('[NewChat] create group failed', err);
-      setBusy(false);
-    }
-  }, [busy, name, socket, userId, go]);
+  // Fold any half-typed valid email into the recipient set.
+  const allRecipients = useCallback((): string[] => {
+    const e = normalizeEmail(draft);
+    return isValidEmail(e) ? [...new Set([...emails, e])] : emails;
+  }, [draft, emails]);
 
-  const startBotChat = useCallback(async () => {
+  const submit = useCallback(async () => {
     if (busy) return;
+    const all = allRecipients();
+    if (all.length === 0) return;
     setBusy(true);
+    setStatus(null);
+    setStatusError(false);
     try {
-      const id = `ugly-${userId}`;
-      const existing = await socket.getDoc('conversation', id);
-      if (!existing) {
-        await socket.request('conversationCreate', {
-          id,
-          type: 'group',
-          title: 'Ugly Bot',
-          mode: 'public',
-          ownerIds: [userId],
-          bots: { 'bot-ugly': {} },
-        });
+      if (all.length === 1) {
+        const res = (await socket.request('conversationCreateDirect', { email: all[0] })) as {
+          conversationId: string;
+          invited: boolean;
+        };
+        if (res.invited) {
+          setStatus(`Invite sent to ${all[0]}`);
+          setStatusError(false);
+          setBusy(false);
+        } else {
+          go(res.conversationId);
+        }
+      } else {
+        const res = (await socket.request('groupCreate', {
+          title: title.trim() || undefined,
+          emails: all,
+        })) as { conversationId: string; invited: string[] };
+        go(res.conversationId);
       }
-      go(id);
     } catch (err) {
-      console.error('[NewChat] start bot chat failed', err);
+      console.error('[new-chat] submit failed', err);
+      setStatus('Could not start the chat. Try again.');
+      setStatusError(true);
       setBusy(false);
     }
-  }, [busy, socket, userId, go]);
+  }, [busy, allRecipients, socket, title, go]);
+
+  // The CTA reflects how many recipients there are once the draft is folded in.
+  const count = allRecipients().length;
+  const isGroup = count >= 2;
+  const canSubmit = count >= 1 && !busy;
 
   return (
-    <div
-      style={{
-        width: 'min(440px, 92vw)',
-        background: 'var(--app-main)',
-        borderRadius: 16,
-        border: '1px solid var(--app-border)',
-        padding: 20,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 14,
-        boxShadow: '0 12px 40px rgba(0,0,0,0.25)',
-      }}
-    >
-      <span style={{ fontFamily: 'var(--app-font-heading)', fontWeight: 800, fontSize: 18, color: 'var(--app-foreground)' }}>
-        New chat
-      </span>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', height: 44, borderRadius: 12, border: '2px solid var(--app-foreground-20)', background: 'rgba(var(--app-tertiary-rgb), 0.5)' }}>
-        <Users size={18} style={{ opacity: 0.5, flexShrink: 0 }} />
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') void createGroup(); }}
-          placeholder="Name your group chat…"
-          autoFocus
-          style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', outline: 'none', fontSize: 15, color: 'var(--app-foreground)' }}
-        />
+    <div style={modal}>
+      <div style={modalHead}>
+        <span style={modalTitle}>New message</span>
+        <button type="button" aria-label="Close" onClick={onClose} style={closeBtn}>
+          <X size={16} />
+        </button>
       </div>
 
-      <button
-        type="button"
-        onClick={() => void createGroup()}
-        disabled={busy}
-        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 44, borderRadius: 12, border: 'none', background: 'var(--app-primary)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}
-      >
-        <MessageSquarePlus size={18} /> Create group chat
-      </button>
+      <div style={modalBody}>
+        {/* Recipients — email chip/token input */}
+        <div style={field}>
+          <label style={fieldLabel}>To</label>
+          <div style={tokens}>
+            <Mail size={16} style={{ opacity: 0.5, flexShrink: 0, alignSelf: 'center' }} />
+            {emails.map((e) => (
+              <span key={e} style={chip}>
+                {e}
+                <button type="button" aria-label={`Remove ${e}`} onClick={() => removeChip(e)} style={chipX}>
+                  <X size={11} />
+                </button>
+              </span>
+            ))}
+            <input
+              value={draft}
+              onChange={(ev) => {
+                setDraft(ev.target.value);
+                if (statusError) {
+                  setStatus(null);
+                  setStatusError(false);
+                }
+              }}
+              onKeyDown={onKeyDown}
+              onBlur={() => { if (draft.trim() && draftValid) addChip(draft); }}
+              placeholder={emails.length === 0 ? 'name@email.com' : 'add another…'}
+              spellCheck={false}
+              autoFocus
+              style={{ ...inputEl, flex: '1 0 120px', minWidth: 120 }}
+            />
+            {draftValid ? <Check size={16} style={{ color: 'var(--app-success)', flexShrink: 0, alignSelf: 'center' }} /> : null}
+          </div>
+          <div style={hint}>
+            Add people by email. One person starts a 1:1; two or more makes a group. We start the chat
+            now — and <b>send an invite</b> if they&apos;re not on ugly.chat yet. No usernames, no friend
+            requests.
+          </div>
+        </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ flex: 1, height: 1, background: 'var(--app-border)' }} />
-        <span style={{ fontSize: 12, color: 'var(--app-foreground)', opacity: 0.5 }}>or</span>
-        <div style={{ flex: 1, height: 1, background: 'var(--app-border)' }} />
+        {/* Optional group name — only once it's a group */}
+        {isGroup ? (
+          <div style={field}>
+            <label style={fieldLabel}>Group name — optional</label>
+            <div style={inputRow}>
+              <Users size={16} style={{ opacity: 0.5, flexShrink: 0 }} />
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="ship-crew, prod-incidents, …"
+                spellCheck={false}
+                style={inputEl}
+              />
+            </div>
+            <div style={hint}>
+              Everyone you add sees the history <b>from the moment they join</b> — nothing before.
+            </div>
+          </div>
+        ) : null}
+
+        {recent.length > 0 ? (
+          <div style={field}>
+            <label style={fieldLabel}>Recent</label>
+            <div>
+              {recent.map((c) => (
+                <button
+                  key={c.conversationId}
+                  type="button"
+                  className="uc-row"
+                  onClick={() => go(c.conversationId)}
+                  style={memberRow}
+                >
+                  <Avatar image={c.image} seed={c.conversationId} label={c.title} size={38} />
+                  <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                    <div style={memberName}>{c.title || 'Conversation'}</div>
+                    {c.preview ? <div style={memberSub}>{c.preview}</div> : null}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {status ? (
+          <div style={{ fontSize: 13, fontWeight: 600, color: statusError ? 'var(--app-error)' : 'var(--app-primary)' }}>
+            {status}
+          </div>
+        ) : null}
       </div>
 
-      <button
-        type="button"
-        onClick={() => void startBotChat()}
-        disabled={busy}
-        className="uc-footbtn"
-        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 44, borderRadius: 12, border: '1px solid var(--app-border)', background: 'var(--app-main)', color: 'var(--app-foreground)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
-      >
-        <Flame size={18} /> Chat with Ugly Bot
-      </button>
-
-      <button type="button" onClick={onClose} style={{ alignSelf: 'center', marginTop: 2, background: 'transparent', border: 'none', color: 'var(--app-foreground)', opacity: 0.55, fontSize: 13, cursor: 'pointer' }}>
-        Cancel
-      </button>
+      <div style={modalFoot}>
+        <button type="button" onClick={onClose} style={ghostBtn}>
+          Cancel
+        </button>
+        <button type="button" disabled={!canSubmit} onClick={() => void submit()} style={ctaBtn(!canSubmit)}>
+          {isGroup ? (
+            <>Create group · {count}</>
+          ) : (
+            <>
+              <MessageSquarePlus size={16} /> Start chat
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }
+
+// ── Modal styling (centered card on desktop / sheet on mobile via the popup
+// layer). Ported from mockups/new-chat.html + new-group.html → app tokens. ──
+const modal: React.CSSProperties = {
+  width: 'min(440px, 92vw)',
+  background: 'var(--app-main)',
+  border: '1px solid var(--app-border)',
+  borderRadius: 16,
+  display: 'flex',
+  flexDirection: 'column',
+  boxShadow: '0 12px 40px rgba(0,0,0,0.25)',
+  overflow: 'hidden',
+};
+const modalHead: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: '12px 14px',
+  borderBottom: '1px solid var(--app-border)',
+};
+const modalTitle: React.CSSProperties = {
+  fontFamily: 'var(--app-font-heading)',
+  fontWeight: 800,
+  fontSize: 16,
+  color: 'var(--app-foreground)',
+};
+const closeBtn: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 30,
+  height: 30,
+  border: 'none',
+  background: 'transparent',
+  color: 'var(--app-foreground)',
+  cursor: 'pointer',
+};
+const modalBody: React.CSSProperties = {
+  padding: 14,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+  maxHeight: '60vh',
+  overflowY: 'auto',
+};
+const field: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 6 };
+const fieldLabel: React.CSSProperties = {
+  fontFamily: 'var(--app-font-mono)',
+  fontSize: 10.5,
+  fontWeight: 600,
+  textTransform: 'uppercase',
+  letterSpacing: '0.14em',
+  color: 'var(--app-foreground-muted)',
+};
+const inputRow: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  padding: '0 12px',
+  height: 44,
+  border: '1px solid var(--app-border)',
+  background: 'var(--app-tertiary)',
+};
+const tokens: React.CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  alignItems: 'center',
+  gap: 6,
+  padding: '6px 10px',
+  minHeight: 44,
+  border: '1px solid var(--app-border)',
+  background: 'var(--app-tertiary)',
+};
+const inputEl: React.CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  border: 'none',
+  background: 'transparent',
+  outline: 'none',
+  fontSize: 15,
+  color: 'var(--app-foreground)',
+};
+const chip: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 5,
+  padding: '4px 6px 4px 9px',
+  background: 'var(--app-main)',
+  border: '1px solid var(--app-border)',
+  fontSize: 13,
+  color: 'var(--app-foreground)',
+};
+const chipX: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  border: 'none',
+  background: 'transparent',
+  color: 'var(--app-foreground)',
+  opacity: 0.6,
+  cursor: 'pointer',
+  padding: 0,
+};
+const hint: React.CSSProperties = { fontSize: 12.5, lineHeight: 1.45, color: 'var(--app-foreground)', opacity: 0.55 };
+const memberRow: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 12,
+  width: '100%',
+  padding: '8px 6px',
+  border: 'none',
+  background: 'transparent',
+  cursor: 'pointer',
+  font: 'inherit',
+};
+const memberName: React.CSSProperties = {
+  fontSize: 14,
+  fontWeight: 600,
+  color: 'var(--app-foreground)',
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+};
+const memberSub: React.CSSProperties = {
+  fontSize: 12,
+  color: 'var(--app-foreground)',
+  opacity: 0.5,
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+};
+const modalFoot: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'flex-end',
+  gap: 8,
+  padding: '12px 14px',
+  borderTop: '1px solid var(--app-border)',
+};
+const ghostBtn: React.CSSProperties = {
+  padding: '9px 16px',
+  border: '1px solid var(--app-border)',
+  background: 'var(--app-main)',
+  color: 'var(--app-foreground)',
+  fontSize: 14,
+  fontWeight: 600,
+  cursor: 'pointer',
+};
+const ctaBtn = (disabled: boolean): React.CSSProperties => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 8,
+  padding: '9px 18px',
+  border: 'none',
+  background: 'var(--app-primary)',
+  color: '#fff',
+  fontSize: 14,
+  fontWeight: 700,
+  cursor: disabled ? 'not-allowed' : 'pointer',
+  opacity: disabled ? 0.5 : 1,
+});

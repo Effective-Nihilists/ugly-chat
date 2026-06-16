@@ -1,11 +1,13 @@
 import React, { useCallback, useState } from 'react';
-import { Plus, PanelLeft, PanelLeftClose, Bot } from 'lucide-react';
+import { Plus, PanelLeft, PanelLeftClose, Bot, Palette, MessageSquare } from 'lucide-react';
 import { useApp } from 'ugly-app/client';
 import { useRouter } from '../router';
 import { useConversations } from '../lib/conversations';
 import { Avatar } from '../lib/conversations';
 import { ConversationRow } from './ConversationRow';
-import { ThemePicker } from './ThemePicker';
+import { openNewChatPopup } from './NewChatPopup';
+import { openBotsPopup } from './BotsPopup';
+import { openThemeMenu } from './ThemeMenu';
 
 // Matches ugly.bot's SidebarInternal: collapsed = 72px (avatar-only), expanded =
 // resizable 250–400px persisted to localStorage 'leftSidebarWidth'; the
@@ -30,7 +32,7 @@ function save(key: string, value: string): void {
 
 export function Sidebar(): React.ReactElement {
   const router = useRouter();
-  const { socket } = useApp();
+  const { socket, userId } = useApp();
   const { conversations, loading } = useConversations();
   const [q, setQ] = useState('');
   const [expanded, setExpandedState] = useState(() => loadBool('leftSidebarExpanded', true));
@@ -46,9 +48,27 @@ export function Sidebar(): React.ReactElement {
     save('leftSidebarExpanded', v ? '1' : '0');
   }, []);
 
+  const navigate = useCallback(
+    (conversationId: string) => router.push('chat/:conversationId', { conversationId }),
+    [router],
+  );
+
+  // New chat + Bots are now transient popups (no full-page route). The popup
+  // content renders OUTSIDE AppProvider, so we hand it the deps it needs.
   const openNew = useCallback(() => {
-    router.push('new', {});
-  }, [router]);
+    const recent = conversations.filter((c) => c.type !== 'group').slice(0, 8);
+    openNewChatPopup(router, socket, recent, navigate);
+  }, [router, socket, conversations, navigate]);
+
+  const openBots = useCallback(() => {
+    openBotsPopup(router, socket, userId, (botId) => router.push('bot/:botId', { botId }), navigate);
+  }, [router, socket, userId, navigate]);
+
+  const openTheme = useCallback(() => openThemeMenu(router), [router]);
+
+  const openFeedback = useCallback(() => {
+    document.querySelector<HTMLElement>('[data-id="feedback-button"]')?.click();
+  }, []);
 
   // Pin/unpin a conversation. The userConversation trackDocs subscription
   // (keyed by userId) picks up the visibility change and refetches the list,
@@ -104,8 +124,14 @@ export function Sidebar(): React.ReactElement {
         <button type="button" title="New chat" onClick={openNew} className="uc-iconbtn" style={{ ...iconBtnStyle, alignSelf: 'center', marginBottom: 6 }}>
           <Plus size={20} />
         </button>
-        <button type="button" title="Bots" onClick={() => router.push('bots', {})} className="uc-iconbtn" style={{ ...iconBtnStyle, alignSelf: 'center', marginBottom: 6 }}>
+        <button type="button" title="Bots" onClick={openBots} className="uc-iconbtn" style={{ ...iconBtnStyle, alignSelf: 'center', marginBottom: 6 }}>
           <Bot size={20} />
+        </button>
+        <button type="button" title="Theme" onClick={openTheme} className="uc-iconbtn" style={{ ...iconBtnStyle, alignSelf: 'center', marginBottom: 6 }}>
+          <Palette size={18} />
+        </button>
+        <button type="button" title="Feedback" onClick={openFeedback} className="uc-iconbtn" style={{ ...iconBtnStyle, alignSelf: 'center', marginBottom: 6 }}>
+          <MessageSquare size={18} />
         </button>
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '2px 0 16px' }}>
           {filtered.map((c) => (
@@ -141,6 +167,19 @@ export function Sidebar(): React.ReactElement {
             your keys · your data · no filter
           </span>
         </button>
+
+        {/* Right-aligned icon cluster: Bots · Theme · Feedback */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+          <button type="button" title="Bots" onClick={openBots} className="uc-iconbtn" style={smallIconBtn}>
+            <Bot size={18} />
+          </button>
+          <button type="button" title="Theme" onClick={openTheme} className="uc-iconbtn" style={smallIconBtn}>
+            <Palette size={18} />
+          </button>
+          <button type="button" title="Feedback" onClick={openFeedback} className="uc-iconbtn" style={smallIconBtn}>
+            <MessageSquare size={18} />
+          </button>
+        </div>
       </div>
 
       {/* Search + create */}
@@ -199,22 +238,6 @@ export function Sidebar(): React.ReactElement {
         )}
       </div>
 
-      {/* Theme picker */}
-      <ThemePicker />
-
-      {/* Footer */}
-      <div style={{ padding: 10, display: 'flex', gap: 8, borderTop: '1px solid var(--app-border)', flexShrink: 0 }}>
-        <button type="button" className="uc-footbtn" style={footBtnStyle} onClick={() => router.push('bots', {})}>
-          Bots
-        </button>
-        <button type="button" className="uc-footbtn" style={footBtnStyle} onClick={() => document.querySelector<HTMLElement>('[data-id="feedback-button"]')?.click()}>
-          Feedback
-        </button>
-        <button type="button" className="uc-footbtn" style={footBtnStyle} onClick={() => router.push('settings', {})}>
-          Settings
-        </button>
-      </div>
-
       {/* Resize handle (right edge) */}
       <div
         onMouseDown={startResize}
@@ -248,19 +271,19 @@ const iconBtnStyle: React.CSSProperties = {
   justifyContent: 'center',
 };
 
-const footBtnStyle: React.CSSProperties = {
-  flex: 1,
-  height: 36,
-  borderRadius: 0,
-  border: '1px solid var(--app-border)',
-  background: 'var(--app-main)',
-  color: 'var(--app-foreground)',
-  fontSize: 11,
-  fontWeight: 600,
-  fontFamily: 'var(--app-font-mono)',
-  textTransform: 'uppercase' as const,
-  letterSpacing: '0.06em',
+// Compact icon button for the header cluster (Bots · Theme · Feedback).
+const smallIconBtn: React.CSSProperties = {
+  width: 32,
+  height: 32,
+  flexShrink: 0,
+  borderRadius: 8,
+  border: 'none',
+  background: 'transparent',
+  color: 'var(--app-foreground-muted)',
   cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
 };
 
 function SectionLabel({ text }: { text: string }): React.ReactElement {

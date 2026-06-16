@@ -69,7 +69,7 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
             router.push('chat/:conversationId', { conversationId: cid }),
           );
         } else {
-          router.push('bots', {});
+          router.push('chat', {});
         }
       } catch (err) {
         console.error('[BotEdit] save failed', err);
@@ -91,7 +91,7 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
     <div style={page}>
       <div style={{ maxWidth: 640, margin: '0 auto', width: '100%', padding: '20px 18px 60px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-          <button type="button" onClick={() => router.push('bots', {})} aria-label="Back" style={iconBtn}>
+          <button type="button" onClick={() => router.push('chat', {})} aria-label="Back" style={iconBtn}>
             <ArrowLeft size={20} />
           </button>
           <h1 style={{ fontFamily: 'var(--app-font-heading)', fontWeight: 800, fontSize: 24, margin: 0, color: 'var(--app-foreground)' }}>

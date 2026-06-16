@@ -16,14 +16,10 @@ export const pages = definePages({
   '': definePage<{}>({ auth: false }),
   'chat': definePage<{}>({ auth: true }),
   'chat/:conversationId': definePage<{ conversationId: string }>({ auth: true }),
-  'bots': definePage<{}>({ auth: true }),
   'bot/:botId': definePage<{ botId: string }>({ auth: true }),
   'user/:userId': definePage<{ userId: string }>(),
   'search': definePage<{ q?: string }>({ auth: true }),
-  'new': definePage<{}>({ auth: true }),
-  'new-group': definePage<{}>({ auth: true }),
   'settings/:conversationId': definePage<{ conversationId: string }>({ auth: true }),
-  'settings': definePage<{}>({ auth: true }),
 });
 
 export type AppPages = typeof pages;

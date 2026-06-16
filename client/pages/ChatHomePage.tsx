@@ -1,12 +1,41 @@
-import React from 'react';
-import { Plus } from 'lucide-react';
+import React, { useCallback } from 'react';
+import { Plus, Bot, Palette, MessageSquare } from 'lucide-react';
+import { useApp } from 'ugly-app/client';
 import { useRouter } from '../router';
+import { useConversations } from '../lib/conversations';
+import { openNewChatPopup } from '../components/NewChatPopup';
+import { openBotsPopup } from '../components/BotsPopup';
+import { openThemeMenu } from '../components/ThemeMenu';
 
-// Chat-home main pane (the column beside the sidebar). With no thread selected
-// we show the mock's empty hero: a faint grid backdrop, a big display headline,
-// a muted subtitle, one orange CTA, and a mono receipt line.
+// Chat-home main pane (the column beside the sidebar; on mobile it's the whole
+// view). With no thread selected we show the mock's empty hero: a faint grid
+// backdrop, a big display headline, a muted subtitle, one orange CTA, and a
+// mono receipt line. A top-right icon cluster (Bots · Theme · Feedback) mirrors
+// the sidebar header for mobile, where the sidebar is hidden.
 export default function ChatHomePage(): React.ReactElement {
   const router = useRouter();
+  const { socket, userId } = useApp();
+  const { conversations } = useConversations();
+
+  const navigate = useCallback(
+    (conversationId: string) => router.push('chat/:conversationId', { conversationId }),
+    [router],
+  );
+
+  const openNew = useCallback(() => {
+    const recent = conversations.filter((c) => c.type !== 'group').slice(0, 8);
+    openNewChatPopup(router, socket, recent, navigate);
+  }, [router, socket, conversations, navigate]);
+
+  const openBots = useCallback(() => {
+    openBotsPopup(router, socket, userId, (botId) => router.push('bot/:botId', { botId }), navigate);
+  }, [router, socket, userId, navigate]);
+
+  const openTheme = useCallback(() => openThemeMenu(router), [router]);
+  const openFeedback = useCallback(() => {
+    document.querySelector<HTMLElement>('[data-id="feedback-button"]')?.click();
+  }, []);
+
   return (
     <div
       style={{
@@ -18,6 +47,19 @@ export default function ChatHomePage(): React.ReactElement {
         background: 'var(--app-main)',
       }}
     >
+      {/* Top-right icon cluster (mobile-facing — desktop has it in the sidebar) */}
+      <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', alignItems: 'center', gap: 2, zIndex: 1 }}>
+        <button type="button" title="Bots" onClick={openBots} className="uc-iconbtn" style={topIconBtn}>
+          <Bot size={18} />
+        </button>
+        <button type="button" title="Theme" onClick={openTheme} className="uc-iconbtn" style={topIconBtn}>
+          <Palette size={18} />
+        </button>
+        <button type="button" title="Feedback" onClick={openFeedback} className="uc-iconbtn" style={topIconBtn}>
+          <MessageSquare size={18} />
+        </button>
+      </div>
+
       {/* Faint 64px grid, radial-masked toward the top-center. */}
       <div
         aria-hidden
@@ -66,7 +108,7 @@ export default function ChatHomePage(): React.ReactElement {
 
         <button
           type="button"
-          onClick={() => router.push('new', {})}
+          onClick={openNew}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -101,9 +143,7 @@ export default function ChatHomePage(): React.ReactElement {
             whiteSpace: 'nowrap',
           }}
         >
-          <span>e2e encrypted</span>
-          <span style={{ color: 'var(--app-border)' }}>·</span>
-          <span>cloudflare</span>
+          <span>open models</span>
           <span style={{ color: 'var(--app-border)' }}>·</span>
           <span style={{ color: 'var(--app-primary)' }}>$0.00/mo</span>
         </div>
@@ -111,3 +151,17 @@ export default function ChatHomePage(): React.ReactElement {
     </div>
   );
 }
+
+const topIconBtn: React.CSSProperties = {
+  width: 34,
+  height: 34,
+  flexShrink: 0,
+  borderRadius: 8,
+  border: 'none',
+  background: 'transparent',
+  color: 'var(--app-foreground-muted)',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+};

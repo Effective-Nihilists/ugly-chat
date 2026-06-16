@@ -7,7 +7,7 @@ import { useApp } from 'ugly-app/client';
 import { useRouter } from '../router';
 import { Avatar } from '../lib/conversations';
 import { isValidEmail, normalizeEmail } from '../../shared/email';
-import { newChatStyles as S } from './NewChatPage';
+import { modalStyles as S } from '../lib/modalStyles';
 
 interface Member {
   userId: string;
