@@ -89,7 +89,7 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
 
   return (
     <div style={page}>
-      <div style={{ maxWidth: 640, margin: '0 auto', width: '100%', padding: '20px 18px 60px' }}>
+      <div style={{ maxWidth: 640, margin: '0 auto', width: '100%', boxSizing: 'border-box', padding: '20px 18px 60px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
           <button type="button" onClick={() => router.push('', {})} aria-label="Back" style={iconBtn}>
             <ArrowLeft size={20} />
@@ -141,20 +141,20 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
         <Field label="Starter buttons" hint="Tappable buttons that send a preset prompt.">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {buttons.map((b, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <input
                   value={b.label}
                   onChange={(e) => setButtons((p) => p.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
                   placeholder="Label"
                   maxLength={40}
-                  style={{ ...input, flex: '0 0 130px' }}
+                  style={{ ...input, flex: '1 1 110px', minWidth: 0 }}
                 />
                 <input
                   value={b.prompt}
                   onChange={(e) => setButtons((p) => p.map((x, j) => (j === i ? { ...x, prompt: e.target.value } : x)))}
                   placeholder="Prompt it sends…"
                   maxLength={2000}
-                  style={{ ...input, flex: 1 }}
+                  style={{ ...input, flex: '2 1 140px', minWidth: 0 }}
                 />
                 <button type="button" onClick={() => setButtons((p) => p.filter((_, j) => j !== i))} aria-label="Remove" style={iconBtn}>
                   <Trash2 size={16} />
@@ -171,7 +171,7 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
           </div>
         </Field>
 
-        <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+        <div style={{ display: 'flex', gap: 10, marginTop: 24, flexWrap: 'wrap' }}>
           <button type="button" disabled={!name.trim() || saving} onClick={() => void save(true)} style={{ ...primaryBtn, opacity: !name.trim() || saving ? 0.5 : 1 }}>
             {saving ? <Loader2 className="uc-spin" size={16} /> : null}
             {editing ? 'Save & chat' : 'Create & chat'}

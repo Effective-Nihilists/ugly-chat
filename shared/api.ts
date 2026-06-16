@@ -246,6 +246,19 @@ export const requests = defineRequests({
     rateLimit: { max: 10, window: 60 },
   }),
 
+  // Start a chat from picked contacts (userIds) and/or typed emails. One person
+  // total → 1:1; two or more → group. Unknown emails get an invite. This is the
+  // userId-aware path the new-message picker uses (vs the email-only helpers).
+  conversationStart: authReq({
+    input: z.object({
+      userIds: z.array(z.string()).max(50).optional(),
+      emails: z.array(z.string()).max(50).optional(),
+      title: z.string().max(80).optional(),
+    }),
+    output: z.object({ conversationId: z.string(), invited: z.array(z.string()) }),
+    rateLimit: { max: 20, window: 60 },
+  }),
+
   conversationMessageCreate: authReq({
     input: z
       .object({
@@ -393,6 +406,8 @@ export const requests = defineRequests({
       instruction: z.string().max(8000).optional(),
       model: z.string().optional(),
       avatarUrl: z.string().nullable().optional(),
+      avatarGlbUrl: z.string().nullable().optional(),
+      backgroundUrl: z.string().nullable().optional(),
       firstMessage: z.string().max(2000).nullable().optional(),
       buttons: z.array(z.object({ label: z.string().max(40), prompt: z.string().max(2000) })).optional(),
     }),
@@ -405,6 +420,8 @@ export const requests = defineRequests({
       instruction: z.string().max(8000).optional(),
       model: z.string().optional(),
       avatarUrl: z.string().nullable().optional(),
+      avatarGlbUrl: z.string().nullable().optional(),
+      backgroundUrl: z.string().nullable().optional(),
       firstMessage: z.string().max(2000).nullable().optional(),
       buttons: z.array(z.object({ label: z.string().max(40), prompt: z.string().max(2000) })).optional(),
     }),

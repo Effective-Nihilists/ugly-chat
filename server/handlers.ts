@@ -693,6 +693,70 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       return { conversationId: id, invited };
     },
 
+    // userId-aware start: picked contacts (userIds) + typed emails. One person
+    // total → 1:1 (reuses the deterministic direct id); 2+ → a new group.
+    conversationStart: async (userId, input): Promise<{ conversationId: string; invited: string[] }> => {
+      const picked = [...new Set((input.userIds ?? []).filter((id) => id && id !== userId))];
+      const invited: string[] = [];
+      const fromEmail: string[] = [];
+      for (const raw of input.emails ?? []) {
+        const r = await resolveEmailToUser(raw, getEnv()).catch((err: unknown) => {
+          console.error('[start] resolve failed', err);
+          return null;
+        });
+        if (!r) continue;
+        if (r.status === 'found') fromEmail.push(r.userId);
+        else invited.push(r.email);
+      }
+      const members = [...new Set([...picked, ...fromEmail])];
+      if (members.length === 0 && invited.length === 0) throw new Error('No recipients');
+
+      // 1:1 — exactly one known person and nobody to invite.
+      if (members.length === 1 && invited.length === 0) {
+        const other = members[0]!;
+        const id = directConversationId(userId, other);
+        const existing = await getDb().getDoc(collections.conversation, id);
+        if (!existing) {
+          await engineConversationCreate(
+            { id, type: 'direct', title: '', mode: 'private', ownerIds: [userId, other] },
+            userId,
+          );
+          await engineConversationUserAdd(
+            { conversationId: id, userId: other, role: 'member', visibility: 'visible' },
+            userId,
+          );
+        }
+        return { conversationId: id, invited: [] };
+      }
+
+      // Only an invite (no known members) — mirror conversationCreateDirect's invite path.
+      if (members.length === 0 && invited.length === 1) {
+        await sendInviteEmail(invited[0]!, userId).catch((err: unknown) =>
+          console.error('[invite] direct invite failed', err),
+        );
+        return { conversationId: '', invited };
+      }
+
+      // Group.
+      const id = `grp-${userId}-${Date.now().toString(36)}`;
+      await engineConversationCreate(
+        { id, type: 'group', title: input.title ?? 'New group', mode: 'private', ownerIds: [userId] },
+        userId,
+      );
+      for (const m of members) {
+        await engineConversationUserAdd(
+          { conversationId: id, userId: m, role: 'member', visibility: 'visible' },
+          userId,
+        );
+      }
+      for (const email of invited) {
+        await sendInviteEmail(email, userId, id).catch((err: unknown) =>
+          console.error('[invite] group invite failed', err),
+        );
+      }
+      return { conversationId: id, invited };
+    },
+
     // ── Custom bots (config-only personas) ──────────────────────────────────
     botCreate: async (userId, input): Promise<{ botId: string }> => {
       const botId = `bot-${nanoid()}`;

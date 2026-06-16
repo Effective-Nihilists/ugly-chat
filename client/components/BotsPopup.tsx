@@ -54,6 +54,8 @@ export function openBotsPopup(
 export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPopupProps): React.ReactElement {
   const [bots, setBots] = useState<BotDoc[]>([]);
   const [loading, setLoading] = useState(true);
+  // Two-step delete: first click arms (shows "Confirm?"), second click deletes.
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   useEffect(() => {
     const refetch = (): void => {
@@ -79,7 +81,7 @@ export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPo
       <div style={modalHead}>
         <span style={modalTitle}>My bots</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <button type="button" onClick={() => editBot('new')} style={primaryBtn}>
+          <button type="button" onClick={() => { onClose(); editBot('new'); }} style={primaryBtn}>
             <Plus size={16} /> New bot
           </button>
           <button type="button" aria-label="Close" onClick={onClose} style={closeBtn}>
@@ -97,7 +99,7 @@ export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPo
             <p style={{ opacity: 0.6, marginTop: 12, fontSize: 14 }}>
               No bots yet. Create one to define a persona, model, greeting, and starter buttons.
             </p>
-            <button type="button" onClick={() => editBot('new')} style={{ ...primaryBtn, margin: '8px auto 0' }}>
+            <button type="button" onClick={() => { onClose(); editBot('new'); }} style={{ ...primaryBtn, margin: '8px auto 0' }}>
               <Plus size={16} /> New bot
             </button>
           </div>
@@ -130,17 +132,33 @@ export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPo
                 <button
                   type="button"
                   title="Chat"
-                  onClick={() => void startBotChat(socket, userId, b, (cid) => navigate(cid))}
+                  onClick={() => { onClose(); void startBotChat(socket, userId, b, (cid) => navigate(cid)); }}
                   style={iconBtn}
                 >
                   <MessageSquare size={18} />
                 </button>
-                <button type="button" title="Edit" onClick={() => editBot(b._id)} style={iconBtn}>
+                <button type="button" title="Edit" onClick={() => { onClose(); editBot(b._id); }} style={iconBtn}>
                   <Pencil size={18} />
                 </button>
-                <button type="button" title="Delete" onClick={() => remove(b._id)} style={{ ...iconBtn, color: 'var(--app-error)' }}>
-                  <Trash2 size={18} />
-                </button>
+                {confirmId === b._id ? (
+                  <button
+                    type="button"
+                    title="Confirm delete"
+                    onClick={() => { remove(b._id); setConfirmId(null); }}
+                    style={{ ...iconBtn, width: 'auto', padding: '0 12px', gap: 6, color: '#fff', background: 'var(--app-error)', border: 'none', fontSize: 13, fontWeight: 700 }}
+                  >
+                    <Trash2 size={16} /> Delete?
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    title="Delete"
+                    onClick={() => setConfirmId(b._id)}
+                    style={{ ...iconBtn, color: 'var(--app-error)' }}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
               </div>
             ))}
           </div>

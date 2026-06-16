@@ -1,7 +1,9 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Mail, Check, MessageSquarePlus, X, Users } from 'lucide-react';
 import { Avatar, type ConvRow } from '../lib/conversations';
 import { isValidEmail, normalizeEmail } from '../../shared/email';
+
+interface Contact { userId: string; name: string; avatarUrl: string | null }
 
 // Popups render in the router's portal, OUTSIDE <AppProvider>, so they can't
 // use useApp()/useRouter() — deps are passed in by the opener instead.
@@ -50,6 +52,30 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [statusError, setStatusError] = useState(false);
+  // People picker: contacts (people you share conversations with) + the set the
+  // user has tapped to add. Clicking a person adds them as a recipient (vs the
+  // old behavior of opening that chat). `recent` is no longer rendered here.
+  void recent;
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [contactsLoading, setContactsLoading] = useState(true);
+  const [selected, setSelected] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void socket
+      .request('userContacts', {})
+      .then((res) => {
+        if (cancelled) return;
+        setContacts(((res as { users?: Contact[] }).users ?? []) as Contact[]);
+      })
+      .catch(() => undefined)
+      .finally(() => { if (!cancelled) setContactsLoading(false); });
+    return () => { cancelled = true; };
+  }, [socket]);
+
+  const toggle = useCallback((uid: string) => {
+    setSelected((prev) => (prev.includes(uid) ? prev.filter((x) => x !== uid) : [...prev, uid]));
+  }, []);
 
   const draftValid = isValidEmail(normalizeEmail(draft));
 
@@ -92,37 +118,30 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
     [navigate, onClose],
   );
 
-  // Fold any half-typed valid email into the recipient set.
-  const allRecipients = useCallback((): string[] => {
+  // Fold any half-typed valid email into the typed-email set.
+  const allEmails = useCallback((): string[] => {
     const e = normalizeEmail(draft);
     return isValidEmail(e) ? [...new Set([...emails, e])] : emails;
   }, [draft, emails]);
 
   const submit = useCallback(async () => {
     if (busy) return;
-    const all = allRecipients();
-    if (all.length === 0) return;
+    const ems = allEmails();
+    if (selected.length + ems.length === 0) return;
     setBusy(true);
     setStatus(null);
     setStatusError(false);
     try {
-      if (all.length === 1) {
-        const res = (await socket.request('conversationCreateDirect', { email: all[0] })) as {
-          conversationId: string;
-          invited: boolean;
-        };
-        if (res.invited) {
-          setStatus(`Invite sent to ${all[0]}`);
-          setStatusError(false);
-          setBusy(false);
-        } else {
-          go(res.conversationId);
-        }
+      const res = (await socket.request('conversationStart', {
+        userIds: selected,
+        emails: ems,
+        title: selected.length + ems.length >= 2 ? title.trim() || undefined : undefined,
+      })) as { conversationId: string; invited: string[] };
+      if (!res.conversationId && res.invited.length > 0) {
+        setStatus(`Invite sent to ${res.invited[0]}`);
+        setStatusError(false);
+        setBusy(false);
       } else {
-        const res = (await socket.request('groupCreate', {
-          title: title.trim() || undefined,
-          emails: all,
-        })) as { conversationId: string; invited: string[] };
         go(res.conversationId);
       }
     } catch (err) {
@@ -131,12 +150,13 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
       setStatusError(true);
       setBusy(false);
     }
-  }, [busy, allRecipients, socket, title, go]);
+  }, [busy, allEmails, selected, socket, title, go]);
 
-  // The CTA reflects how many recipients there are once the draft is folded in.
-  const count = allRecipients().length;
+  // The CTA reflects total recipients = picked people + typed emails.
+  const count = selected.length + allEmails().length;
   const isGroup = count >= 2;
   const canSubmit = count >= 1 && !busy;
+  const contactById = new Map(contacts.map((c) => [c.userId, c]));
 
   return (
     <div style={modal}>
@@ -153,6 +173,14 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
           <label style={fieldLabel}>To</label>
           <div style={tokens}>
             <Mail size={16} style={{ opacity: 0.5, flexShrink: 0, alignSelf: 'center' }} />
+            {selected.map((uid) => (
+              <span key={uid} style={{ ...chip, background: 'var(--app-primary)', color: '#fff', borderColor: 'var(--app-primary)' }}>
+                {contactById.get(uid)?.name ?? uid.slice(0, 6)}
+                <button type="button" aria-label="Remove" onClick={() => toggle(uid)} style={{ ...chipX, color: '#fff' }}>
+                  <X size={11} />
+                </button>
+              </span>
+            ))}
             {emails.map((e) => (
               <span key={e} style={chip}>
                 {e}
@@ -172,7 +200,7 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
               }}
               onKeyDown={onKeyDown}
               onBlur={() => { if (draft.trim() && draftValid) addChip(draft); }}
-              placeholder={emails.length === 0 ? 'name@email.com' : 'add another…'}
+              placeholder={emails.length === 0 && selected.length === 0 ? 'tap a person below, or type an email…' : 'add another…'}
               spellCheck={false}
               autoFocus
               style={{ ...inputEl, flex: '1 0 120px', minWidth: 120 }}
@@ -180,9 +208,8 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
             {draftValid ? <Check size={16} style={{ color: 'var(--app-success)', flexShrink: 0, alignSelf: 'center' }} /> : null}
           </div>
           <div style={hint}>
-            Add people by email. One person starts a 1:1; two or more makes a group. We start the chat
-            now — and <b>send an invite</b> if they&apos;re not on ugly.chat yet. No usernames, no friend
-            requests.
+            Tap people below to add them, or type an email to invite someone not on ugly.chat yet. One
+            person starts a 1:1; two or more makes a group.
           </div>
         </div>
 
@@ -206,28 +233,37 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
           </div>
         ) : null}
 
-        {recent.length > 0 ? (
-          <div style={field}>
-            <label style={fieldLabel}>Recent</label>
-            <div>
-              {recent.map((c) => (
-                <button
-                  key={c.conversationId}
-                  type="button"
-                  className="uc-row"
-                  onClick={() => go(c.conversationId)}
-                  style={memberRow}
-                >
-                  <Avatar image={c.image} seed={c.conversationId} label={c.title} size={38} />
-                  <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-                    <div style={memberName}>{c.title || 'Conversation'}</div>
-                    {c.preview ? <div style={memberSub}>{c.preview}</div> : null}
-                  </div>
-                </button>
-              ))}
-            </div>
+        {/* People you've chatted with — tap to add as a recipient. Fixed height
+            reserves space so the modal doesn't jump while contacts load. */}
+        <div style={field}>
+          <label style={fieldLabel}>People</label>
+          <div style={contactsBox}>
+            {contactsLoading ? (
+              <div style={contactsMsg}>Loading…</div>
+            ) : contacts.length === 0 ? (
+              <div style={contactsMsg}>No contacts yet — invite someone by email above.</div>
+            ) : (
+              contacts.map((c) => {
+                const on = selected.includes(c.userId);
+                return (
+                  <button
+                    key={c.userId}
+                    type="button"
+                    className="uc-row"
+                    onClick={() => toggle(c.userId)}
+                    style={{ ...memberRow, background: on ? 'rgba(var(--app-primary-rgb), 0.10)' : 'transparent' }}
+                  >
+                    <Avatar image={c.avatarUrl ?? undefined} seed={c.userId} label={c.name} size={38} />
+                    <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                      <div style={memberName}>{c.name}</div>
+                    </div>
+                    {on ? <Check size={18} style={{ color: 'var(--app-primary)', flexShrink: 0 }} /> : null}
+                  </button>
+                );
+              })
+            )}
           </div>
-        ) : null}
+        </div>
 
         {status ? (
           <div style={{ fontSize: 13, fontWeight: 600, color: statusError ? 'var(--app-error)' : 'var(--app-primary)' }}>
@@ -383,6 +419,29 @@ const memberSub: React.CSSProperties = {
   whiteSpace: 'nowrap',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
+};
+void memberSub;
+// Fixed-height contacts list — reserves vertical space so the modal doesn't jump
+// while the contacts request resolves.
+const contactsBox: React.CSSProperties = {
+  minHeight: 168,
+  maxHeight: 240,
+  overflowY: 'auto',
+  border: '1px solid var(--app-border)',
+  borderRadius: 10,
+  background: 'var(--app-tertiary)',
+  padding: 4,
+};
+const contactsMsg: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  height: 160,
+  fontSize: 13,
+  color: 'var(--app-foreground)',
+  opacity: 0.5,
+  textAlign: 'center',
+  padding: '0 16px',
 };
 const modalFoot: React.CSSProperties = {
   display: 'flex',

@@ -1000,9 +1000,20 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   useEffect(() => {
     const len = messages.length;
     const last = messages[len - 1];
-    if (len > prevLenRef.current && last && last.userId === userId) {
+    // Pin to the bottom when a conversation first loads (open) AND when my own
+    // new message arrives. The framework keeps it pinned while already at the
+    // bottom and un-pins once the user scrolls up.
+    const firstLoad = prevLenRef.current === 0 && len > 0;
+    const myNewMessage = len > prevLenRef.current && !!last && last.userId === userId;
+    if (firstLoad || myNewMessage) {
       const el = document.querySelector('.uc-chat-scroll [data-testid="conversation-scroll-container"]');
-      if (el instanceof HTMLElement) requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+      if (el instanceof HTMLElement) {
+        requestAnimationFrame(() => {
+          el.scrollTop = el.scrollHeight;
+          // Tell ChatView we're at the bottom so it keeps auto-pinning new messages.
+          el.dispatchEvent(new Event('scroll'));
+        });
+      }
     }
     prevLenRef.current = len;
   }, [messages, userId]);
