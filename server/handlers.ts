@@ -338,11 +338,16 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       // The engine keys userConversation by `userPrivateId` and denormalizes
       // the sidebar fields onto it (title/image/notificationText/count).
       const db = getDb();
+      // Filter hidden conversations in SQL, not JS. A power user can accumulate
+      // thousands of userConversation rows (mostly hidden); fetching them all
+      // and discarding in JS transferred ~1MB+ and was the sidebar bottleneck.
+      // `$ne` is null-inclusive (Mongo semantics), so rows with no `visibility`
+      // set are still returned (they default to visible).
       const ucs = (await db.getDocs(collections.userConversation, {
         userPrivateId: userId,
+        visibility: { $ne: 'hidden' },
       })) as Record<string, unknown>[];
       const rows: ConversationListRow[] = ucs
-        .filter((u) => ((u['visibility'] as string) ?? 'visible') !== 'hidden')
         .map((u) => ({
           conversationId: String(u['conversationId'] ?? ''),
           title: (u['title'] as string) || '',
