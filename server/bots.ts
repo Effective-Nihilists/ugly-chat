@@ -12,8 +12,8 @@
  * is unavailable). Replies are delivered to clients via trackDocs.
  */
 import { conversationMessageCreate } from 'ugly-app/conversation/engine';
+import { getUserToken } from 'ugly-app/server/adapter/workers';
 import { collections } from '../shared/collections';
-import { UGLY_BOT_ID } from '../shared/bots';
 import { bumpListForMessage } from './listDenorm';
 import type { MsgTelemetry } from '../shared/telemetry';
 
@@ -52,8 +52,19 @@ export function parseTextGenResponse(data: unknown): { text: string; usage: MsgT
   return { text, usage };
 }
 
-// Workers-safe call to ugly.bot's proxied textGen (importing uglyBotRequest from
-// the 'ugly-app' main entry would drag the Node server into the Workers bundle).
+// Direct (non-proxied-op) textGen via ugly.bot's unified AI endpoint.
+//
+//   • With the chatting user's session JWT (read off the AsyncLocalStorage the
+//     framework populates per request) we hit `/v1/ai/user-billed/text`, which
+//     resolves the payer from the JWT and bills THAT user — full model access
+//     (any provider keyed on ugly.bot), not the DeepSeek-only generic proxy op.
+//   • Without an end-user context (system-triggered replies) we fall back to the
+//     app token + owner-billed `/v1/ai/text`.
+//
+// `getUserToken` comes from the Workers-safe adapter barrel (no Node deps), and
+// it's the SAME AsyncLocalStorage singleton `createWorkersApp` writes during
+// `/api/:name` dispatch — so a bot reply triggered inside a user's message
+// handler sees that user's token.
 async function uglyBotTextGen(
   model: string,
   messages: { role: string; content: string }[],
@@ -61,13 +72,15 @@ async function uglyBotTextGen(
 ): Promise<{ text: string; usage: MsgTelemetry }> {
   const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
   const base = env['UGLY_BOT_LOCAL'] === '1' ? 'http://localhost:3000' : env['UGLY_BOT_URL'] ?? 'https://ugly.bot';
-  const token = env['UGLY_BOT_TOKEN'];
-  if (!token) throw new Error('UGLY_BOT_TOKEN not set');
+  const userToken = getUserToken();
+  const endpoint = userToken ? `${base}/v1/ai/user-billed/text` : `${base}/v1/ai/text`;
+  const bearer = userToken ?? env['UGLY_BOT_TOKEN'];
+  if (!bearer) throw new Error('no end-user token and UGLY_BOT_TOKEN not set');
   const t0 = Date.now();
-  const res = await fetch(`${base}/request`, {
+  const res = await fetch(endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ op: 'textGen', input: { model, messages, options: { maxTokens } }, sessionId: 'server' }),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${bearer}` },
+    body: JSON.stringify({ model, messages, options: { maxTokens } }),
   });
   if (!res.ok) throw new Error(`textGen HTTP ${res.status}`);
   const data = await res.json() as Record<string, unknown>;
@@ -247,14 +260,18 @@ export async function triggerBotReplies(
     }))
     .filter((m) => m.content.length > 0);
 
+  const convBots = (conv?.['bots'] as Record<string, { model?: string }> | undefined) ?? {};
   for (const botId of botIds) {
     const bot = await getBotConfig(db, botId);
     if (!bot) continue;
+    // Per-conversation model override (set via the bot DM's model picker),
+    // stored on conversation.bots[botId].model; falls back to the bot's default.
+    const model = convBots[botId]?.model ?? bot.model;
     let reply = '';
     let usage: MsgTelemetry | undefined;
     try {
       const out = await uglyBotTextGen(
-        bot.model,
+        model,
         [
           ...(bot.systemPrompt ? [{ role: 'system', content: bot.systemPrompt }] : []),
           ...history,

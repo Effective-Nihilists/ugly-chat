@@ -22,3 +22,6 @@ coverage/
 screenshots/actual/
 screenshots/mock/
 screenshots/compare.html
+
+.env.prod
+.env.*

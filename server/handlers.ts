@@ -454,6 +454,23 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       return { ok: true };
     },
 
+    conversationSetBotModel: async (userId, input): Promise<{ ok: boolean }> => {
+      const db = getDb();
+      // Membership check (same shape as conversationSetPinned).
+      const uc = await db.getDoc(
+        collections.userConversation,
+        `${userId}:${input.conversationId}`,
+      );
+      if (!uc) throw new Error('Not a member of this conversation');
+      const conv = await db.getDoc(collections.conversation, input.conversationId);
+      if (!conv) throw new Error('Conversation not found');
+      const bots = { ...((conv['bots'] as Record<string, Record<string, unknown>> | undefined) ?? {}) };
+      if (!bots[input.botId]) throw new Error('Bot is not a member of this conversation');
+      bots[input.botId] = { ...bots[input.botId], model: input.model };
+      await db.setDoc(collections.conversation, { ...conv, bots, updated: new Date() });
+      return { ok: true };
+    },
+
     // Distinct humans the caller shares conversations with (their "contacts") —
     // the candidate pool for adding members, no global directory required.
     userContacts: async (userId) => {

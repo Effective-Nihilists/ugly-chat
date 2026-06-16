@@ -88,6 +88,13 @@ export const requests = defineRequests({
     output: z.object({ ok: z.boolean() }),
   }),
 
+  // Set the model a bot uses in THIS conversation (the bot DM's model picker).
+  // Persisted on conversation.bots[botId].model; read by triggerBotReplies.
+  conversationSetBotModel: authReq({
+    input: z.object({ conversationId: z.string(), botId: z.string(), model: z.string() }).catchall(z.unknown()),
+    output: z.object({ ok: z.boolean() }),
+  }),
+
   // Each other member's single last-read timestamp for a conversation (the
   // `viewed` field). Drives a simple "Seen" indicator — no per-message stamps.
   conversationReadState: authReq({
