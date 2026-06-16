@@ -189,22 +189,29 @@ function DictationButton({
     onText(base ? `${base} ${t}` : t);
   }, [stt.transcript, onText]);
 
-  const toggle = (): void => {
-    if (stt.listening) {
-      stt.stop();
-    } else {
-      baseRef.current = getBase();
-      void stt.start();
-    }
+  // Push-to-talk: hold to record, release (or pointer leaves/cancels) to stop
+  // and insert. Pointer events cover both mouse and touch. preventDefault on
+  // pointerdown keeps the editor focus/caret from being stolen.
+  const startHold = (e: React.PointerEvent): void => {
+    e.preventDefault();
+    if (stt.listening) return; // guard against double-start
+    baseRef.current = getBase();
+    void stt.start();
+  };
+  const endHold = (): void => {
+    if (stt.listening) stt.stop();
   };
 
   return (
     <button
       type="button"
-      onClick={toggle}
+      onPointerDown={startHold}
+      onPointerUp={endHold}
+      onPointerLeave={endHold}
+      onPointerCancel={endHold}
       disabled={disabled}
-      title={stt.listening ? 'Stop dictation' : 'Dictate'}
-      aria-label={stt.listening ? 'Stop dictation' : 'Dictate'}
+      title={stt.listening ? 'Recording — release to insert' : 'Hold to talk'}
+      aria-label={stt.listening ? 'Recording — release to insert' : 'Hold to talk'}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
