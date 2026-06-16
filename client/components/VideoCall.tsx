@@ -4,9 +4,14 @@ import type { UglyBotSocket } from 'ugly-app/client';
 import type { DBObject } from 'ugly-app/shared';
 import { Mic, MicOff, Video, VideoOff, Captions, UserPlus, Bot as BotIcon, PhoneOff } from 'lucide-react';
 import { BotAvatarTile } from './BotAvatarTile';
+import type { DevicePrefs } from './call/useAvDevices';
+import { classifyMediaError } from './call/mediaErrors';
 
 export interface VideoCallHandle {
-  start: () => void;
+  /** Join the call with the device prefs chosen in the lobby. */
+  start: (prefs?: DevicePrefs) => void;
+  /** Leave the call (used by CallLayout for programmatic teardown). */
+  leave: () => void;
 }
 
 // A bot message reduced to what the avatar tile needs to speak it. `created` is
@@ -59,6 +64,11 @@ export interface VideoCallProps {
   onAddPerson?: () => void;
   /** Subtitle overlay rendered over the stage (shown when collapsed). */
   subtitleSlot?: React.ReactNode;
+  /** Fires when the local user joins/leaves — lets CallLayout drive the view
+   *  off LOCAL participation (so leaving exits call mode even if a peer/bot stays). */
+  onJoinedChange?: (joined: boolean) => void;
+  /** Surface a media/permission error to the host (e.g. mic/cam vanished mid-join). */
+  onCallError?: (message: string) => void;
 }
 
 interface CallParticipant {
@@ -142,6 +152,8 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
     onToggleTranscript,
     onAddPerson,
     subtitleSlot,
+    onJoinedChange,
+    onCallError,
   },
   ref,
 ) {
@@ -150,6 +162,17 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
   const [joined, setJoined] = useState(false);
   const [status, setStatus] = useState<string>('');
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
+
+  // Speaker (audiooutput) chosen in the lobby — applied to remote media via
+  // setSinkId. Empty = system default.
+  const [speakerId, setSpeakerId] = useState<string>('');
+
+  // Notify the host whenever local join state flips (drives exit-call view).
+  const onJoinedChangeRef = useRef(onJoinedChange);
+  onJoinedChangeRef.current = onJoinedChange;
+  useEffect(() => {
+    onJoinedChangeRef.current?.(joined);
+  }, [joined]);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -288,12 +311,24 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
     return () => clearInterval(t);
   }, [joined, socket, conversationId, pullPeers]);
 
-  const join = useCallback(async () => {
+  const join = useCallback(async (prefs?: DevicePrefs) => {
+    if (prefs?.speakerId) setSpeakerId(prefs.speakerId);
+    // Acquire local media with the lobby-chosen devices. Permission was already
+    // granted in the lobby, so this won't re-prompt — but if it fails (device
+    // unplugged, busy) SURFACE it instead of the old silent console.warn, and do
+    // NOT proceed to publish an empty session (which left both sides black).
     try {
-      streamRef.current = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      streamRef.current = await navigator.mediaDevices.getUserMedia({
+        video: prefs?.cameraId ? { deviceId: { exact: prefs.cameraId } } : true,
+        audio: prefs?.micId ? { deviceId: { exact: prefs.micId } } : true,
+      });
       if (localVideoRef.current) localVideoRef.current.srcObject = streamRef.current;
     } catch (err) {
-      console.warn('[VideoCall] camera/mic unavailable:', err);
+      const c = classifyMediaError(err);
+      console.error('[VideoCall] getUserMedia failed:', err);
+      onCallError?.(c.help);
+      setStatus('error');
+      return; // abort join — don't publish a track-less session
     }
     await socket.request('conversationVideoJoin', { conversationId });
     setJoined(true);
@@ -306,6 +341,9 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
         bundlePolicy: 'max-bundle',
       });
       pcRef.current = pc;
+      // Test hook: lets the e2e read RTCPeerConnection.getStats() to prove real
+      // inbound media (framesDecoded/bytesReceived). Harmless in production.
+      if (typeof window !== 'undefined') (window as Window & { __ucpc?: RTCPeerConnection }).__ucpc = pc;
       pc.addEventListener('track', (e) => {
         const mid = e.transceiver?.mid ?? '';
         const uid = midToUserRef.current.get(mid);
@@ -350,7 +388,7 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
       console.error('[VideoCall] realtime publish failed', err);
       setStatus('error');
     }
-  }, [socket, conversationId, userId, negotiate]);
+  }, [socket, conversationId, userId, negotiate, onCallError]);
 
   const leave = useCallback(async () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -396,7 +434,7 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
     if (!joined) autoJoinedRef.current = false;
   }, [joined]);
 
-  useImperativeHandle(ref, () => ({ start: () => void join() }), [join]);
+  useImperativeHandle(ref, () => ({ start: (prefs?: DevicePrefs) => void join(prefs), leave: () => void leave() }), [join, leave]);
 
   // ── Local device toggles (render-level only — flips track.enabled; never
   // touches the SFU/track/renegotiation path). ───────────────────────────────
@@ -436,7 +474,11 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
   );
   const botParticipant = useMemo(() => participants.find((p) => p.isBot) ?? null, [participants]);
 
-  if (!call.active && !joined) return null;
+  // Render the immersive stage ONLY when the LOCAL user has joined. A peer (or a
+  // never-leaving bot) keeping `call.active` true must not strand us on an empty
+  // stage after we leave — CallLayout shows the incoming-call ring for the
+  // not-yet-joined case instead.
+  if (!joined) return null;
 
   const connState = status || (joined ? 'connecting' : '');
   const otherName = other ? resolveName(other.userId, userId, other.isBot, profiles) : 'ugly-bot';
@@ -578,7 +620,7 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
           {other ? (
             <div data-id="call-tile-peer" style={{ position: 'absolute', inset: 0 }}>
               {remoteStreams.has(other.userId) ? (
-                <RemoteTile stream={remoteStreams.get(other.userId)!} />
+                <RemoteTile stream={remoteStreams.get(other.userId)!} speakerId={speakerId} />
               ) : (
                 <PeerPlaceholder name={resolveName(other.userId, userId, other.isBot, profiles)} />
               )}
@@ -821,10 +863,15 @@ function PeerPlaceholder({ name }: { name: string }): React.ReactElement {
 }
 
 // Remote peer tile — binds the pulled MediaStream to a <video>.
-function RemoteTile({ stream }: { stream: MediaStream }): React.ReactElement {
+function RemoteTile({ stream, speakerId }: { stream: MediaStream; speakerId?: string }): React.ReactElement {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     if (ref.current) ref.current.srcObject = stream;
   }, [stream]);
+  // Route remote audio to the lobby-chosen speaker (where supported).
+  useEffect(() => {
+    const el = ref.current as (HTMLVideoElement & { setSinkId?: (id: string) => Promise<void> }) | null;
+    if (el?.setSinkId && speakerId) void el.setSinkId(speakerId).catch(() => undefined);
+  }, [speakerId]);
   return <video ref={ref} autoPlay playsInline data-id="remote-video" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />;
 }
