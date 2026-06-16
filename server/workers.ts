@@ -19,6 +19,7 @@ import { cronTasks } from '../shared/cron';
 import { createChatHandlers, cronHandlers, type DbSurface } from './handlers';
 import { wireEngineDeps } from './configure';
 import { registerAppApi } from './appApi';
+import { withUserPublic } from './userPublic';
 
 const getDb = (): DbSurface => {
   const ctx = getAppContext();
@@ -29,7 +30,9 @@ const getDb = (): DbSurface => {
 const app = createWorkersApp(
   { requests, messages },
   createChatHandlers(getDb),
-  collections,
+  // Attach the real ugly.bot-backed getter to the `userPublic` collection (the
+  // shared def carries only a table-less placeholder getter).
+  withUserPublic(collections),
   (cfg) => {
     cfg.setWorkers(cronTasks, cronHandlers);
     wireEngineDeps(getDb);

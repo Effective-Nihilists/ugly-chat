@@ -39,7 +39,7 @@ import {
   realtimeRenegotiate,
 } from './realtime';
 import { requests } from '../shared/api';
-import type { Todo } from '../shared/collections';
+import type { Todo, UserPublicDoc } from '../shared/collections';
 import { collections } from '../shared/collections';
 import { cronTasks } from '../shared/cron';
 import { resolveEmailToUser, type ResolveEnv } from './resolveEmail';
@@ -59,6 +59,10 @@ export interface DbSurface {
   setDoc(col: unknown, doc: unknown): Promise<void>;
   getDoc(col: unknown, id: string): Promise<Record<string, unknown> | null>;
   getDocs(col: unknown, filter?: unknown, opts?: unknown): Promise<Record<string, unknown>[]>;
+  // Batch-fetch by id, order-preserving (null for misses). For getter-backed
+  // collections (e.g. `userPublic`) this is a cache-hit-per-id + ONE batched
+  // resolver call — the conversation-list profile fast path.
+  getByIds<T>(col: unknown, ids: string[]): Promise<(T | null)[]>;
   deleteDoc(col: unknown, id: string): Promise<void>;
   // Postgres full-text search (→ pgSearchDocs, `search @@ plainto_tsquery`).
   // Present on the Pg adapter; optional so the interface stays minimal.
@@ -357,10 +361,9 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
 
       // DM/1:1 conversations carry no title — ugly.bot shows the *other*
       // participant's name + avatar. DM ids are `{otherId}+{myUserId}`. Resolve
-      // the most-recent ones in one batch (names from migrated data, avatars
-      // from ugly.bot — its avatars aren't in our migration; resolveProfiles
-      // caps at 100 ids and caches). Rows are pre-sorted so the visible top
-      // conversations get resolved first.
+      // the most-recent ones in one batch via the getter-backed `userPublic`
+      // collection (cache hits per-id + ONE batched ugly.bot call for misses).
+      // Rows are pre-sorted so the visible top conversations get resolved first.
       // The Ugly Bot DM is auto-created with title 'Ugly Bot' (so it'd skip the
       // `!r.title` filter) but still needs its avatar resolved — include any DM
       // whose other participant is the canonical bot regardless of title.
@@ -372,8 +375,31 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         .slice(0, 90);
       const otherIds = [...new Set(dmRows.map((r) => deriveOtherUserId(r.conversationId, userId)!))];
       if (otherIds.length > 0) {
-        const profiles = await resolveProfiles(getDb(), otherIds);
-        const byId = new Map(profiles.map((p) => [p.id, p]));
+        // Resolve names/avatars for the DM peers. Human peers go through the
+        // getter-backed `userPublic` collection: `getByIds` serves cache hits
+        // per-id and resolves all misses in ONE batched ugly.bot call (replacing
+        // the old sequential `resolveProfiles` loop — the sidebar bottleneck).
+        // `bot-` peers (the canonical Ugly Bot DM) aren't in ugly.bot's profile
+        // graph — their name/avatar live in the local `bot` collection — so they
+        // resolve via `getBotConfig` instead.
+        const byId = new Map<string, { name: string; avatarUrl: string | null }>();
+        const botIds = otherIds.filter((id) => isBot(id));
+        const humanIds = otherIds.filter((id) => !isBot(id));
+
+        if (humanIds.length > 0) {
+          const docs = await getDb().getByIds<UserPublicDoc>(collections.userPublic, humanIds);
+          humanIds.forEach((id, i) => {
+            const doc = docs[i];
+            if (doc) byId.set(id, { name: doc.name ?? id.slice(0, 8), avatarUrl: doc.avatarUrl ?? null });
+          });
+        }
+        await Promise.all(
+          botIds.map(async (id) => {
+            const cfg = await getBotConfig(getDb(), id);
+            byId.set(id, { name: cfg?.name ?? id.slice(0, 8), avatarUrl: cfg?.avatarUrl ?? null });
+          }),
+        );
+
         for (const r of dmRows) {
           const other = deriveOtherUserId(r.conversationId, userId)!;
           const p = byId.get(other);
@@ -486,7 +512,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
 
     // Update the caller's name/avatar: write through to ugly.bot's federated
     // profile (userUpdate, authed as the end user) AND refresh the local
-    // userPublic cache so the change shows in this session without re-login.
+    // userProfileCache so the change shows in this session without re-login.
     userProfileUpdate: async (
       userId,
       input,
@@ -509,13 +535,13 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       }
       // Refresh the local cache (resolved fresh now) so the new name/avatar is
       // used immediately by every conversation render this session.
-      const existing = (await db.getDoc(collections.userPublic, userId)) ?? {};
+      const existing = (await db.getDoc(collections.userProfileCache, userId)) ?? {};
       const name = input.name ?? (existing['name'] as string | undefined) ?? null;
       const avatarUrl =
         input.avatarUrl !== undefined
           ? input.avatarUrl
           : ((existing['avatarResolved'] as string | null | undefined) ?? null);
-      await db.setDoc(collections.userPublic, {
+      await db.setDoc(collections.userProfileCache, {
         ...existing,
         _id: userId,
         name,

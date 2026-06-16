@@ -134,9 +134,28 @@ export const UserConversationSchema = z
   .catchall(z.unknown());
 export type UserConversation = InferDocType<typeof UserConversationSchema>;
 
-// Lightweight cache of ugly.bot public profiles (name/avatar) so chat can render
-// any participant. Populated from ugly.bot's public-profile lookup. See Phase 1.
+// Getter-backed `userPublic` — the framework's cached public-profile collection
+// (name/avatar/background/glb). It has NO local table: reads resolve through the
+// `profilesGetter` (one batched `userPublicBatch` op to ugly.bot) wired in by the
+// server entries via `withUserPublic(collections)` (see `server/userPublic.ts`).
+// The def registered HERE is getter-less so this shared module stays free of the
+// Node server barrel; the server entries attach the getter to the same name.
 export const UserPublicSchema = z
+  .object({
+    name: z.string().nullable().optional(),
+    avatarUrl: z.string().nullable().optional(),
+    backgroundUrl: z.string().nullable().optional(),
+    avatarGlbUrl: z.string().nullable().optional(),
+  })
+  .catchall(z.unknown());
+export type UserPublicDoc = InferDocType<typeof UserPublicSchema>;
+
+// Local profile cache — migrated ugly.bot profiles + bot personas (`isBot`/`bio`
+// for migrated bots, resolved avatars). This is the original local `userPublic`
+// table, renamed so the getter-backed `userPublic` above can own that name. Bot
+// resolution (`getBotConfig`, `botParticipants`) and the slower `resolveProfiles`
+// federated path read it; it keeps a real Postgres table.
+export const UserProfileCacheSchema = z
   .object({
     name: z.string().nullable().optional(),
     avatar: z.unknown().nullable().optional(),
@@ -144,7 +163,7 @@ export const UserPublicSchema = z
     fetchedAt: z.number().optional(),
   })
   .catchall(z.unknown());
-export type UserPublic = InferDocType<typeof UserPublicSchema>;
+export type UserProfileCache = InferDocType<typeof UserProfileCacheSchema>;
 
 export const CollabDocSchema = z.object({
   yjsState: z.string(),
@@ -197,6 +216,21 @@ export type Bot = InferDocType<typeof BotSchema>;
 //   trackKeys    – fields used as NATS routing keys for scoped trackDocs subscriptions
 //
 // After adding a collection, run: npm run db:schema-gen && npm run db:migrate
+
+// Placeholder getter that marks `userPublic` as table-less (so schema-gen /
+// migrations skip it — getter-backed collections have no Postgres table). It
+// resolves nothing on its own; the REAL ugly.bot-backed getter is attached at
+// server runtime by `withUserPublic()` in `server/userPublic.ts` (which can't
+// live in this shared module without dragging the Node server barrel into the
+// Workers/client bundles).
+const userPublicPlaceholderGetter = async (
+  ids: string[],
+): Promise<Record<string, never>> => {
+  await Promise.resolve();
+  void ids;
+  return {};
+};
+
 export const collections = defineCollections({
   todo: {
     schema: TodoSchema,
@@ -224,6 +258,21 @@ export const collections = defineCollections({
   },
   userPublic: {
     schema: UserPublicSchema,
+    meta: {
+      cache: { ttlMs: 90_000 },
+      trackable: false,
+      public: true,
+      cascadeFrom: null,
+      // Marks this collection as getter-backed (no local table). Overridden with
+      // the real ugly.bot resolver at server runtime via `withUserPublic()`.
+      getter: userPublicPlaceholderGetter,
+    },
+  },
+  // Renamed from the old local `userPublic` table (see migration). Holds the
+  // migrated ugly.bot profile cache + bot personas (`isBot`/`bio`) that the
+  // getter-backed `userPublic` above can't serve.
+  userProfileCache: {
+    schema: UserProfileCacheSchema,
     meta: { cache: true, trackable: false, public: true, cascadeFrom: null },
   },
   collabDoc: {

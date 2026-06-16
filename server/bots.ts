@@ -210,7 +210,7 @@ export async function getBotConfig(db: MinimalDb, botId: string): Promise<BotCon
   }
   if (botId.startsWith('bot-')) return null;
   // Migrated bot with no editable row yet — plain userId flagged isBot in userPublic.
-  const up = await db.getDoc(collections.userPublic, botId);
+  const up = await db.getDoc(collections.userProfileCache, botId);
   if (up && asBool(up['isBot'])) {
     const name = String(up['name'] ?? 'Bot');
     const bio = String(up['bio'] ?? '').trim();
@@ -250,7 +250,7 @@ async function botParticipants(
     for (const p of conversationId.split('+').filter(Boolean)) {
       if (p === exclude || ids.has(p)) continue;
       if (isBot(p)) { ids.add(p); continue; }
-      const up = await db.getDoc(collections.userPublic, p);
+      const up = await db.getDoc(collections.userProfileCache, p);
       if (up && asBool(up['isBot'])) ids.add(p);
     }
   }

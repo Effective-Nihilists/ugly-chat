@@ -1,7 +1,13 @@
 /**
- * Resolve userId → display profile (name + avatar) for chat participants.
+ * Resolve userId → display profile (name + avatar) for chat participants, WITH
+ * bot resolution (built-in / custom `bot-` / migrated-bot personas). The fast,
+ * getter-backed `userPublic` path (`db.getByIds`) is used directly by
+ * `conversationListMine`; this resolver remains for the callers that also need
+ * bot handling (`profilesGet`, `conversationMembers`, `userContacts`,
+ * `userProfileGet`).
+ *
  * Bots resolve locally; humans resolve via ugly.bot's `userPublicBatch` op and
- * are cached in the local `userPublic` collection (24h TTL). Degrades to a
+ * are cached in the local `userProfileCache` collection. Degrades to a
  * userId-derived name if ugly.bot is unreachable.
  */
 import { dbDefaults } from 'ugly-app/shared';
@@ -77,7 +83,7 @@ export async function resolveProfiles(db: DbLike, userIds: string[]): Promise<Pr
       });
       continue;
     }
-    const cached = await db.getDoc(collections.userPublic, id);
+    const cached = await db.getDoc(collections.userProfileCache, id);
     if (cached) localById.set(id, cached);
     // A migrated bot upgraded to an editable config bot has a `bot` collection
     // row keyed by its plain userId — that row is authoritative for its
@@ -139,7 +145,7 @@ export async function resolveProfiles(db: DbLike, userIds: string[]): Promise<Pr
         const isBot = asBool(local?.['isBot']);
         out.push({ id: p.id, name, avatarUrl, isBot, backgroundUrl, avatarGlbUrl });
         got.add(p.id);
-        await db.setDoc(collections.userPublic, {
+        await db.setDoc(collections.userProfileCache, {
           ...(local ?? {}),
           _id: p.id,
           name,

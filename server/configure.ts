@@ -44,7 +44,7 @@ export function wireEngineDeps(getDb: () => DbSurface): void {
         const b = await getDb().getDoc(collections.bot, userId);
         if (b) return { _id: userId, name: String(b['name'] ?? 'Bot'), isBot: true };
       }
-      const u = await getDb().getDoc(collections.userPublic, userId);
+      const u = await getDb().getDoc(collections.userProfileCache, userId);
       return u ?? { _id: userId, name: userId.slice(0, 8), isBot: false };
     },
     // eslint-disable-next-line @typescript-eslint/require-await

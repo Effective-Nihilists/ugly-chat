@@ -15,6 +15,7 @@ import { pages } from '../shared/pages';
 import { stringsDef } from '../shared/strings';
 import { createChatHandlers, cronHandlers, type DbSurface } from './handlers';
 import { wireEngineDeps } from './configure';
+import { withUserPublic } from './userPublic';
 
 // Lazy db resolver (arrow is only invoked at request time, after `app` is set).
 const getDb = (): DbSurface => app.db as unknown as DbSurface;
@@ -22,7 +23,9 @@ const getDb = (): DbSurface => app.db as unknown as DbSurface;
 const app = createApp(
   { requests, messages },
   createChatHandlers(getDb),
-  collections,
+  // Attach the real ugly.bot-backed getter to the `userPublic` collection (the
+  // shared def carries only a table-less placeholder getter).
+  withUserPublic(collections),
   (configurator: AppConfigurator) => {
     configurator.setPages({ pages });
     configurator.setExperiments(experiments);
