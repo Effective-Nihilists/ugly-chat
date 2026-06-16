@@ -462,6 +462,62 @@ hr {
 /* When pinned, the pin is always visible, so hide the timestamp beneath it. */
 .uc-convrow:has(.uc-pinbtn--on) .uc-rowtime { opacity: 0; }
 .uc-rowtime { transition: opacity 0.12s ease-out; }
+
+/* Delete: a trash button sitting just left of the pin (right: 12px), hidden until
+   row hover. Mirrors .uc-pinbtn but tints to the error color on hover. */
+.uc-delbtn {
+  position: absolute;
+  right: 38px;
+  top: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--app-foreground);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease-out, background-color 0.12s ease-out, color 0.12s ease-out;
+  z-index: 1;
+}
+.uc-convrow:hover .uc-delbtn { opacity: 0.6; }
+.uc-delbtn:hover { opacity: 1 !important; color: var(--app-error); background: var(--app-tertiary); }
+
+/* Inline confirm pair shown after clicking the trash button. Sits over the meta
+   slot with a solid background so it reads cleanly over the timestamp/preview. */
+.uc-delconfirm {
+  position: absolute;
+  right: 10px;
+  top: 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--app-main);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.18);
+  z-index: 2;
+}
+.uc-delconfirm-yes,
+.uc-delconfirm-no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.12s ease-out;
+}
+.uc-delconfirm-yes { color: var(--app-error); }
+.uc-delconfirm-yes:hover { background: var(--app-error); color: #fff; }
+.uc-delconfirm-no { color: var(--app-foreground); }
+.uc-delconfirm-no:hover { background: var(--app-tertiary); }
 .uc-iconbtn { transition: background-color 0.12s ease-out; }
 .uc-iconbtn:hover { background: var(--app-tertiary) !important; }
 .uc-footbtn { transition: background-color 0.12s ease-out; }
@@ -481,14 +537,26 @@ hr {
 .uc-menuitem { transition: background-color 0.12s ease; }
 .uc-menuitem:hover { background: rgba(var(--app-foreground-rgb), 0.07) !important; }
 
-/* Inline images in messages (uploaded attachments, markdown images): cap the
-   size and round corners. Sender avatars are 24px via inline styles, which win
-   over these caps, so avatars are unaffected. */
-[data-message-id] img {
-  max-width: min(100%, 420px);
-  max-height: 360px;
-  height: auto;
-  border-radius: 8px;
+/* Image attachments (rendered by ChatMedia → ChatImage, which owns per-image
+   sizing for aspect ratio + width). A media bubble drops its padding so the
+   image sits flush, edge-to-edge; overflow:hidden clips it to the bubble's
+   rounded corners. The caption (if any) gets its padding back via .uc-cap. */
+.uc-bubble.media {
+  padding: 0;
+  overflow: hidden;
+  width: min(100%, 480px);
+}
+.uc-bubble.media .uc-cap {
+  padding: 8px 13px;
+}
+/* Vertical stack when a single message carries several images. */
+.uc-media {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.uc-media-centered {
+  margin-top: 2px;
 }
 
 /* Hide the framework's floating feedback button — it overlaps the composer.
@@ -544,9 +612,14 @@ hr {
 }
 
 /* Never let the chat pane scroll sideways — long unbreakable receipt/token
-   strings or wide embeds must clip/wrap, not widen the whole column. */
-.uc-chat-scroll [data-testid='conversation-scroll-container'],
-.uc-chat-scroll [data-testid='message-list-inner'] {
+   strings or wide embeds must clip/wrap, not widen the whole column. Clip at the
+   SCROLL CONTAINER only. Do NOT add overflow-x to message-list-inner: a
+   non-visible overflow-x forces its computed overflow-y to `auto`, which
+   collapses the flex item's `min-height: auto` to 0 — so the inner shrinks to
+   the container height instead of growing with content, trapping the scroll
+   inside the inner and leaving the outer container (the element the scroll code
+   drives) with nothing to scroll. The inner MUST stay overflow: visible. */
+.uc-chat-scroll [data-testid='conversation-scroll-container'] {
   overflow-x: hidden;
 }
 
@@ -692,9 +765,6 @@ hr {
 .uc-daysep::before, .uc-daysep::after { content: ''; height: 1px; background: var(--app-border); flex: 1; }
 .uc-daysep span { font-family: var(--app-font-mono); font-size: 9.5px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--app-foreground-muted); }
 
-/* Composer hint line under the input. */
-.uc-chint { display: flex; justify-content: space-between; margin-top: 7px; padding: 0 2px; }
-.uc-chint span { font-family: var(--app-font-mono); font-size: 10px; color: var(--app-foreground-muted); letter-spacing: 0.04em; }
 
 /* ---- call transcript panel + subtitle overlay (ported from mockups
    call-bot.html / call-2p.html). The panel is themed with --app-* tokens; the

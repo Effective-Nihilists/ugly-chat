@@ -4,6 +4,8 @@ import { useApp, uploadBlob, promoteBlob, downscaleImage, useSafeAreaInsets } fr
 import { ChatView } from 'ugly-app/conversation/client';
 import { MdastViewer } from 'ugly-app/markdown/client';
 import { ConversationInput } from '../components/ConversationInput';
+import { createPortal } from 'react-dom';
+import { extractImages, ChatImage, ImageZoomViewer } from '../components/ChatMedia';
 import type { ChatMessage, ChatUser, ChatTypingEntry } from 'ugly-app/conversation/shared';
 import type { DBObject } from 'ugly-app/shared';
 import { type VideoCallHandle } from '../components/VideoCall';
@@ -11,7 +13,7 @@ import { CallLayout } from '../components/CallLayout';
 import { openMembersPopup } from '../components/MembersPopup';
 import { VoiceProvider, useVoice } from '../components/VoiceProvider';
 import { useRouter } from '../router';
-import { Avatar, pingConversationActivity } from '../lib/conversations';
+import { Avatar, pingConversationActivity, deleteOrLeaveConversation } from '../lib/conversations';
 import { modelLabel, BOT_MODELS, BOT_MODES, IMAGE_MODELS, IMAGE_SIZES } from '../lib/bots';
 import { UGLY_BOT_ID } from '../../shared/bots';
 import type { MsgTelemetry } from '../../shared/telemetry';
@@ -146,6 +148,7 @@ function MessageBody(props: {
   onPin: (messageId: string) => void;
   pinned: boolean;
   onButton: (prompt: string) => void;
+  onOpenImage: (src: string, alt: string) => void;
   // Human DM receipt props (only provided when !hasBot && statsOn)
   humanIdx?: number;
   humanSorted?: StatMsg[];
@@ -154,7 +157,7 @@ function MessageBody(props: {
   humanSeen?: boolean;
 }): React.ReactElement {
   const { msg, isOwn, sender, firstOfRun, stacked, daySep, onReact, onDelete, onEdit, onPin, pinned, onButton,
-    humanIdx, humanSorted, humanMeId, humanStatsOn, humanSeen } = props;
+    onOpenImage, humanIdx, humanSorted, humanMeId, humanStatsOn, humanSeen } = props;
   const voice = useVoice();
   const [hover, setHover] = useState(false);
   // The hover action menu sits in a gap above the bubble; hide it on a short
@@ -173,6 +176,15 @@ function MessageBody(props: {
     .filter(Boolean)) as { text: string; prompt: string | null; uri: string | null }[];
   const text = msg.markdown ?? msg.text ?? '';
   const hasText = text.trim().length > 0;
+  // Split image attachments out of the markdown so we can size/place them with
+  // the edge-to-edge / centered rules (the leftover text renders as usual).
+  const { images, text: bodyText } = extractImages(text);
+  const hasImages = images.length > 0;
+  const hasBody = bodyText.trim().length > 0;
+  // Image-dominant (no text, or just a short caption) → edge-to-edge; a message
+  // with substantial text keeps images at a modest centered size.
+  const edgeToEdge = hasImages && bodyText.length <= 140;
+  const mediaBubble = edgeToEdge;
   const startEdit = (): void => {
     setDraft(text);
     setEditing(true);
@@ -223,7 +235,7 @@ function MessageBody(props: {
           ) : null}
           {hasText ? (
           <div
-            className={`uc-bubble ${isOwn ? 'own' : 'peer'}${stacked ? ' stack' : ''}${isError ? ' err' : ''}`}
+            className={`uc-bubble ${isOwn ? 'own' : 'peer'}${stacked ? ' stack' : ''}${isError ? ' err' : ''}${mediaBubble ? ' media' : ''}`}
           >
         {editing ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 260 }}>
@@ -277,9 +289,27 @@ function MessageBody(props: {
           </div>
         ) : (
           <>
-            <MdastViewer markdown={text} width={520} openUri={openLink} />
-            {(msg as { edited?: unknown }).edited ? (
-              <span style={{ fontSize: 11, opacity: 0.5, marginLeft: 6 }}>(edited)</span>
+            {edgeToEdge ? (
+              <div className="uc-media">
+                {images.map((im, i) => (
+                  <ChatImage key={`${im.url}-${i}`} src={im.url} alt={im.alt} edgeToEdge onOpen={onOpenImage} />
+                ))}
+              </div>
+            ) : null}
+            {hasBody ? (
+              <div className={mediaBubble ? 'uc-cap' : undefined}>
+                <MdastViewer markdown={bodyText} width={520} openUri={openLink} />
+                {(msg as { edited?: unknown }).edited ? (
+                  <span style={{ fontSize: 11, opacity: 0.5, marginLeft: 6 }}>(edited)</span>
+                ) : null}
+              </div>
+            ) : null}
+            {hasImages && !edgeToEdge ? (
+              <div className="uc-media uc-media-centered">
+                {images.map((im, i) => (
+                  <ChatImage key={`${im.url}-${i}`} src={im.url} alt={im.alt} edgeToEdge={false} onOpen={onOpenImage} />
+                ))}
+              </div>
             ) : null}
           </>
         )}
@@ -444,11 +474,11 @@ function MessageBody(props: {
               </button>
             );
           })}
-          {voice.enabled && hasText && !isOwn ? (
+          {voice.enabled && hasBody && !isOwn ? (
             <button
               title={voice.playingId === msg.id ? 'Stop' : 'Read aloud'}
               onClick={() =>
-                voice.playingId === msg.id ? voice.stop() : voice.speak(msg.id, msg.text ?? text)
+                voice.playingId === msg.id ? voice.stop() : voice.speak(msg.id, bodyText)
               }
               style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: 0.6, color: 'var(--app-foreground)' }}
             >
@@ -542,6 +572,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const [botId, setBotId] = useState<string | null>(null);
   const [botButtons, setBotButtons] = useState<{ label: string; prompt: string }[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmDeleteConv, setConfirmDeleteConv] = useState(false);
   // Per-conversation bot config (the ⋯ menu): mode + text model + image model/size.
   const [botModel, setBotModel] = useState<string | null>(null);
   const [botMode, setBotMode] = useState<string>('chat');
@@ -552,6 +583,11 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const [pinnedMessageId, setPinnedMessageId] = useState<string | null>(null);
   const [pinnedMessage, setPinnedMessage] = useState<MessageDoc | null>(null);
   const [readers, setReaders] = useState<{ userId: string; viewed: number }[]>([]);
+  // Fullscreen image viewer (rendered via a body portal so position:fixed is
+  // viewport-relative — the router popup positioner is a transformed ancestor,
+  // which would otherwise collapse a fixed overlay to 0×0).
+  const [zoomImg, setZoomImg] = useState<{ src: string; alt: string } | null>(null);
+  const openImage = useCallback((src: string, alt: string) => setZoomImg({ src, alt }), []);
   const [, forceTick] = useState(0);
 
   useEffect(() => {
@@ -949,6 +985,15 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       .catch((err: unknown) => console.error('[ChatPage] clear failed', err));
   }, [socket, roomId]);
 
+  // Delete (owner) or leave (non-owner) the conversation, then return home.
+  const handleDeleteConversation = useCallback(() => {
+    setConfirmDeleteConv(false);
+    setMenuOpen(false);
+    void deleteOrLeaveConversation(socket, roomId, userId)
+      .then(() => router.push('', {}))
+      .catch((err: unknown) => console.error('[ChatPage] delete failed', err));
+  }, [socket, roomId, userId, router]);
+
   // Typing indicator. The composer fires `onType` on every edit; we throttle
   // "start" pings to one / 3s, and after 4s of silence send a "stop" so the
   // bubble clears even if the user never sends. (A sent message clears it
@@ -1070,14 +1115,6 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   })();
   const canManageMembers = convType === 'group' && !isDm && roomId !== 'demo-room';
 
-  // Simple read receipt: compare each member's single last-read timestamp to my
-  // most recent message. No per-message stamps.
-  const myLastMessage = [...messages].reverse().find((m) => m.userId === userId);
-  const seenCount = myLastMessage
-    ? readers.filter((r) => r.viewed >= myLastMessage.created).length
-    : 0;
-  const seenLine = myLastMessage && seenCount > 0 ? (isDm ? 'Seen' : `Seen by ${seenCount}`) : null;
-
   // Human DM telemetry: derive StatMsg array (sorted by created, bot messages excluded)
   // and related flags once, shared between the strip and per-message receipts.
   const hasBot = botId !== null;
@@ -1197,6 +1234,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           onPin={handlePin}
           pinned={pinnedMessageId === msg.id}
           onButton={(prompt) => handleSend(prompt)}
+          onOpenImage={openImage}
           {...(humanIdx >= 0 ? { humanIdx } : {})}
           {...(!hasBot && statsOn ? { humanSorted: statMsgs, humanMeId: userId, humanStatsOn: true as const } : {})}
           {...(humanSeen ? { humanSeen: true as const } : {})}
@@ -1204,7 +1242,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       );
     },
     [messages, userId, handleReact, handleDelete, handleEdit, handlePin, pinnedMessageId, handleSend, profiles,
-      hasBot, statsOn, statMsgs, readers, getUser],
+      hasBot, statsOn, statMsgs, readers, getUser, openImage],
   );
 
   // Header subtitle model: the bot's configured model, else the model named on
@@ -1305,12 +1343,13 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
             <Settings size={18} />
           </button>
         ) : null}
-        {/* Overflow menu — group chats manage members; bot chats can be wiped. */}
-        {botId || canManageMembers ? (
+        {/* Overflow menu — group chats manage members; bot chats can be wiped;
+            every real conversation can be deleted (DMs included). */}
+        {botId || canManageMembers || roomId !== 'demo-room' ? (
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <button
               type="button"
-              onClick={() => setMenuOpen((o) => !o)}
+              onClick={() => { setMenuOpen((o) => !o); setConfirmDeleteConv(false); }}
               aria-label="More"
               title="More"
               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }}
@@ -1319,7 +1358,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
             </button>
             {menuOpen ? (
               <>
-                <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 20 }} />
+                <div onClick={() => { setMenuOpen(false); setConfirmDeleteConv(false); }} style={{ position: 'fixed', inset: 0, zIndex: 20 }} />
                 <div style={{ position: 'absolute', top: 38, right: 0, zIndex: 21, background: 'var(--app-main)', border: '1px solid var(--app-border)', borderRadius: 10, boxShadow: 'var(--app-shadow-button-default)', minWidth: 200, overflow: 'hidden', maxHeight: 360, overflowY: 'auto' }}>
                   {botId ? (
                     <div style={{ borderBottom: '1px solid var(--app-border)' }}>
@@ -1362,6 +1401,38 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                     >
                       <Eraser size={16} /> Clear chat
                     </button>
+                  ) : null}
+                  {/* Delete conversation — owner deletes for everyone, non-owners
+                      leave. Two-step inline confirm (no modal). */}
+                  {roomId !== 'demo-room' ? (
+                    confirmDeleteConv ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderTop: '1px solid var(--app-border)', background: 'rgba(var(--app-error-rgb, 220,38,38), 0.08)' }}>
+                        <span style={{ flex: 1, fontSize: 13, color: 'var(--app-error)' }}>Delete this conversation?</span>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteConv(false)}
+                          style={{ fontSize: 13, fontWeight: 600, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--app-border)', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleDeleteConversation}
+                          style={{ fontSize: 13, fontWeight: 700, padding: '5px 12px', borderRadius: 8, border: 'none', background: 'var(--app-error)', color: '#fff', cursor: 'pointer' }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="uc-menuitem"
+                        onClick={() => setConfirmDeleteConv(true)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', color: 'var(--app-error)', cursor: 'pointer', fontSize: 14, fontWeight: 600, textAlign: 'left' }}
+                      >
+                        <Trash2 size={16} /> Delete conversation
+                      </button>
+                    )
                   ) : null}
                 </div>
               </>
@@ -1454,7 +1525,6 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           <div
             className="uc-composer"
             style={{
-              paddingTop: 8,
               paddingLeft: 16,
               paddingRight: 16,
               paddingBottom: Math.max(16, safeArea.bottom),
@@ -1462,11 +1532,6 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
               transition: 'padding-bottom 0.25s cubic-bezier(0.38, 0.7, 0.125, 1)',
             }}
           >
-            {seenLine ? (
-              <div style={{ textAlign: 'right', fontSize: 11, color: 'var(--app-foreground)', opacity: 0.5, padding: '0 2px 4px' }}>
-                {seenLine}
-              </div>
-            ) : null}
             {botButtons.length > 0 ? (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
                 {botButtons.map((b, i) => (
@@ -1518,7 +1583,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
             />
             <div style={{ border: '1px solid var(--app-primary)', borderRadius: 0, background: 'var(--app-main)' }}>
               <ConversationInput
-                placeholder={`Message ${title}…`}
+                placeholder="/ slash · @ mention · ↩ send · ⇧↩ new line"
                 autoFocus
                 onSend={handleSendWithAttachments}
                 onType={signalTyping}
@@ -1536,14 +1601,15 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                 }
               />
             </div>
-            {/* Faint mono hint line under the composer (mock parity). */}
-            <div className="uc-chint">
-              <span>/ slash · @ mention · ↩ send · ⇧↩ new line</span>
-              <span>markdown on</span>
-            </div>
           </div>
         </ChatView>
       </div>
+      {zoomImg && typeof document !== 'undefined'
+        ? createPortal(
+            <ImageZoomViewer src={zoomImg.src} alt={zoomImg.alt} onClose={() => setZoomImg(null)} />,
+            document.body,
+          )
+        : null}
     </div>
   );
 
