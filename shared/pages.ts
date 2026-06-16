@@ -14,12 +14,11 @@ import { definePage, definePages } from 'ugly-app/shared';
 // Navigate to it from anywhere via: useRouter().push('route-key', params)
 export const pages = definePages({
   '': definePage<{}>({ auth: false }),
-  'chat': definePage<{}>({ auth: true }),
-  'chat/:conversationId': definePage<{ conversationId: string }>({ auth: true }),
+  'search': definePage<{ q?: string }>({ auth: true }),
   'bot/:botId': definePage<{ botId: string }>({ auth: true }),
   'user/:userId': definePage<{ userId: string }>(),
-  'search': definePage<{ q?: string }>({ auth: true }),
   'settings/:conversationId': definePage<{ conversationId: string }>({ auth: true }),
+  ':conversationId': definePage<{ conversationId: string }>({ auth: true }),
 });
 
 export type AppPages = typeof pages;

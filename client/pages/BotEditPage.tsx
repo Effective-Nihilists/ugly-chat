@@ -66,10 +66,10 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
         }
         if (thenChat && id) {
           await startBotChat(socket, userId, { _id: id, ownerId: userId, ...payload }, (cid) =>
-            router.push('chat/:conversationId', { conversationId: cid }),
+            router.push(':conversationId', { conversationId: cid }),
           );
         } else {
-          router.push('chat', {});
+          router.push('', {});
         }
       } catch (err) {
         console.error('[BotEdit] save failed', err);
@@ -91,7 +91,7 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
     <div style={page}>
       <div style={{ maxWidth: 640, margin: '0 auto', width: '100%', padding: '20px 18px 60px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-          <button type="button" onClick={() => router.push('chat', {})} aria-label="Back" style={iconBtn}>
+          <button type="button" onClick={() => router.push('', {})} aria-label="Back" style={iconBtn}>
             <ArrowLeft size={20} />
           </button>
           <h1 style={{ fontFamily: 'var(--app-font-heading)', fontWeight: 800, fontSize: 24, margin: 0, color: 'var(--app-foreground)' }}>

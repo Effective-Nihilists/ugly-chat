@@ -19,10 +19,10 @@ import {
 function openChat(e?: React.MouseEvent): void {
   e?.preventDefault();
   if (hasSessionCookie()) {
-    window.location.href = '/chat';
+    window.location.href = '/';
     return;
   }
-  startUglyBotLogin({ redirectTo: '/chat' });
+  startUglyBotLogin({ redirectTo: '/' });
 }
 
 // ── Brand tokens (fixed dark marketing palette; matches ugly.bot's landing) ──
@@ -54,7 +54,7 @@ export default function HomePage(): React.ReactElement {
   // Already signed in (e.g. arrived here via the ugly.bot SSO redirect)? Skip
   // the marketing landing and go straight to the app.
   useEffect(() => {
-    if (hasSessionCookie()) window.location.replace('/chat');
+    if (hasSessionCookie()) window.location.replace('/');
   }, []);
   return (
     <div
@@ -94,7 +94,7 @@ function Nav(): React.ReactElement {
           ugly<span style={{ color: BRAND }}>.</span>chat
         </span>
       </div>
-      <a href="/chat" onClick={openChat} className="lp-cta-ghost" style={ghostCta}>
+      <a href="/" onClick={openChat} className="lp-cta-ghost" style={ghostCta}>
         Open chat
       </a>
     </div>
@@ -124,7 +124,7 @@ function Hero({ desktop }: { desktop: boolean }): React.ReactElement {
             bots run cheap open models and tell you what each turn costs.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 30 }}>
-            <a href="/chat" onClick={openChat} className="lp-cta" style={primaryCta}>
+            <a href="/" onClick={openChat} className="lp-cta" style={primaryCta}>
               Open chat <ArrowRight size={18} />
             </a>
             <a href="https://ugly.bot" className="lp-cta-ghost" style={{ ...ghostCta, padding: '13px 22px' }}>
@@ -244,7 +244,7 @@ function Manifesto({ desktop }: { desktop: boolean }): React.ReactElement {
             built and maintained by one engineer. Your conversations, your storage, your bill.
           </p>
         </div>
-        <a href="/chat" onClick={openChat} className="lp-cta" style={{ ...primaryCta, whiteSpace: 'nowrap' }}>
+        <a href="/" onClick={openChat} className="lp-cta" style={{ ...primaryCta, whiteSpace: 'nowrap' }}>
           Start chatting <ArrowRight size={18} />
         </a>
       </div>
@@ -264,7 +264,7 @@ function Footer(): React.ReactElement {
           powered by ugly.bot · © 2026
         </span>
         <div style={{ display: 'flex', gap: 18, fontSize: 13 }}>
-          <a href="/chat" onClick={openChat} className="lp-link" style={footLink}>Open chat</a>
+          <a href="/" onClick={openChat} className="lp-link" style={footLink}>Open chat</a>
           <a href="https://ugly.bot" className="lp-link" style={footLink}>ugly.bot</a>
         </div>
       </div>

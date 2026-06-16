@@ -39,7 +39,7 @@ export function Sidebar(): React.ReactElement {
   const [width, setWidth] = useState(() => Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, loadNum('leftSidebarWidth', 300))));
 
   const activeId =
-    router.current.routeName === 'chat/:conversationId'
+    router.current.routeName === ':conversationId'
       ? (router.current.params as { conversationId: string }).conversationId
       : null;
 
@@ -49,7 +49,7 @@ export function Sidebar(): React.ReactElement {
   }, []);
 
   const navigate = useCallback(
-    (conversationId: string) => router.push('chat/:conversationId', { conversationId }),
+    (conversationId: string) => router.push(':conversationId', { conversationId }),
     [router],
   );
 
@@ -139,7 +139,7 @@ export function Sidebar(): React.ReactElement {
               key={c.conversationId}
               type="button"
               title={c.title || 'Conversation'}
-              onClick={() => router.push('chat/:conversationId', { conversationId: c.conversationId })}
+              onClick={() => router.push(':conversationId', { conversationId: c.conversationId })}
               className="uc-row"
               style={{ border: 'none', background: 'transparent', padding: 3, borderRadius: '50%', cursor: 'pointer', outline: c.conversationId === activeId ? '2px solid var(--app-primary)' : 'none' }}
             >
@@ -159,7 +159,7 @@ export function Sidebar(): React.ReactElement {
         <button type="button" title="Collapse" onClick={() => setExpanded(false)} className="uc-iconbtn" style={{ ...iconBtnStyle, border: 'none', background: 'transparent' }}>
           <PanelLeftClose size={20} />
         </button>
-        <button type="button" onClick={() => router.push('chat', {})} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
+        <button type="button" onClick={() => router.push('', {})} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
           <span style={{ fontFamily: 'var(--app-font-heading)', fontWeight: 800, fontSize: 19, letterSpacing: '-0.03em', color: 'var(--app-foreground)', lineHeight: 1, whiteSpace: 'nowrap' }}>
             ugly<span style={{ color: 'var(--app-primary)' }}>.</span>chat
           </span>
@@ -214,7 +214,7 @@ export function Sidebar(): React.ReactElement {
                     key={c.conversationId}
                     row={c}
                     selected={c.conversationId === activeId}
-                    onClick={() => router.push('chat/:conversationId', { conversationId: c.conversationId })}
+                    onClick={() => router.push(':conversationId', { conversationId: c.conversationId })}
                     onTogglePin={() => togglePin(c.conversationId, !c.pinned)}
                   />
                 ))}
@@ -228,7 +228,7 @@ export function Sidebar(): React.ReactElement {
                     key={c.conversationId}
                     row={c}
                     selected={c.conversationId === activeId}
-                    onClick={() => router.push('chat/:conversationId', { conversationId: c.conversationId })}
+                    onClick={() => router.push(':conversationId', { conversationId: c.conversationId })}
                     onTogglePin={() => togglePin(c.conversationId, !c.pinned)}
                   />
                 ))}

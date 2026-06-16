@@ -3,7 +3,6 @@ import { useAppOptional } from 'ugly-app/client';
 import { useRouter } from '../router';
 import { Sidebar } from './Sidebar';
 
-const CHAT_ROUTES = new Set(['chat', 'chat/:conversationId']);
 const SIDEBAR_MIN_WIDTH = 820;
 
 // Two-pane app shell: persistent conversation sidebar (desktop) + main pane.
@@ -18,7 +17,11 @@ export function AppShell({ children }: { children: React.ReactNode }): React.Rea
   // the whole page. Gate the shell chrome on auth (useAppOptional → null when
   // unauthenticated) so the login screen renders cleanly instead.
   const authed = useAppOptional() !== null;
-  const isChat = CHAT_ROUTES.has(router.current.routeName);
+  // The chat two-pane shell applies to any conversation route and to the
+  // logged-IN root (which renders ChatHomePage). A logged-OUT root ('' →
+  // landing) bypasses the shell so HomePage renders full-width/scrollable.
+  const rn = router.current.routeName;
+  const isChat = rn === ':conversationId' || (rn === '' && authed);
 
   const [wide, setWide] = useState(() => (typeof window === 'undefined' ? true : window.innerWidth >= SIDEBAR_MIN_WIDTH));
   useEffect(() => {

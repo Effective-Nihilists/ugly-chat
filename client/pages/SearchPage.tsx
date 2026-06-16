@@ -129,7 +129,7 @@ export default function SearchPage(): React.ReactElement {
                   key={h._id}
                   type="button"
                   className="uc-row"
-                  onClick={() => router.push('chat/:conversationId', { conversationId: h.conversationId })}
+                  onClick={() => router.push(':conversationId', { conversationId: h.conversationId })}
                   style={{
                     display: 'flex',
                     flexDirection: 'column',

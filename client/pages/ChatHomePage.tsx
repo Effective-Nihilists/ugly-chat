@@ -18,7 +18,7 @@ export default function ChatHomePage(): React.ReactElement {
   const { conversations } = useConversations();
 
   const navigate = useCallback(
-    (conversationId: string) => router.push('chat/:conversationId', { conversationId }),
+    (conversationId: string) => router.push(':conversationId', { conversationId }),
     [router],
   );
 

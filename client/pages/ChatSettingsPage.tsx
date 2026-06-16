@@ -113,7 +113,7 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
     if (!id) return;
     void socket
       .request('conversationClear', { conversationId: id })
-      .then(() => router.push('chat/:conversationId', { conversationId: id }))
+      .then(() => router.push(':conversationId', { conversationId: id }))
       .catch((err: unknown) => { console.error('[settings] clear failed', err); setStatus('Could not clear history.'); });
   }, [id, socket, router]);
 
@@ -121,7 +121,7 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
     if (!id) return;
     void socket
       .request('conversationMemberRemove', { conversationId: id, userId })
-      .then(() => router.push('chat', {}))
+      .then(() => router.push('', {}))
       .catch((err: unknown) => { console.error('[settings] leave failed', err); setStatus('Could not leave the group.'); });
   }, [id, socket, userId, router]);
 
@@ -133,7 +133,7 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
           <button
             type="button"
             aria-label="Close"
-            onClick={() => (id ? router.push('chat/:conversationId', { conversationId: id }) : router.push('chat', {}))}
+            onClick={() => (id ? router.push(':conversationId', { conversationId: id }) : router.push('', {}))}
             style={S.closeBtn}
           >
             <X size={16} />

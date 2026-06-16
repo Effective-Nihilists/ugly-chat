@@ -1144,7 +1144,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         {narrow ? (
           <button
             type="button"
-            onClick={() => router.push('chat', {})}
+            onClick={() => router.push('', {})}
             aria-label="Back"
             style={{ border: 'none', background: 'transparent', fontSize: 22, lineHeight: 1, cursor: 'pointer', color: 'var(--app-foreground)', padding: '0 4px 0 0' }}
           >
@@ -1229,7 +1229,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                       className="uc-menuitem"
                       onClick={() => {
                         setMenuOpen(false);
-                        openMembersPopup(router, socket, userId, roomId, () => router.push('chat', {}));
+                        openMembersPopup(router, socket, userId, roomId, () => router.push('', {}));
                       }}
                       style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', fontSize: 14, fontWeight: 600, textAlign: 'left' }}
                     >
