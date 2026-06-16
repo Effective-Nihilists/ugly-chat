@@ -13,6 +13,8 @@
  */
 import { conversationMessageCreate } from 'ugly-app/conversation/engine';
 import { getUserToken } from 'ugly-app/server/adapter/workers';
+import { defaultAvatar, type Avatar } from 'ugly-app/shared';
+import { toAvatar } from './avatar';
 import { collections } from '../shared/collections';
 import { bumpListForMessage } from './listDenorm';
 import type { MsgTelemetry } from '../shared/telemetry';
@@ -161,9 +163,7 @@ export interface BotConfig {
   model: string;
   firstMessage: string | null;
   buttons: { label: string; prompt: string }[];
-  avatarUrl: string | null;
-  avatarGlbUrl: string | null;
-  backgroundUrl: string | null;
+  avatar: Avatar;
 }
 
 interface MinimalDb {
@@ -188,7 +188,7 @@ const asBool = (v: unknown): boolean => v === true || v === 'true';
 export async function getBotConfig(db: MinimalDb, botId: string): Promise<BotConfig | null> {
   const builtin = BOTS[botId];
   if (builtin) {
-    return { ...builtin, firstMessage: null, buttons: [], avatarUrl: null, avatarGlbUrl: null, backgroundUrl: null };
+    return { ...builtin, firstMessage: null, buttons: [], avatar: defaultAvatar };
   }
   // Any id with a `bot` collection row is an editable config bot. This covers
   // `bot-` custom bots AND migrated plain-userId bots we've upgraded to editable
@@ -203,9 +203,7 @@ export async function getBotConfig(db: MinimalDb, botId: string): Promise<BotCon
       model: String(doc['model'] ?? 'deepseek_v4_flash'),
       firstMessage: (doc['firstMessage'] as string | null | undefined) ?? null,
       buttons: (doc['buttons'] as { label: string; prompt: string }[] | undefined) ?? [],
-      avatarUrl: (doc['avatarUrl'] as string | null | undefined) ?? null,
-      avatarGlbUrl: (doc['avatarGlbUrl'] as string | null | undefined) ?? null,
-      backgroundUrl: (doc['backgroundUrl'] as string | null | undefined) ?? null,
+      avatar: toAvatar(doc['avatar']),
     };
   }
   if (botId.startsWith('bot-')) return null;
@@ -223,9 +221,7 @@ export async function getBotConfig(db: MinimalDb, botId: string): Promise<BotCon
       model: 'deepseek_v4_flash',
       firstMessage: null,
       buttons: [],
-      avatarUrl: (up['avatarResolved'] as string | null | undefined) ?? null,
-      avatarGlbUrl: (up['avatarGlbResolved'] as string | null | undefined) ?? null,
-      backgroundUrl: (up['backgroundResolved'] as string | null | undefined) ?? null,
+      avatar: toAvatar(up['avatar']),
     };
   }
   return null;

@@ -248,6 +248,10 @@ export function Sidebar(): React.ReactElement {
 const railStyle: React.CSSProperties = {
   flexShrink: 0,
   height: '100%',
+  boxSizing: 'border-box',
+  // Clear the home-indicator so the footer (Feedback) + last conversation aren't
+  // cut off (the shell only insets top + sides).
+  paddingBottom: 'env(safe-area-inset-bottom)',
   background: 'var(--app-sidebar)',
   borderRight: '1px solid var(--app-border)',
   display: 'flex',

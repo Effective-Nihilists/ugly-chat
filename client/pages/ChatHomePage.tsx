@@ -6,7 +6,7 @@ import { useConversations } from '../lib/conversations';
 import { openNewChatPopup } from '../components/NewChatPopup';
 import { openBotsPopup } from '../components/BotsPopup';
 import { openThemeMenu } from '../components/ThemeMenu';
-import { openProfilePopup } from '../components/ProfilePopup';
+import { openUglyBotSettings } from '../lib/uglyBot';
 import { ConversationListBody } from '../components/ConversationListBody';
 
 // True when the viewport is narrow enough that AppShell hides the sidebar
@@ -46,14 +46,13 @@ export default function ChatHomePage(): React.ReactElement {
   }, [router, socket, userId, navigate]);
 
   const openTheme = useCallback(() => openThemeMenu(router), [router]);
-  const openProfile = useCallback(() => openProfilePopup(router, socket), [router, socket]);
   const openFeedback = useCallback(() => {
     document.querySelector<HTMLElement>('[data-id="feedback-button"]')?.click();
   }, []);
 
   const iconCluster = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
-      <button type="button" title="Edit profile" onClick={openProfile} className="uc-iconbtn" style={topIconBtn}>
+      <button type="button" title="User settings" onClick={openUglyBotSettings} className="uc-iconbtn" style={topIconBtn}>
         <UserCog size={18} />
       </button>
       <button type="button" title="Bots" onClick={openBots} className="uc-iconbtn" style={topIconBtn}>
@@ -206,7 +205,7 @@ function MobileHome({
     : conversations;
 
   return (
-    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--app-sidebar)' }}>
+    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', height: '100%', boxSizing: 'border-box', paddingBottom: 'env(safe-area-inset-bottom)', background: 'var(--app-sidebar)' }}>
       {/* Header: wordmark + icon cluster */}
       <div style={{ height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px' }}>
         <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>

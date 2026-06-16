@@ -51,15 +51,14 @@ export async function profilesGetter(
   const { profiles } = await uglyBotRequest('userPublicBatch', { userIds: ids });
   const base = dbDefaults();
   for (const p of profiles) {
-    // ugly.bot's schema is passthrough, so avatarGlbUrl (when present) survives.
-    const extra = p as { avatarGlbUrl?: string | null };
+    // ugly.bot returns a single canonical `avatar` object; derive the flat URLs.
     out[p.id] = {
       ...base,
       _id: p.id,
       name: p.name ?? null,
-      avatarUrl: p.avatarUrl ?? null,
-      backgroundUrl: p.backgroundUrl ?? null,
-      avatarGlbUrl: extra.avatarGlbUrl ?? null,
+      avatarUrl: p.avatar?.image?.uri ?? null,
+      backgroundUrl: p.avatar?.background?.uri ?? null,
+      avatarGlbUrl: p.avatar?.uri ?? null,
     };
   }
   return out;

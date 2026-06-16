@@ -636,12 +636,13 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           const other = parts.length === 2 ? parts.find((p) => p !== userId) : undefined;
           if (other) {
             const res = (await socket.request('profilesGet', { userIds: [other] })) as {
-              profiles?: { name: string; avatarUrl?: string | null }[];
+              profiles?: { name: string; avatar?: { image?: { uri?: string } } }[];
             };
             const p = res.profiles?.[0];
             if (p?.name && !cancelled) setTitle(p.name);
             // Use the partner's avatar in the header (the DM has no conv image).
-            if (p?.avatarUrl && !cancelled) setConvImage((img: unknown) => img ?? p.avatarUrl);
+            const partnerImg = p?.avatar?.image?.uri;
+            if (partnerImg && !cancelled) setConvImage((img: unknown) => img ?? partnerImg);
           }
         }
       } catch (err) {
@@ -724,15 +725,24 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     void socket
       .request('profilesGet', { userIds: unknown })
       .then((res) => {
-        const list = (res as { profiles?: { id: string; name: string; avatarUrl: string | null; isBot: boolean }[] }).profiles ?? [];
+        const list = (res as { profiles?: { id: string; name: string; avatar?: { uri?: string | null; image?: { uri?: string }; background?: { uri?: string } | null }; isBot: boolean }[] }).profiles ?? [];
         setProfiles((prev) => {
           const next = { ...prev };
           for (const p of list) {
+            // Framework ChatUser needs URLs; extract them from the avatar object
+            // only here, at the render boundary. The call tiles need the 2D
+            // image (avatarUrl), the 3D model (avatarGlbUrl), and the backdrop
+            // (backgroundUrl) for the camera-off avatar view.
+            const img = p.avatar?.image?.uri;
+            const glb = p.avatar?.uri;
+            const bg = p.avatar?.background?.uri;
             next[p.id] = {
               id: p.id,
               name: p.name,
               isBot: p.isBot,
-              ...(p.avatarUrl ? { avatarUrl: p.avatarUrl } : {}),
+              ...(img ? { avatarUrl: img } : {}),
+              ...(glb ? { avatarGlbUrl: glb } : {}),
+              ...(bg ? { backgroundUrl: bg } : {}),
             };
           }
           return next;
@@ -1295,20 +1305,13 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         <Avatar image={convImage} seed={roomId} label={title} size={30} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--app-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
-          {botId ? (
-            // Bot subtitle = the bot's model only. Bots have no "online" status
-            // (they're always available); we never fabricate a model string.
-            headerModel ? (
-              <div className="uc-receipt" style={{ marginTop: 1 }}>
-                <b>{headerModel}</b>
-              </div>
-            ) : null
-          ) : (
-            // Humans show presence.
-            <div className="uc-receipt" style={{ marginTop: 1 }}>
-              <span style={{ color: 'var(--app-success)' }}>online</span>
-            </div>
-          )}
+          {/* Subtitle row — ALWAYS rendered with a reserved height so the async
+              bot-id / model resolution never grows or shrinks the header (which
+              caused a visible layout shift). Bots show their model once resolved;
+              humans show nothing (no fabricated "online" presence). */}
+          <div className="uc-receipt" style={{ marginTop: 1, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
+            {headerModel ? <b>{headerModel}</b> : null}
+          </div>
         </div>
         {/* Theme picker — mobile only (desktop has it in the sidebar header). */}
         {narrow ? (

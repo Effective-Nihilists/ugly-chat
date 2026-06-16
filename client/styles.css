@@ -259,6 +259,7 @@ body,
   font-weight: var(--app-font-body-weight);
 }
 
+
 p {
   font-family: 'Inter', 'Noto Sans Arabic', sans-serif;
   font-weight: 400;
@@ -685,10 +686,13 @@ hr {
   margin: 0;
   line-height: 24px;
 }
-/* The placeholder is an ::before on the empty editor — match the line height so
-   it sits on the same centered baseline as the caret. */
-.uc-composer .ProseMirror[data-placeholder]:empty::before {
-  line-height: 24px;
+/* The framework renders the composer placeholder as an absolutely-positioned
+   `.editor-placeholder` overlay (a flex row). Clamp it to ONE line so a long
+   "Message <name>…" clips at the edge instead of wrapping to two lines. */
+.uc-composer .editor-placeholder {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ---- brand utilities (ported from mockups/brand.css) ---- */

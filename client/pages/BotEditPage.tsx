@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ImagePlus, X, Plus, Trash2, ArrowLeft, Loader2 } from 'lucide-react';
 import { useApp, uploadBlob, promoteBlob, downscaleImage } from 'ugly-app/client';
+import { defaultAvatar, type Avatar } from 'ugly-app/shared';
 import { useRouter } from '../router';
 import { BOT_MODELS, startBotChat, type BotDoc } from '../lib/bots';
 
@@ -20,7 +21,7 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
   const [name, setName] = useState('');
   const [instruction, setInstruction] = useState('');
   const [model, setModel] = useState(BOT_MODELS[0]!.id);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatar, setAvatar] = useState<Avatar>(defaultAvatar);
   const [firstMessage, setFirstMessage] = useState('');
   const [buttons, setButtons] = useState<ButtonRow[]>([]);
   const [loaded, setLoaded] = useState(!editing);
@@ -36,7 +37,7 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
         setName(b.name ?? '');
         setInstruction(b.instruction ?? '');
         setModel(b.model ?? BOT_MODELS[0]!.id);
-        setAvatarUrl(b.avatarUrl ?? null);
+        setAvatar(b.avatar ?? defaultAvatar);
         setFirstMessage(b.firstMessage ?? '');
         setButtons(b.buttons ?? []);
       })
@@ -52,7 +53,7 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
         name: name.trim(),
         instruction,
         model,
-        avatarUrl,
+        avatar,
         firstMessage: firstMessage.trim() || null,
         buttons: buttons.filter((b) => b.label.trim() && b.prompt.trim()),
       };
@@ -76,7 +77,7 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
         setSaving(false);
       }
     },
-    [name, instruction, model, avatarUrl, firstMessage, buttons, saving, editId, socket, userId, router],
+    [name, instruction, model, avatar, firstMessage, buttons, saving, editId, socket, userId, router],
   );
 
   if (!loaded) {
@@ -101,7 +102,16 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
 
         {/* Avatar */}
         <div style={{ display: 'flex', gap: 14, marginBottom: 18 }}>
-          <ImageField label="Avatar" url={avatarUrl} onChange={setAvatarUrl} round size={96} socket={socket} />
+          <ImageField
+            label="Avatar"
+            url={avatar.image.uri === defaultAvatar.image.uri ? null : avatar.image.uri}
+            onChange={(url) =>
+              setAvatar((a) => (url ? { ...a, uri: null, image: { uri: url } } : defaultAvatar))
+            }
+            round
+            size={96}
+            socket={socket}
+          />
         </div>
 
         <Field label="Name">

@@ -1,4 +1,4 @@
-import { authReq, defineMessages, defineRequests, frameworkMessages, frameworkRequests, z } from 'ugly-app/shared';
+import { authReq, defineMessages, defineRequests, frameworkMessages, frameworkRequests, z, AvatarSchema } from 'ugly-app/shared';
 
 export const requests = defineRequests({
   // Todo demo — CRUD requests
@@ -162,7 +162,7 @@ export const requests = defineRequests({
         z.object({
           userId: z.string(),
           name: z.string(),
-          avatarUrl: z.string().nullable(),
+          avatar: AvatarSchema,
         }),
       ),
     }),
@@ -178,7 +178,7 @@ export const requests = defineRequests({
           userId: z.string(),
           role: z.string(),
           name: z.string(),
-          avatarUrl: z.string().nullable(),
+          avatar: AvatarSchema,
           isBot: z.boolean(),
         }),
       ),
@@ -405,9 +405,7 @@ export const requests = defineRequests({
       name: z.string().min(1).max(60),
       instruction: z.string().max(8000).optional(),
       model: z.string().optional(),
-      avatarUrl: z.string().nullable().optional(),
-      avatarGlbUrl: z.string().nullable().optional(),
-      backgroundUrl: z.string().nullable().optional(),
+      avatar: AvatarSchema.optional(),
       firstMessage: z.string().max(2000).nullable().optional(),
       buttons: z.array(z.object({ label: z.string().max(40), prompt: z.string().max(2000) })).optional(),
     }),
@@ -419,9 +417,7 @@ export const requests = defineRequests({
       name: z.string().min(1).max(60).optional(),
       instruction: z.string().max(8000).optional(),
       model: z.string().optional(),
-      avatarUrl: z.string().nullable().optional(),
-      avatarGlbUrl: z.string().nullable().optional(),
-      backgroundUrl: z.string().nullable().optional(),
+      avatar: AvatarSchema.optional(),
       firstMessage: z.string().max(2000).nullable().optional(),
       buttons: z.array(z.object({ label: z.string().max(40), prompt: z.string().max(2000) })).optional(),
     }),

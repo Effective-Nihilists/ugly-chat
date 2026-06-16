@@ -18,7 +18,7 @@ import {
   conversationCreate as engineConversationCreate,
   conversationMessageCreate as engineConversationMessageCreate,
 } from 'ugly-app/conversation/engine';
-import { dbDefaults } from 'ugly-app/shared';
+import { dbDefaults, defaultAvatar } from 'ugly-app/shared';
 import { nanoid } from 'nanoid';
 import { collections } from '../shared/collections';
 import type { DbSurface } from './handlers';
@@ -130,8 +130,12 @@ export function registerAppApi(
       model: String(body['model'] ?? 'deepseek_v4_flash'),
       firstMessage: (body['firstMessage'] as string | null | undefined) ?? null,
       buttons: (body['buttons'] as unknown[] | undefined) ?? [],
-      avatarUrl: (body['avatarUrl'] as string | null | undefined) ?? null,
-      backgroundUrl: (body['backgroundUrl'] as string | null | undefined) ?? null,
+      avatar: {
+        id: botId,
+        uri: null,
+        image: body['avatarUrl'] ? { uri: String(body['avatarUrl']) } : defaultAvatar.image,
+        background: body['backgroundUrl'] ? { uri: String(body['backgroundUrl']) } : null,
+      },
       webhookUrl: (body['webhookUrl'] as string | undefined) ?? null,
       webhookSecret: (body['webhookSecret'] as string | undefined) ?? null,
     };

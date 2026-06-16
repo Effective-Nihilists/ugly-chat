@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { InferDocType } from 'ugly-app/shared';
-import { defineCollections } from 'ugly-app/shared';
+import { defineCollections, AvatarSchema, ProfileFieldsSchema, defaultAvatar } from 'ugly-app/shared';
 
 // ─── Schemas & Types ─────────────────────────────────────────────────────────
 // Chat schemas are aligned with `ugly-app/conversation` (the conversation engine
@@ -183,28 +183,24 @@ export const BotButtonSchema = z.object({
 });
 export type BotButton = z.infer<typeof BotButtonSchema>;
 
-export const BotSchema = z
-  .object({
-    ownerId: z.string(),
-    name: z.string().default('Bot'),
-    avatarUrl: z.string().nullable().optional(),
-    // 3D avatar (GLB) for the call/TalkingAvatar, and the 2D conversation
-    // background. Used by the built-in Ugly Bot (bot-ugly) and any future
-    // bot that ships a 3D model.
-    avatarGlbUrl: z.string().nullable().optional(),
-    backgroundUrl: z.string().nullable().optional(),
-    instruction: z.string().default(''),
-    model: z.string().default('deepseek_v4_flash'),
-    firstMessage: z.string().nullable().optional(),
-    buttons: z.array(BotButtonSchema).optional(),
-    // App-registered bots: the owning app + a webhook that receives message
-    // events for conversations this bot is in (the app generates the reply).
-    // When `webhookUrl` is set, Ugly Chat does NOT run textGen for this bot.
-    appId: z.string().optional(),
-    webhookUrl: z.string().optional(),
-    webhookSecret: z.string().optional(),
-  })
-  .catchall(z.unknown());
+// Derives from the shared `ProfileFieldsSchema` (name + avatar object) so a bot's
+// identity shape matches a user's. The avatar is the canonical object (3D glb +
+// 2D image + background), defaulting to `defaultAvatar`.
+export const BotSchema = ProfileFieldsSchema.extend({
+  ownerId: z.string(),
+  name: z.string().default('Bot'),
+  avatar: AvatarSchema.default(defaultAvatar),
+  instruction: z.string().default(''),
+  model: z.string().default('deepseek_v4_flash'),
+  firstMessage: z.string().nullable().optional(),
+  buttons: z.array(BotButtonSchema).optional(),
+  // App-registered bots: the owning app + a webhook that receives message events
+  // for conversations this bot is in (the app generates the reply). When
+  // `webhookUrl` is set, Ugly Chat does NOT run textGen for this bot.
+  appId: z.string().optional(),
+  webhookUrl: z.string().optional(),
+  webhookSecret: z.string().optional(),
+}).catchall(z.unknown());
 export type Bot = InferDocType<typeof BotSchema>;
 
 // --- Collections ---

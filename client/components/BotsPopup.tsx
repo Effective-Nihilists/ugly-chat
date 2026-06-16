@@ -118,8 +118,8 @@ export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPo
                   background: 'var(--app-tertiary)',
                 }}
               >
-                {b.avatarUrl ? (
-                  <img src={b.avatarUrl} alt="" style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                {b.avatar?.image?.uri ? (
+                  <img src={b.avatar.image.uri} alt="" style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
                 ) : (
                   <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--app-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <BotIcon size={22} style={{ opacity: 0.6 }} />

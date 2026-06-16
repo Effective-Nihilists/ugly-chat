@@ -30,10 +30,49 @@ export function AppShell({ children }: { children: React.ReactNode }): React.Rea
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  if (!isChat) return <>{children}</>;
+  if (!isChat) {
+    // The landing ('' when logged out) is full-bleed (its dark bg fills behind
+    // the notch) and applies its own safe-area insets, so render it bare.
+    if (rn === '') return <>{children}</>;
+    // Utility pages (search, bot editor, group settings, user) — inset on every
+    // side so headers clear the notch and content clears the home indicator.
+    return (
+      <div
+        style={{
+          height: '100dvh',
+          boxSizing: 'border-box',
+          overflow: 'hidden',
+          background: 'var(--app-main)',
+          paddingTop: 'env(safe-area-inset-top)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          paddingLeft: 'env(safe-area-inset-left)',
+          paddingRight: 'env(safe-area-inset-right)',
+        }}
+      >
+        {children}
+      </div>
+    );
+  }
 
+  // Chat two-pane: inset top + sides here; the bottom is owned per-surface (the
+  // composer needs a keyboard-aware inset, the sidebar pads its own footer).
+  // The inset (notch/edge) background must match the page filling it: the home
+  // list ('') is `--app-sidebar`, a conversation is `--app-main`.
+  const shellBg = rn === '' ? 'var(--app-sidebar)' : 'var(--app-main)';
   return (
-    <div style={{ display: 'flex', height: '100dvh', width: '100%', overflow: 'hidden', background: 'var(--app-main)' }}>
+    <div
+      style={{
+        display: 'flex',
+        height: '100dvh',
+        width: '100%',
+        overflow: 'hidden',
+        background: shellBg,
+        boxSizing: 'border-box',
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingLeft: 'env(safe-area-inset-left)',
+        paddingRight: 'env(safe-area-inset-right)',
+      }}
+    >
       {wide && authed ? <Sidebar /> : null}
       <main style={{ flex: 1, minWidth: 0, height: '100%', overflow: 'hidden' }}>{children}</main>
     </div>

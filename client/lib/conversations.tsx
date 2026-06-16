@@ -56,6 +56,26 @@ export function pingConversationActivity(): void {
   window.dispatchEvent(new Event('uglychat:activity'));
 }
 
+/**
+ * Delete a conversation, with an automatic fallback to *leaving* it. `conversationDelete`
+ * is owner-only (DM participants are both owners; group members are not), so for a
+ * non-owner the server rejects and we remove just the current user via
+ * `conversationMemberRemove`. Either way the thread leaves the caller's list — the
+ * `conversationUser` trackDocs subscription refetches the sidebar automatically.
+ */
+export async function deleteOrLeaveConversation(
+  socket: { request: (name: string, input: Record<string, unknown>) => Promise<unknown> },
+  conversationId: string,
+  userId: string,
+): Promise<void> {
+  try {
+    await socket.request('conversationDelete', { conversationId });
+  } catch {
+    // Non-owner → leave instead. If this also fails, let it propagate to the caller.
+    await socket.request('conversationMemberRemove', { conversationId, userId });
+  }
+}
+
 export function resolveImageUrl(image: unknown): string | null {
   if (!image) return null;
   if (typeof image === 'string') return image;

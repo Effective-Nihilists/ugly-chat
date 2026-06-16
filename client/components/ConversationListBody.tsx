@@ -14,6 +14,7 @@ export function ConversationListBody({
   activeId,
   onSelect,
   onTogglePin,
+  onDelete,
 }: {
   /** Full (unfiltered) list — used only to distinguish "loading" from "empty". */
   conversations: ConvRow[];
@@ -25,6 +26,7 @@ export function ConversationListBody({
   activeId: string | null;
   onSelect: (conversationId: string) => void;
   onTogglePin?: (conversationId: string, pinned: boolean) => void;
+  onDelete?: (conversationId: string) => void;
 }): React.ReactElement {
   const pinned = filtered.filter((c) => c.pinned);
   const rest = filtered.filter((c) => !c.pinned);
@@ -39,6 +41,7 @@ export function ConversationListBody({
       selected={c.conversationId === activeId}
       onClick={() => onSelect(c.conversationId)}
       {...(onTogglePin ? { onTogglePin: () => onTogglePin(c.conversationId, !c.pinned) } : {})}
+      {...(onDelete ? { onDelete: () => onDelete(c.conversationId) } : {})}
     />
   );
 

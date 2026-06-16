@@ -1,5 +1,5 @@
-import React from 'react';
-import { Pin } from 'lucide-react';
+import React, { useState } from 'react';
+import { Pin, Trash2, Check, X } from 'lucide-react';
 import { Avatar, type ConvRow } from '../lib/conversations';
 
 // Compact relative timestamp for the row's lastActivity (ms epoch):
@@ -27,9 +27,11 @@ export function ConversationRow(props: {
   selected: boolean;
   onClick: () => void;
   onTogglePin?: () => void;
+  onDelete?: () => void;
 }): React.ReactElement {
-  const { row, selected, onClick, onTogglePin } = props;
+  const { row, selected, onClick, onTogglePin, onDelete } = props;
   const time = relativeTime(row.lastActivity);
+  const [confirming, setConfirming] = useState(false);
   return (
     <div className="uc-convrow" style={{ position: 'relative' }}>
     <button
@@ -168,6 +170,51 @@ export function ConversationRow(props: {
         >
           <Pin size={13} fill={row.pinned ? 'currentColor' : 'none'} />
         </button>
+      ) : null}
+      {/* Delete: a hover trash button (left of the pin) that morphs into an inline
+          confirm/cancel pair. The confirm pair stays visible regardless of hover. */}
+      {onDelete && !confirming ? (
+        <button
+          type="button"
+          className="uc-delbtn"
+          onClick={(e) => {
+            e.stopPropagation();
+            setConfirming(true);
+          }}
+          title="Delete conversation"
+          aria-label="Delete conversation"
+        >
+          <Trash2 size={13} />
+        </button>
+      ) : null}
+      {onDelete && confirming ? (
+        <span className="uc-delconfirm">
+          <button
+            type="button"
+            className="uc-delconfirm-yes"
+            onClick={(e) => {
+              e.stopPropagation();
+              setConfirming(false);
+              onDelete();
+            }}
+            title="Confirm delete"
+            aria-label="Confirm delete"
+          >
+            <Check size={14} />
+          </button>
+          <button
+            type="button"
+            className="uc-delconfirm-no"
+            onClick={(e) => {
+              e.stopPropagation();
+              setConfirming(false);
+            }}
+            title="Cancel"
+            aria-label="Cancel delete"
+          >
+            <X size={14} />
+          </button>
+        </span>
       ) : null}
     </div>
   );

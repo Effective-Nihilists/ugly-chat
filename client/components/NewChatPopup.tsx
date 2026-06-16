@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Mail, Check, MessageSquarePlus, X, Users } from 'lucide-react';
+import type { Avatar as AvatarT } from 'ugly-app/shared';
 import { Avatar, type ConvRow } from '../lib/conversations';
 import { isValidEmail, normalizeEmail } from '../../shared/email';
 
-interface Contact { userId: string; name: string; avatarUrl: string | null }
+interface Contact { userId: string; name: string; avatar: AvatarT }
 
 // Popups render in the router's portal, OUTSIDE <AppProvider>, so they can't
 // use useApp()/useRouter() — deps are passed in by the opener instead.
@@ -253,7 +254,7 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
                     onClick={() => toggle(c.userId)}
                     style={{ ...memberRow, background: on ? 'rgba(var(--app-primary-rgb), 0.10)' : 'transparent' }}
                   >
-                    <Avatar image={c.avatarUrl ?? undefined} seed={c.userId} label={c.name} size={38} />
+                    <Avatar image={c.avatar?.image?.uri} seed={c.userId} label={c.name} size={38} />
                     <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                       <div style={memberName}>{c.name}</div>
                     </div>

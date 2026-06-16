@@ -1,5 +1,6 @@
 // Client-side custom-bot helpers: the model menu and the start-a-chat flow.
 import type { AppSocket } from 'ugly-app/client';
+import type { Avatar } from 'ugly-app/shared';
 import type { AppRegistry } from '../../shared/api';
 
 type Socket = AppSocket<AppRegistry>;
@@ -64,7 +65,7 @@ export interface BotDoc {
   _id: string;
   ownerId: string;
   name: string;
-  avatarUrl?: string | null;
+  avatar?: Avatar;
   instruction?: string;
   model?: string;
   firstMessage?: string | null;
@@ -92,7 +93,7 @@ export async function startBotChat(
         mode: 'public',
         ownerIds: [userId],
         bots: { [bot._id]: {} },
-        image: bot.avatarUrl ?? null,
+        image: bot.avatar?.image?.uri ?? null,
       });
     }
     navigate(id);

@@ -4,6 +4,7 @@ import {
   Pin, Image as ImageIcon, Download, Trash2, LogOut, ChevronRight,
 } from 'lucide-react';
 import { useApp } from 'ugly-app/client';
+import type { Avatar as AvatarT } from 'ugly-app/shared';
 import { useRouter } from '../router';
 import { Avatar } from '../lib/conversations';
 import { isValidEmail, normalizeEmail } from '../../shared/email';
@@ -13,7 +14,7 @@ interface Member {
   userId: string;
   role: string;
   name: string;
-  avatarUrl: string | null;
+  avatar: AvatarT;
   isBot: boolean;
 }
 
@@ -173,7 +174,7 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
             <div>
               {members.map((m) => (
                 <div key={m.userId} style={S.memberRow}>
-                  <Avatar image={m.avatarUrl} seed={m.userId} label={m.name} size={38} />
+                  <Avatar image={m.avatar?.image?.uri} seed={m.userId} label={m.name} size={38} />
                   <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                     <div style={S.memberName}>
                       {m.name}{m.userId === userId ? ' (you)' : ''}

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Crown, LogOut, Trash2, UserMinus, UserPlus } from 'lucide-react';
+import type { Avatar as AvatarT } from 'ugly-app/shared';
 import { Avatar } from '../lib/conversations';
 
 // Popups render in the router's portal, OUTSIDE <AppProvider>, so they can't
@@ -8,14 +9,14 @@ interface Member {
   userId: string;
   role: string;
   name: string;
-  avatarUrl: string | null;
+  avatar: AvatarT;
   isBot: boolean;
 }
 
 interface Contact {
   userId: string;
   name: string;
-  avatarUrl: string | null;
+  avatar: AvatarT;
 }
 
 interface PopupSocket {
@@ -212,7 +213,7 @@ export function MembersPopup({
             const self = m.userId === userId;
             return (
               <div key={m.userId} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '8px 4px' }}>
-                <Avatar image={m.avatarUrl} seed={m.userId} label={m.name} size={38} />
+                <Avatar image={m.avatar?.image?.uri} seed={m.userId} label={m.name} size={38} />
                 <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--app-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {m.name}{self ? ' (you)' : ''}
@@ -378,7 +379,7 @@ function AddMemberList(props: {
                 className="uc-row"
                 style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '8px 4px', width: '100%', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', font: 'inherit' }}
               >
-                <Avatar image={c.avatarUrl} seed={c.userId} label={c.name} size={38} />
+                <Avatar image={c.avatar?.image?.uri} seed={c.userId} label={c.name} size={38} />
                 <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 600, color: 'var(--app-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {c.name}
                 </span>

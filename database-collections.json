@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-15T20:56:04.276Z",
+  "generatedAt": "2026-06-16T07:01:36.842Z",
   "source": "shared/collections.ts",
   "collections": {
     "errorLog": {
@@ -837,6 +837,41 @@
       "name": "userPublic",
       "schema": {
         "fields": {
+          "avatarGlbUrl": {
+            "type": "string",
+            "required": false,
+            "nullable": true
+          },
+          "avatarUrl": {
+            "type": "string",
+            "required": false,
+            "nullable": true
+          },
+          "backgroundUrl": {
+            "type": "string",
+            "required": false,
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "required": false,
+            "nullable": true
+          }
+        }
+      },
+      "meta": {
+        "cache": {
+          "ttlMs": 90000
+        },
+        "trackable": false,
+        "public": true,
+        "cascadeFrom": null
+      }
+    },
+    "userProfileCache": {
+      "name": "userProfileCache",
+      "schema": {
+        "fields": {
           "avatar": {
             "type": "unknown",
             "required": false,
@@ -898,10 +933,143 @@
             "type": "string",
             "required": false
           },
-          "avatarUrl": {
-            "type": "string",
-            "required": false,
-            "nullable": true
+          "avatar": {
+            "type": "object",
+            "fields": {
+              "background": {
+                "type": "object",
+                "fields": {
+                  "description": {
+                    "type": "string",
+                    "required": false
+                  },
+                  "height": {
+                    "type": "number",
+                    "required": false
+                  },
+                  "sizes": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "required": true
+                    },
+                    "required": false
+                  },
+                  "type": {
+                    "type": "string",
+                    "required": false
+                  },
+                  "uri": {
+                    "type": "string",
+                    "required": true
+                  },
+                  "width": {
+                    "type": "number",
+                    "required": false
+                  }
+                },
+                "required": true,
+                "nullable": true
+              },
+              "id": {
+                "type": "string",
+                "required": true
+              },
+              "image": {
+                "type": "object",
+                "fields": {
+                  "description": {
+                    "type": "string",
+                    "required": false
+                  },
+                  "height": {
+                    "type": "number",
+                    "required": false
+                  },
+                  "sizes": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "required": true
+                    },
+                    "required": false
+                  },
+                  "type": {
+                    "type": "string",
+                    "required": false
+                  },
+                  "uri": {
+                    "type": "string",
+                    "required": true
+                  },
+                  "width": {
+                    "type": "number",
+                    "required": false
+                  }
+                },
+                "required": true
+              },
+              "streamojiAvatarId": {
+                "type": "string",
+                "required": false,
+                "nullable": true
+              },
+              "uri": {
+                "type": "string",
+                "required": true,
+                "nullable": true
+              },
+              "visualizer": {
+                "type": "enum",
+                "values": [
+                  "organic",
+                  "metaball",
+                  "siri",
+                  "particle",
+                  "orbs",
+                  "milkdrop"
+                ],
+                "required": false
+              }
+            },
+            "required": true,
+            "default": {
+              "id": "677d6ac22554a00ff1842e1f",
+              "uri": "https://blob.ugly.bot/debug/user/ZHK_QVWdFU6rd_-w_EZzf/pBz_664oX4IOooJiYSBZo.glb",
+              "image": {
+                "type": "public",
+                "uri": "https://blob.ugly.bot/debug/user/ZHK_QVWdFU6rd_-w_EZzf/ZrqxZIhgWqDA4q5awdGkj.webp",
+                "width": 1024,
+                "height": 1024,
+                "description": "",
+                "sizes": [
+                  2048,
+                  1024,
+                  512,
+                  256,
+                  128,
+                  64,
+                  32
+                ]
+              },
+              "background": {
+                "type": "public",
+                "uri": "https://blob.ugly.bot/debug/user/Vkkk1Lq48RNZRU5IJj98v/ZEUkROB0Xvru8xDZCJcLX.webp",
+                "width": 1024,
+                "height": 1024,
+                "description": "",
+                "sizes": [
+                  2048,
+                  1024,
+                  512,
+                  256,
+                  128,
+                  64,
+                  32
+                ]
+              },
+              "streamojiAvatarId": "ni0DL81nQ5vHbCXKpLIO"
+            }
           },
           "buttons": {
             "type": "array",
