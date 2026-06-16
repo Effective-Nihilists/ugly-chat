@@ -56,13 +56,22 @@ export async function notifyIncomingCall(
     /* name is best-effort */
   }
 
+  // The notification is delivered by ugly.bot (the single push registrant), so
+  // the click target must be an ABSOLUTE ugly.chat URL — ugly.bot's service
+  // worker opens it, taking the user to the conversation on ugly.chat.
+  const base =
+    (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.[
+      'PUBLIC_APP_URL'
+    ] ?? 'https://ugly.chat';
+  const url = `${base.replace(/\/$/, '')}/${conversationId}`;
+
   await Promise.all(
     recipients.map((targetUserId) =>
       uglyBotRequest('pushSend', {
         targetUserId,
         title: `${callerName} is calling`,
         body: 'Incoming video call',
-        path: `/${conversationId}`,
+        path: url,
       }).catch((err: unknown) => {
         console.warn('[callNotify] push failed', (err as Error)?.message);
       }),
