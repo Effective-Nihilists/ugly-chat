@@ -1,13 +1,14 @@
 import React, { useCallback, useState } from 'react';
-import { Plus, PanelLeft, PanelLeftClose, Bot, Palette, MessageSquare } from 'lucide-react';
+import { Plus, PanelLeft, PanelLeftClose, Bot, Palette, MessageSquare, UserCog } from 'lucide-react';
 import { useApp } from 'ugly-app/client';
 import { useRouter } from '../router';
 import { useConversations } from '../lib/conversations';
 import { Avatar } from '../lib/conversations';
-import { ConversationRow } from './ConversationRow';
+import { ConversationListBody } from './ConversationListBody';
 import { openNewChatPopup } from './NewChatPopup';
 import { openBotsPopup } from './BotsPopup';
 import { openThemeMenu } from './ThemeMenu';
+import { openProfilePopup } from './ProfilePopup';
 
 // Matches ugly.bot's SidebarInternal: collapsed = 72px (avatar-only), expanded =
 // resizable 250–400px persisted to localStorage 'leftSidebarWidth'; the
@@ -65,6 +66,7 @@ export function Sidebar(): React.ReactElement {
   }, [router, socket, userId, navigate]);
 
   const openTheme = useCallback(() => openThemeMenu(router), [router]);
+  const openProfile = useCallback(() => openProfilePopup(router, socket), [router, socket]);
 
   const openFeedback = useCallback(() => {
     document.querySelector<HTMLElement>('[data-id="feedback-button"]')?.click();
@@ -106,12 +108,6 @@ export function Sidebar(): React.ReactElement {
     ? conversations.filter((c) => (c.title || '').toLowerCase().includes(q.trim().toLowerCase()))
     : conversations;
 
-  // Group pinned conversations at the top under a // PINNED header; the rest
-  // fall under // DIRECT. We don't reliably know which rows are bots from the
-  // list payload, so we don't invent a // BOTS section.
-  const pinned = filtered.filter((c) => c.pinned);
-  const rest = filtered.filter((c) => !c.pinned);
-
   // ── Collapsed (icon rail) ────────────────────────────────────────────────
   if (!expanded) {
     return (
@@ -123,6 +119,9 @@ export function Sidebar(): React.ReactElement {
         </div>
         <button type="button" title="New chat" onClick={openNew} className="uc-iconbtn" style={{ ...iconBtnStyle, alignSelf: 'center', marginBottom: 6 }}>
           <Plus size={20} />
+        </button>
+        <button type="button" title="Edit profile" onClick={openProfile} className="uc-iconbtn" style={{ ...iconBtnStyle, alignSelf: 'center', marginBottom: 6 }}>
+          <UserCog size={20} />
         </button>
         <button type="button" title="Bots" onClick={openBots} className="uc-iconbtn" style={{ ...iconBtnStyle, alignSelf: 'center', marginBottom: 6 }}>
           <Bot size={20} />
@@ -170,6 +169,9 @@ export function Sidebar(): React.ReactElement {
 
         {/* Right-aligned icon cluster: Bots · Theme · Feedback */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+          <button type="button" title="Edit profile" onClick={openProfile} className="uc-iconbtn" style={smallIconBtn}>
+            <UserCog size={18} />
+          </button>
           <button type="button" title="Bots" onClick={openBots} className="uc-iconbtn" style={smallIconBtn}>
             <Bot size={18} />
           </button>
@@ -198,44 +200,17 @@ export function Sidebar(): React.ReactElement {
         </button>
       </div>
 
-      {/* Conversation list */}
+      {/* Conversation list — pinned grouped above direct (shared body). */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '2px 0 16px' }}>
-        {loading && conversations.length === 0 ? (
-          <EmptyHint text="Loading…" />
-        ) : filtered.length === 0 ? (
-          <EmptyHint text={q ? 'No matches' : 'No conversations yet'} />
-        ) : (
-          <>
-            {pinned.length > 0 ? (
-              <>
-                <SectionLabel text="pinned" />
-                {pinned.map((c) => (
-                  <ConversationRow
-                    key={c.conversationId}
-                    row={c}
-                    selected={c.conversationId === activeId}
-                    onClick={() => router.push(':conversationId', { conversationId: c.conversationId })}
-                    onTogglePin={() => togglePin(c.conversationId, !c.pinned)}
-                  />
-                ))}
-              </>
-            ) : null}
-            {rest.length > 0 ? (
-              <>
-                <SectionLabel text="direct" />
-                {rest.map((c) => (
-                  <ConversationRow
-                    key={c.conversationId}
-                    row={c}
-                    selected={c.conversationId === activeId}
-                    onClick={() => router.push(':conversationId', { conversationId: c.conversationId })}
-                    onTogglePin={() => togglePin(c.conversationId, !c.pinned)}
-                  />
-                ))}
-              </>
-            ) : null}
-          </>
-        )}
+        <ConversationListBody
+          conversations={conversations}
+          filtered={filtered}
+          loading={loading}
+          searching={Boolean(q)}
+          activeId={activeId}
+          onSelect={navigate}
+          onTogglePin={togglePin}
+        />
       </div>
 
       {/* Resize handle (right edge) */}
@@ -285,22 +260,6 @@ const smallIconBtn: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
 };
-
-function SectionLabel({ text }: { text: string }): React.ReactElement {
-  return (
-    <div className="uc-mono-label" style={{ padding: '12px 14px 4px' }}>
-      <span style={{ color: 'var(--app-primary)' }}>//</span> {text}
-    </div>
-  );
-}
-
-function EmptyHint({ text }: { text: string }): React.ReactElement {
-  return (
-    <div style={{ padding: '24px 14px', textAlign: 'center', fontSize: 13, color: 'var(--app-foreground)', opacity: 0.45 }}>
-      {text}
-    </div>
-  );
-}
 
 function SearchIcon(): React.ReactElement {
   return (
