@@ -78,3 +78,57 @@ export async function notifyIncomingCall(
     ),
   );
 }
+
+// Absolute click target (ugly.bot delivers the push; its SW opens this URL).
+function convUrl(conversationId: string): string {
+  const base =
+    (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.[
+      'PUBLIC_APP_URL'
+    ] ?? 'https://ugly.chat';
+  return `${base.replace(/\/$/, '')}/${conversationId}`;
+}
+
+/**
+ * Push the other conversation member(s) when a new (human) message is created,
+ * so they're notified even when ugly.chat isn't focused. DM only for now (the
+ * conversationId encodes the two members); group fan-out + offline-only gating
+ * are follow-ups. Bot-authored messages don't route through the handler that
+ * calls this, so only human messages push.
+ */
+export async function notifyNewMessage(
+  db: DbLike,
+  conversationId: string,
+  senderId: string,
+  text: string,
+): Promise<void> {
+  if (isBot(senderId)) return;
+  if (!conversationId.includes('+')) return; // DM only for now
+  const recipients = conversationId
+    .split('+')
+    .filter(Boolean)
+    .filter((id) => id !== senderId && !isBot(id));
+  if (recipients.length === 0) return;
+
+  let senderName = 'New message';
+  try {
+    const [doc] = await db.getByIds<UserPublicDoc>(collections.userPublic, [senderId]);
+    if (doc?.name) senderName = doc.name;
+  } catch {
+    /* best-effort */
+  }
+  const preview = text.trim().replace(/\s+/g, ' ').slice(0, 140);
+  const url = convUrl(conversationId);
+
+  await Promise.all(
+    recipients.map((targetUserId) =>
+      uglyBotRequest('pushSend', {
+        targetUserId,
+        title: senderName,
+        body: preview || 'Sent a message',
+        path: url,
+      }).catch((err: unknown) => {
+        console.warn('[notifyNewMessage] push failed', (err as Error)?.message);
+      }),
+    ),
+  );
+}

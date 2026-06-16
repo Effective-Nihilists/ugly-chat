@@ -22,7 +22,7 @@ import {
   conversationUserUpdateRole as engineConversationUserUpdateRole,
 } from 'ugly-app/conversation/engine';
 import type { WorkerHandlers } from 'ugly-app/shared';
-import { dbDefaults } from 'ugly-app/shared';
+import { dbDefaults, defaultAvatar } from 'ugly-app/shared';
 import { nanoid } from 'nanoid';
 import { getUserToken } from 'ugly-app/server/adapter/workers';
 import { triggerBotReplies, getBotConfig, isBot } from './bots';
@@ -32,6 +32,7 @@ import { bumpListForMessage, markRead } from './listDenorm';
 import { UGLY_BOT_ID } from '../shared/bots';
 import { resolveProfiles, type Profile } from './profiles';
 import { videoJoin, videoLeave, videoEnd, videoBotJoin, videoPublish, videoState, videoCaption, type CallState, type DbLike } from './video';
+import { notifyIncomingCall, notifyNewMessage } from './callNotify';
 import {
   realtimeIceServers,
   realtimeNewSession,
@@ -186,12 +187,17 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       );
       // Denormalize the sidebar: refresh every member's last-message preview,
       // +1 unread for recipients (sender marked read), bump recency, un-hide.
+      const previewText = String(input.message?.text ?? input.message?.markdown ?? '');
       void bumpListForMessage(
         getDb(),
         input.conversationId,
-        String(input.message?.text ?? input.message?.markdown ?? ''),
+        previewText,
         userId,
       ).catch((err: unknown) => console.error('[conv] list denorm failed', err));
+      // Push the other member(s) so they're notified when ugly.chat isn't focused.
+      void notifyNewMessage(getDb(), input.conversationId, userId, previewText).catch(
+        (err: unknown) => console.error('[conv] message push failed', err),
+      );
       // Built-in/custom bots WITHOUT a webhook reply via textGen here. App bots
       // (with a webhookUrl) are driven by their owning app instead — see
       // fireMessageWebhooks, which notifies the conversation + bot webhooks.
@@ -291,8 +297,17 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
     },
 
     // ── Video call lifecycle ───────────────────────────────────────────────
-    conversationVideoJoin: async (userId, input): Promise<CallState> =>
-      videoJoin(getDb() as unknown as DbLike, { conversation: collections.conversation }, input.conversationId, userId),
+    conversationVideoJoin: async (userId, input): Promise<CallState> => {
+      const call = await videoJoin(
+        getDb() as unknown as DbLike,
+        { conversation: collections.conversation },
+        input.conversationId,
+        userId,
+      );
+      // Ring the other participant(s) via push (best-effort; only on call start).
+      void notifyIncomingCall(getDb(), input.conversationId, userId, call);
+      return call;
+    },
     conversationVideoLeave: async (userId, input): Promise<CallState> =>
       videoLeave(getDb() as unknown as DbLike, { conversation: collections.conversation }, input.conversationId, userId),
     conversationVideoEnd: async (_userId, input): Promise<CallState> =>
@@ -319,6 +334,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         userId,
         input.text,
         input.final,
+        (input as { typed?: boolean }).typed === true,
       );
       return { ok: true };
     },
@@ -401,7 +417,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         await Promise.all(
           botIds.map(async (id) => {
             const cfg = await getBotConfig(getDb(), id);
-            byId.set(id, { name: cfg?.name ?? id.slice(0, 8), avatarUrl: cfg?.avatarUrl ?? null });
+            byId.set(id, { name: cfg?.name ?? id.slice(0, 8), avatarUrl: cfg?.avatar.image.uri ?? null });
           }),
         );
 
@@ -512,7 +528,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
     // The caller's own profile (name + avatar), resolved like any participant.
     userProfileGet: async (userId): Promise<{ name: string | null; avatarUrl: string | null }> => {
       const [p] = await resolveProfiles(getDb(), [userId]);
-      return { name: p?.name ?? null, avatarUrl: p?.avatarUrl ?? null };
+      return { name: p?.name ?? null, avatarUrl: p?.avatar.image.uri ?? null };
     },
 
     // Update the caller's name/avatar: write through to ugly.bot's federated
@@ -582,7 +598,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       return {
         users: profiles
           .filter((p) => !p.isBot)
-          .map((p) => ({ userId: p.id, name: p.name, avatarUrl: p.avatarUrl })),
+          .map((p) => ({ userId: p.id, name: p.name, avatar: p.avatar })),
       };
     },
 
@@ -611,7 +627,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
             userId: id,
             role: String(r['role'] ?? 'member'),
             name: p?.name ?? id.slice(0, 8),
-            avatarUrl: p?.avatarUrl ?? null,
+            avatar: p?.avatar ?? defaultAvatar,
             isBot: p?.isBot ?? isBot(id),
           };
         })
@@ -797,7 +813,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         name: input.name,
         instruction: input.instruction ?? '',
         model: input.model ?? 'deepseek_v4_flash',
-        avatarUrl: input.avatarUrl ?? null,
+        avatar: input.avatar ?? defaultAvatar,
         firstMessage: input.firstMessage ?? null,
         buttons: input.buttons ?? [],
         ...dbDefaults(),
@@ -809,7 +825,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       const existing = await getDb().getDoc(collections.bot, input.botId);
       if (!existing || existing['ownerId'] !== userId) throw new Error('Bot not found');
       const patch: Record<string, unknown> = {};
-      for (const k of ['name', 'instruction', 'model', 'avatarUrl', 'firstMessage', 'buttons'] as const) {
+      for (const k of ['name', 'instruction', 'model', 'avatar', 'firstMessage', 'buttons'] as const) {
         if (input[k] !== undefined) patch[k] = input[k];
       }
       await getDb().setDoc(collections.bot, { ...existing, ...patch, ...dbDefaults() });
