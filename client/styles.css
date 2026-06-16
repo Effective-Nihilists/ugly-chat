@@ -634,7 +634,6 @@ hr {
 .uc-composer {
   flex-shrink: 0;
   background: var(--app-main);
-  border-top: 1px solid var(--app-border);
 }
 /* Messages are centered in a max-width column while the scroll container stays
    full-width — so the scrollbar sits at the pane's right edge, not the column's. */
