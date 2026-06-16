@@ -72,6 +72,16 @@ export async function notifyIncomingCall(
         title: `${callerName} is calling`,
         body: 'Incoming video call',
         path: url,
+        // Compose a "ring" from the framework's generic notification primitives:
+        // a bundled ring sound (escalates to a high-priority/full-screen alert)
+        // + Accept/Decline action buttons + the iOS INCOMING_CALL category.
+        sound: 'ring',
+        category: 'INCOMING_CALL',
+        buttons: [
+          { id: 'accept', title: 'Accept' },
+          { id: 'decline', title: 'Decline' },
+        ],
+        data: { type: 'call', conversationId, callerId },
       }).catch((err: unknown) => {
         console.warn('[callNotify] push failed', (err as Error)?.message);
       }),
