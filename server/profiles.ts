@@ -27,6 +27,11 @@ interface DbLike {
 
 const fallbackName = (id: string): string => id.slice(0, 8);
 
+// How long a resolved ugly.bot profile (name/avatar/background) is trusted before
+// re-fetching, so post-migration avatar changes propagate. 1h balances freshness
+// against load on ugly.bot's userPublicBatch.
+const AVATAR_CACHE_TTL_MS = 60 * 60 * 1000;
+
 const asBool = (v: unknown): boolean => v === true || v === 'true';
 
 // Best-effort avatar URL from a userPublic doc. Many migrated rows store the
@@ -81,7 +86,15 @@ export async function resolveProfiles(db: DbLike, userIds: string[]): Promise<Pr
     // "Done" requires a prior ugly.bot resolution that also captured the
     // background field (`backgroundResolved` present — added later). Entries
     // cached before that re-fetch so the conversation background fills in.
-    if (cached && typeof cached['avatarFetchedAt'] === 'number' && 'backgroundResolved' in cached) {
+    if (
+      cached &&
+      typeof cached['avatarFetchedAt'] === 'number' &&
+      'backgroundResolved' in cached &&
+      // Real TTL: re-fetch once the cached resolution is older than the window so
+      // a profile/avatar the user changes in ugly.bot AFTER being cached actually
+      // propagates into chat (previously this never re-fetched → stale forever).
+      Date.now() - (cached['avatarFetchedAt'] as number) < AVATAR_CACHE_TTL_MS
+    ) {
       out.push({
         id,
         name: (cached['name'] as string | undefined) ?? fallbackName(id),
