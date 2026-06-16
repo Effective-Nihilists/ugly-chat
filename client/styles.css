@@ -398,29 +398,35 @@ hr {
 .uc-row { transition: background-color 0.12s ease-out; }
 .uc-row:hover { background: rgba(var(--app-foreground-rgb), 0.06) !important; }
 
-/* Pin toggle: hidden until row hover; always shown (orange) when pinned. */
+/* Pin toggle: occupies the top-right meta cell (where the timestamp sits), so
+   it never overlaps the time, the unread badge, or the preview text. Hidden
+   until row hover; always shown (orange) when pinned. The timestamp fades out
+   on hover (or when pinned) so the two swap cleanly in the same slot. */
 .uc-pinbtn {
   position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
+  right: 12px;
+  top: 9px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 20px;
+  height: 20px;
   border: none;
-  border-radius: 8px;
-  background: var(--app-main);
+  border-radius: 6px;
+  background: transparent;
   color: var(--app-foreground);
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.12s ease-out;
+  transition: opacity 0.12s ease-out, background-color 0.12s ease-out;
   z-index: 1;
 }
 .uc-convrow:hover .uc-pinbtn { opacity: 0.6; }
+.uc-convrow:hover .uc-rowtime { opacity: 0; }
 .uc-pinbtn:hover { opacity: 1 !important; background: var(--app-tertiary); }
 .uc-pinbtn--on { opacity: 0.9 !important; color: var(--app-primary); background: transparent; }
+/* When pinned, the pin is always visible, so hide the timestamp beneath it. */
+.uc-convrow:has(.uc-pinbtn--on) .uc-rowtime { opacity: 0; }
+.uc-rowtime { transition: opacity 0.12s ease-out; }
 .uc-iconbtn { transition: background-color 0.12s ease-out; }
 .uc-iconbtn:hover { background: var(--app-tertiary) !important; }
 .uc-footbtn { transition: background-color 0.12s ease-out; }

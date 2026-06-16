@@ -29,6 +29,7 @@ export function ConversationRow(props: {
   onTogglePin?: () => void;
 }): React.ReactElement {
   const { row, selected, onClick, onTogglePin } = props;
+  const time = relativeTime(row.lastActivity);
   return (
     <div className="uc-convrow" style={{ position: 'relative' }}>
     <button
@@ -67,32 +68,18 @@ export function ConversationRow(props: {
       <Avatar image={row.image} seed={row.conversationId} label={row.title} size={42} />
 
       <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <span style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-          <span
-            style={{
-              fontSize: 15,
-              fontWeight: 600,
-              lineHeight: '20px',
-              color: selected ? 'var(--app-primary)' : 'var(--app-foreground)',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            {row.title || 'Conversation'}
-          </span>
-          {relativeTime(row.lastActivity) ? (
-            <span
-              style={{
-                flex: 'none',
-                fontFamily: 'var(--app-font-mono)',
-                fontSize: 10,
-                color: 'var(--app-foreground-muted)',
-              }}
-            >
-              {relativeTime(row.lastActivity)}
-            </span>
-          ) : null}
+        <span
+          style={{
+            fontSize: 15,
+            fontWeight: 600,
+            lineHeight: '20px',
+            color: selected ? 'var(--app-primary)' : 'var(--app-foreground)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {row.title || 'Conversation'}
         </span>
         {row.preview ? (
           <span
@@ -111,28 +98,63 @@ export function ConversationRow(props: {
         ) : null}
       </span>
 
-      {!onTogglePin && row.pinned ? <Pin size={12} style={{ opacity: 0.45, flexShrink: 0 }} aria-label="Pinned" /> : null}
-      {row.unread > 0 ? (
-        <span
-          style={{
-            minWidth: 20,
-            height: 20,
-            padding: '0 5px',
-            borderRadius: 0,
-            background: 'var(--app-primary)',
-            color: 'var(--app-on-primary)',
-            fontSize: 10,
-            fontWeight: 700,
-            fontFamily: 'var(--app-font-mono)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {row.unread > 99 ? '99+' : row.unread}
+      {/* Right meta slot: timestamp on top, unread badge below. The pin button
+          (when interactive) occupies this same top cell on hover via CSS, so it
+          never overlaps the timestamp, preview, or badge. */}
+      <span
+        className="uc-rowmeta"
+        style={{
+          flexShrink: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          justifyContent: 'center',
+          gap: 4,
+          minWidth: 30,
+        }}
+      >
+        <span style={{ height: 14, display: 'flex', alignItems: 'center' }}>
+          {/* Static pin marker for the collapsed/non-interactive rail. */}
+          {!onTogglePin && row.pinned ? (
+            <Pin size={12} style={{ opacity: 0.45 }} aria-label="Pinned" />
+          ) : (
+            <span
+              className="uc-rowtime"
+              style={{
+                fontFamily: 'var(--app-font-mono)',
+                fontSize: 10,
+                color: 'var(--app-foreground-muted)',
+              }}
+            >
+              {time}
+            </span>
+          )}
         </span>
-      ) : null}
+        {row.unread > 0 ? (
+          <span
+            style={{
+              minWidth: 20,
+              height: 20,
+              padding: '0 5px',
+              borderRadius: 0,
+              background: 'var(--app-primary)',
+              color: 'var(--app-on-primary)',
+              fontSize: 10,
+              fontWeight: 700,
+              fontFamily: 'var(--app-font-mono)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {row.unread > 99 ? '99+' : row.unread}
+          </span>
+        ) : null}
+      </span>
     </button>
+      {/* Pin toggle lives in the top-right meta cell. CSS hides the timestamp and
+          shows this on row hover (always visible when pinned), so the two never
+          overlap and the preview text is never covered. */}
       {onTogglePin ? (
         <button
           type="button"
@@ -144,7 +166,7 @@ export function ConversationRow(props: {
           title={row.pinned ? 'Unpin' : 'Pin'}
           aria-label={row.pinned ? 'Unpin' : 'Pin'}
         >
-          <Pin size={14} fill={row.pinned ? 'currentColor' : 'none'} />
+          <Pin size={13} fill={row.pinned ? 'currentColor' : 'none'} />
         </button>
       ) : null}
     </div>
