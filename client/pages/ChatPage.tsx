@@ -977,6 +977,20 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     (e) => e.userId !== userId && Date.now() - e.start < 6000,
   );
 
+  // When *I* send a message the framework won't auto-scroll unless I'm already
+  // within 40px of the bottom — so force the thread down to my own newest
+  // message (only when the latest arrival is mine, i.e. a fresh send).
+  const prevLenRef = useRef(0);
+  useEffect(() => {
+    const len = messages.length;
+    const last = messages[len - 1];
+    if (len > prevLenRef.current && last && last.userId === userId) {
+      const el = document.querySelector('.uc-chat-scroll [data-testid="conversation-scroll-container"]');
+      if (el instanceof HTMLElement) requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+    }
+    prevLenRef.current = len;
+  }, [messages, userId]);
+
   // DM ids are `{a}+{b}` / `{a}:{b}` containing self; everything else that's a
   // group gets the member-management UI (the ⋯ → Members panel).
   const isDm = (() => {
