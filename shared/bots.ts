@@ -8,11 +8,14 @@ export const UGLY_BOT_ID = 'bot-ugly';
 
 // The mascot avatar, re-hosted in ugly.chat's R2 public bucket and served from
 // the ugly.chat origin (blob.ugly.bot has no CORS; same-origin avoids it). The
-// GLB drives the 3D TalkingAvatar; the webp is the 2D bubble/list image; the
-// background is the conversation backdrop. These seed the `bot-ugly` row.
+// GLB drives the 3D TalkingAvatar; the background is the conversation backdrop.
+// These seed the `bot-ugly` row.
+//
+// The 2D avatar image is intentionally null: the old blob.ugly.bot webp 404s, so
+// we let the `Avatar` component fall back to its clean square initial ("U")
+// rather than show a broken-image icon in the list/header/thread/call name-chip.
 export const UGLY_BOT_GLB_URL = 'https://ugly.chat/public/avatars/ugly-bot.glb';
-export const UGLY_BOT_AVATAR_URL =
-  'https://blob.ugly.bot/user/jY0oTxnxd3Ff5AQn6qpFJ/K4iCNInoEjgMMmhY_XVFB.webp';
+export const UGLY_BOT_AVATAR_URL: string | null = null;
 export const UGLY_BOT_BACKGROUND_URL =
   'https://blob.ugly.bot/user/jY0oTxnxd3Ff5AQn6qpFJ/3JQdhJcBXmvDfrlDC8kPI';
 
