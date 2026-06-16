@@ -3,7 +3,7 @@
  * DEPLOYED app (https://ugly.chat) so every core screen has real content to
  * render in the screenshot-verification harness (scripts/screenshots/*).
  *
- *   1. bot DM    — `${UGLY_BOT_USER_ID}+${SCREENSHOT_USER_ID}` (roast thread).
+ *   1. bot DM    — `${UGLY_BOT_ID}+${SCREENSHOT_USER_ID}` (roast thread).
  *   2. human DM  — no-bot 1:1 between the screenshot user + partner; ~5
  *                  alternating messages (real delays) so the human response-time
  *                  telemetry renders.
@@ -25,7 +25,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createAdapter, query } from 'ugly-app/server';
-import { UGLY_BOT, UGLY_BOT_AVATAR_URL, UGLY_BOT_USER_ID } from '../shared/bots';
+import { UGLY_BOT, UGLY_BOT_AVATAR_URL, UGLY_BOT_ID } from '../shared/bots';
 import { directConversationId } from '../shared/conversationId';
 
 const SCREENSHOT_USER_ID =
@@ -82,7 +82,7 @@ async function main(): Promise<void> {
 
   const userToken = mintToken(SCREENSHOT_USER_ID, secret);
   const partnerToken = mintToken(SCREENSHOT_PARTNER_USER_ID, secret);
-  const botToken = mintToken(UGLY_BOT_USER_ID, secret);
+  const botToken = mintToken(UGLY_BOT_ID, secret);
 
   const api = async (name: string, input: unknown, tok = userToken): Promise<unknown> => {
     const res = await fetch(`${base}/api/${name}`, {
@@ -104,7 +104,7 @@ async function main(): Promise<void> {
       [id, JSON.stringify(data)],
     );
   };
-  await upsertPublic(UGLY_BOT_USER_ID, { name: UGLY_BOT.name, isBot: true, avatar: UGLY_BOT_AVATAR_URL });
+  await upsertPublic(UGLY_BOT_ID, { name: UGLY_BOT.name, isBot: true, avatar: UGLY_BOT_AVATAR_URL });
   await upsertPublic(SCREENSHOT_USER_ID, { name: SCREENSHOT_NAME, avatar: SCREENSHOT_AVATAR });
   await upsertPublic(SCREENSHOT_PARTNER_USER_ID, { name: PARTNER_NAME, avatar: PARTNER_AVATAR });
 
@@ -120,7 +120,7 @@ async function main(): Promise<void> {
   };
 
   // ── 1. Bot DM ───────────────────────────────────────────────────────────────
-  const botDmId = `${UGLY_BOT_USER_ID}+${SCREENSHOT_USER_ID}`;
+  const botDmId = `${UGLY_BOT_ID}+${SCREENSHOT_USER_ID}`;
   await wipe(botDmId);
   await api('conversationCreate', {
     id: botDmId,
@@ -128,7 +128,7 @@ async function main(): Promise<void> {
     title: 'Ugly Bot',
     mode: 'public',
     ownerIds: [SCREENSHOT_USER_ID],
-    bots: { [UGLY_BOT_USER_ID]: { type: 'primary' } },
+    bots: { [UGLY_BOT_ID]: { type: 'primary' } },
   });
   await api('conversationMessageCreate', {
     conversationId: botDmId,
@@ -143,6 +143,9 @@ async function main(): Promise<void> {
           'Gym 5x a week AND 50 books? Bold strategy from someone whose running shoes ' +
           "are still in the box. Counter-offer: 2 real gym days, 6 books you'll actually " +
           'finish, and we call it a win. Now hydrate, champ — I believe in you. Mostly.',
+        // Demo telemetry so the AI receipt footer + session-totals strip render
+        // (a real textGen reply persists this; the canned reply mirrors it).
+        telemetry: { model: 'DeepSeek v4 pro', inputTokens: 118, outputTokens: 1204, costUsd: 0.004, latencyMs: 1400 },
       },
     },
     botToken,
@@ -188,7 +191,7 @@ async function main(): Promise<void> {
   });
   await api('conversationMemberAdd', {
     conversationId: GROUP_ID,
-    userId: UGLY_BOT_USER_ID,
+    userId: UGLY_BOT_ID,
     role: 'member',
   });
   await api('conversationMessageCreate', {

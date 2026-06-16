@@ -17,7 +17,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
-import { UGLY_BOT_USER_ID } from '../../shared/bots';
+import { UGLY_BOT_ID } from '../../shared/bots';
 import { directConversationId } from '../../shared/conversationId';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -30,7 +30,7 @@ const SCREENSHOT_PARTNER_USER_ID =
   process.env['SCREENSHOT_PARTNER_USER_ID'] ?? '5c0e5c0e-0000-4000-8000-5c0e5c0e5c0f';
 const GROUP_ID = 'grp-screenshot-demo';
 
-const BOT_DM_ID = `${UGLY_BOT_USER_ID}+${SCREENSHOT_USER_ID}`;
+const BOT_DM_ID = `${UGLY_BOT_ID}+${SCREENSHOT_USER_ID}`;
 const HUMAN_DM_ID = directConversationId(SCREENSHOT_USER_ID, SCREENSHOT_PARTNER_USER_ID);
 
 interface UglyApp {
