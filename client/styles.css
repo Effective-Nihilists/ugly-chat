@@ -273,6 +273,17 @@ p {
   -webkit-user-select: text;
 }
 
+/* Message content must be selectable despite the global `body { user-select:
+   none }`. Opt bubbles, the sender/time metarow, and day separators back in. */
+.uc-bubble,
+.uc-bubble *,
+.uc-metarow,
+.uc-daysep {
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+}
+
 .katex {
   font-size: 17px;
 }
