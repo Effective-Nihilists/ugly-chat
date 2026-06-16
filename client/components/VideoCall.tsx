@@ -4,6 +4,7 @@ import type { UglyBotSocket } from 'ugly-app/client';
 import type { DBObject } from 'ugly-app/shared';
 import { Mic, MicOff, Video, VideoOff, Captions, UserPlus, Bot as BotIcon, PhoneOff } from 'lucide-react';
 import { BotAvatarTile } from './BotAvatarTile';
+import { ParticipantAvatarTile } from './call/ParticipantAvatarTile';
 import type { DevicePrefs } from './call/useAvDevices';
 import { classifyMediaError } from './call/mediaErrors';
 
@@ -33,6 +34,10 @@ const toMs = (v: unknown): number =>
 export interface CallProfile {
   name?: string;
   avatarUrl?: string | null;
+  /** 3D avatar (GLB) — shown when the camera is off. */
+  avatarGlbUrl?: string | null;
+  /** Avatar backdrop image — behind the 3D model / circular image. */
+  backgroundUrl?: string | null;
 }
 export type CallProfiles = Record<string, CallProfile>;
 
@@ -622,7 +627,14 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
               {remoteStreams.has(other.userId) ? (
                 <RemoteTile stream={remoteStreams.get(other.userId)!} speakerId={speakerId} />
               ) : (
-                <PeerPlaceholder name={resolveName(other.userId, userId, other.isBot, profiles)} />
+                // No remote video yet (camera off, or still connecting) → show
+                // the peer's avatar (3D over background, or circular image).
+                <ParticipantAvatarTile
+                  name={resolveName(other.userId, userId, other.isBot, profiles)}
+                  glbUrl={profiles[other.userId]?.avatarGlbUrl ?? null}
+                  imageUrl={profiles[other.userId]?.avatarUrl ?? null}
+                  backgroundUrl={profiles[other.userId]?.backgroundUrl ?? null}
+                />
               )}
               <span
                 style={{
@@ -674,9 +686,14 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: camOn ? 'block' : 'none' }}
         />
         {!camOn ? (
-          <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.5)' }}>
-            <VideoOff size={22} />
-          </div>
+          // Camera off → show MY avatar (3D model over the avatar background, or
+          // a circular image fallback) instead of a blank tile.
+          <ParticipantAvatarTile
+            name={resolveName(userId, userId, false, profiles)}
+            glbUrl={profiles[userId]?.avatarGlbUrl ?? null}
+            imageUrl={profiles[userId]?.avatarUrl ?? null}
+            backgroundUrl={profiles[userId]?.backgroundUrl ?? null}
+          />
         ) : null}
         <span
           style={{
