@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ThumbsUp, ThumbsDown, Heart, Laugh, HelpCircle, AlertTriangle, Trash2, Video, Paperclip, X, FileText, MoreVertical, Eraser, Pencil, Users, Volume2, VolumeX, Pin, Settings, Check } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Heart, Laugh, HelpCircle, AlertTriangle, Trash2, Video, Paperclip, X, FileText, MoreVertical, Eraser, Pencil, Users, Volume2, VolumeX, Pin, Settings, Check, Palette } from 'lucide-react';
 import { useApp, uploadBlob, promoteBlob, downscaleImage, useSafeAreaInsets } from 'ugly-app/client';
 import { ChatView } from 'ugly-app/conversation/client';
 import { MdastViewer } from 'ugly-app/markdown/client';
@@ -12,12 +12,13 @@ import { openMembersPopup } from '../components/MembersPopup';
 import { VoiceProvider, useVoice } from '../components/VoiceProvider';
 import { useRouter } from '../router';
 import { Avatar, pingConversationActivity } from '../lib/conversations';
-import { modelLabel, BOT_MODELS } from '../lib/bots';
+import { modelLabel, BOT_MODELS, BOT_MODES, IMAGE_MODELS, IMAGE_SIZES } from '../lib/bots';
 import { UGLY_BOT_ID } from '../../shared/bots';
 import type { MsgTelemetry } from '../../shared/telemetry';
 import { formatTokens, formatCost } from '../../shared/telemetry';
 import { TelemetryStrip } from '../components/TelemetryStrip';
 import { HumanTelemetryStrip } from '../components/HumanTelemetryStrip';
+import { openThemeMenu } from '../components/ThemeMenu';
 import { type StatMsg, replyLatencyMs } from '../../shared/humanStats';
 import { formatDuration } from '../../shared/duration';
 
@@ -541,8 +542,11 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const [botId, setBotId] = useState<string | null>(null);
   const [botButtons, setBotButtons] = useState<{ label: string; prompt: string }[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
-  // Per-conversation model override for the bot (picker in the ⋯ menu).
+  // Per-conversation bot config (the ⋯ menu): mode + text model + image model/size.
   const [botModel, setBotModel] = useState<string | null>(null);
+  const [botMode, setBotMode] = useState<string>('chat');
+  const [botImageModel, setBotImageModel] = useState<string>('flux_1_dev');
+  const [botImageSize, setBotImageSize] = useState<string>('square');
   const [typing, setTyping] = useState<ChatTypingEntry[]>([]);
   const [convType, setConvType] = useState<string>('group');
   const [pinnedMessageId, setPinnedMessageId] = useState<string | null>(null);
@@ -744,8 +748,13 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           .getDoc('conversation', roomId)
           .then((cdoc) => {
             if (cancelled) return;
-            const bots = (cdoc as { bots?: Record<string, { model?: string }> } | null)?.bots ?? {};
-            setBotModel((botId && bots[botId]?.model) || defaultModel);
+            type Cfg = { model?: string; mode?: string; imageModel?: string; imageSize?: string };
+            const bots = (cdoc as { bots?: Record<string, Cfg> } | null)?.bots ?? {};
+            const cfg = (botId && bots[botId]) || {};
+            setBotModel(cfg.model || defaultModel);
+            setBotMode(cfg.mode || 'chat');
+            setBotImageModel(cfg.imageModel || 'flux_1_dev');
+            setBotImageSize(cfg.imageSize || 'square');
           })
           .catch(() => { if (!cancelled) setBotModel(defaultModel); });
       })
@@ -753,15 +762,22 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     return () => { cancelled = true; };
   }, [socket, botId, roomId]);
 
-  // Set the bot's model for THIS conversation (⋯ → Model). Optimistic.
-  const pickBotModel = (model: string): void => {
+  // Set the bot's per-conversation config (⋯ menu). Optimistic; persists via
+  // conversationSetBotModel (which patches any provided field).
+  const setBotConfig = (patch: { model?: string; mode?: string; imageModel?: string; imageSize?: string }): void => {
     if (!botId) return;
-    setBotModel(model);
-    setMenuOpen(false);
     void socket
-      .request('conversationSetBotModel', { conversationId: roomId, botId, model })
+      .request('conversationSetBotModel', { conversationId: roomId, botId, ...patch })
       .catch(() => undefined);
   };
+  const pickBotModel = (model: string): void => { setBotModel(model); setMenuOpen(false); setBotConfig({ model }); };
+  const pickBotMode = (mode: string): void => { setBotMode(mode); setBotConfig({ mode }); };
+  const pickImageModel = (imageModel: string): void => { setBotImageModel(imageModel); setBotConfig({ imageModel }); };
+  const pickImageSize = (imageSize: string): void => { setBotImageSize(imageSize); setBotConfig({ imageSize }); };
+  // Modes available for this bot: the built-in Ugly Bot gets the personas
+  // (Honest/Lie); every bot gets Chat + Image.
+  const isUglyBot = botId === UGLY_BOT_ID;
+  const availableModes = BOT_MODES.filter((m) => isUglyBot || !m.persona || m.id === 'chat');
 
   // Drop staged (unsent) attachments when switching conversations.
   useEffect(() => {
@@ -1149,6 +1165,21 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     return '';
   }, [botModel, messages]);
 
+  // ⋯-menu picker row (label + check). Reused for mode / model / image rows.
+  const menuLabelStyle: React.CSSProperties = { padding: '8px 14px 4px', fontSize: 11, fontWeight: 700, color: 'var(--app-foreground-muted)', textTransform: 'uppercase', letterSpacing: 0.5 };
+  const pickRow = (key: string, label: string, selected: boolean, onClick: () => void): React.ReactNode => (
+    <button
+      key={key}
+      type="button"
+      className="uc-menuitem"
+      onClick={onClick}
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 9, width: '100%', padding: '9px 14px', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', fontSize: 13, fontWeight: 600, textAlign: 'left' }}
+    >
+      <span>{label}</span>
+      {selected ? <Check size={15} style={{ color: 'var(--app-primary)', flexShrink: 0 }} /> : null}
+    </button>
+  );
+
   const body = (
     <div
       style={{
@@ -1188,6 +1219,18 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
             </div>
           ) : null}
         </div>
+        {/* Theme picker — mobile only (desktop has it in the sidebar header). */}
+        {narrow ? (
+          <button
+            type="button"
+            onClick={() => openThemeMenu(router)}
+            aria-label="Theme"
+            title="Theme"
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', flexShrink: 0 }}
+          >
+            <Palette size={18} />
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => videoRef.current?.start()}
@@ -1227,19 +1270,21 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                 <div style={{ position: 'absolute', top: 38, right: 0, zIndex: 21, background: 'var(--app-main)', border: '1px solid var(--app-border)', borderRadius: 10, boxShadow: 'var(--app-shadow-button-default)', minWidth: 200, overflow: 'hidden', maxHeight: 360, overflowY: 'auto' }}>
                   {botId ? (
                     <div style={{ borderBottom: '1px solid var(--app-border)' }}>
-                      <div style={{ padding: '8px 14px 4px', fontSize: 11, fontWeight: 700, color: 'var(--app-foreground-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Model</div>
-                      {BOT_MODELS.map((m) => (
-                        <button
-                          key={m.id}
-                          type="button"
-                          className="uc-menuitem"
-                          onClick={() => pickBotModel(m.id)}
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 9, width: '100%', padding: '9px 14px', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', fontSize: 13, fontWeight: 600, textAlign: 'left' }}
-                        >
-                          <span>{(m.label.split('—')[0] ?? m.id).trim()}</span>
-                          {(botModel ?? BOT_MODELS[0]?.id) === m.id ? <Check size={15} style={{ color: 'var(--app-primary)', flexShrink: 0 }} /> : null}
-                        </button>
-                      ))}
+                      <div style={menuLabelStyle}>Mode</div>
+                      {availableModes.map((m) => pickRow(`mode-${m.id}`, m.label, botMode === m.id, () => pickBotMode(m.id)))}
+                      {botMode === 'image' ? (
+                        <>
+                          <div style={menuLabelStyle}>Image model</div>
+                          {IMAGE_MODELS.map((m) => pickRow(`im-${m.id}`, m.label, botImageModel === m.id, () => pickImageModel(m.id)))}
+                          <div style={menuLabelStyle}>Image size</div>
+                          {IMAGE_SIZES.map((m) => pickRow(`is-${m.id}`, m.label, botImageSize === m.id, () => pickImageSize(m.id)))}
+                        </>
+                      ) : (
+                        <>
+                          <div style={menuLabelStyle}>Model</div>
+                          {BOT_MODELS.map((m) => pickRow(`tm-${m.id}`, (m.label.split('—')[0] ?? m.id).trim(), (botModel ?? BOT_MODELS[0]?.id) === m.id, () => pickBotModel(m.id)))}
+                        </>
+                      )}
                     </div>
                   ) : null}
                   {canManageMembers ? (
