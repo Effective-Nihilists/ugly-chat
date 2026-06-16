@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ThumbsUp, ThumbsDown, Heart, Laugh, HelpCircle, AlertTriangle, Trash2, Video, Paperclip, X, FileText, MoreVertical, Eraser, Pencil, Users, Volume2, VolumeX, Pin, Settings } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Heart, Laugh, HelpCircle, AlertTriangle, Trash2, Video, Paperclip, X, FileText, MoreVertical, Eraser, Pencil, Users, Volume2, VolumeX, Pin, Settings, Check } from 'lucide-react';
 import { useApp, uploadBlob, promoteBlob, downscaleImage, useSafeAreaInsets } from 'ugly-app/client';
 import { ChatView } from 'ugly-app/conversation/client';
 import { MdastViewer } from 'ugly-app/markdown/client';
@@ -12,6 +12,7 @@ import { openMembersPopup } from '../components/MembersPopup';
 import { VoiceProvider, useVoice } from '../components/VoiceProvider';
 import { useRouter } from '../router';
 import { Avatar, pingConversationActivity } from '../lib/conversations';
+import { modelLabel, BOT_MODELS } from '../lib/bots';
 import { UGLY_BOT_ID } from '../../shared/bots';
 import type { MsgTelemetry } from '../../shared/telemetry';
 import { formatTokens, formatCost } from '../../shared/telemetry';
@@ -122,12 +123,22 @@ function useNarrow(): boolean {
   return narrow;
 }
 
-// One message bubble + its hover action bar (react / delete) + reaction chips.
+// Short HH:MM clock for a message timestamp (peer name-row + own footer).
+function clock(ms: number): string {
+  return new Date(ms).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+}
+
+// One full thread row (mock parity): own = right-aligned gradient bubble with a
+// `delivered · HH:MM` footer and no avatar/name; peer = left-aligned square
+// avatar (first of a run) + name header + tertiary bubble. Markdown, telemetry
+// receipt, reactions, buttons, hover actions and editing are preserved.
 function MessageBody(props: {
   msg: ChatMessage;
   isOwn: boolean;
-  rTL: number;
-  rBL: number;
+  sender: ChatUser;
+  firstOfRun: boolean;
+  stacked: boolean;
+  daySep: string | null;
   onReact: (messageId: string, reaction: string) => void;
   onDelete: (messageId: string) => void;
   onEdit: (messageId: string, markdown: string) => Promise<void>;
@@ -141,7 +152,7 @@ function MessageBody(props: {
   humanStatsOn?: boolean;
   humanSeen?: boolean;
 }): React.ReactElement {
-  const { msg, isOwn, rTL, rBL, onReact, onDelete, onEdit, onPin, pinned, onButton,
+  const { msg, isOwn, sender, firstOfRun, stacked, daySep, onReact, onDelete, onEdit, onPin, pinned, onButton,
     humanIdx, humanSorted, humanMeId, humanStatsOn, humanSeen } = props;
   const voice = useVoice();
   const [hover, setHover] = useState(false);
@@ -176,30 +187,38 @@ function MessageBody(props: {
       setSaving(false);
     }
   };
+  const isError = msg.color === 'error';
   return (
-    <div
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, width: 'fit-content', maxWidth: '100%' }}
-    >
-      {hasText ? (
-      <div
-        style={{
-          maxWidth: '100%',
-          background:
-            msg.color === 'error'
-              ? 'var(--app-error)'
-              : isOwn
-                ? 'var(--app-secondary)'
-                : 'var(--app-tertiary)',
-          color: msg.color === 'error' ? '#fff' : 'var(--app-foreground)',
-          padding: '9px 13px',
-          borderRadius: isOwn ? '14px 14px 3px 14px' : '14px 14px 14px 3px',
-          fontSize: 14,
-          lineHeight: '1.5',
-          wordBreak: 'break-word',
-        }}
-      >
+    <>
+      {daySep ? (
+        <div className="uc-daysep"><span>{daySep}</span></div>
+      ) : null}
+      <div className={`uc-msg${isOwn ? ' me' : ''}`}>
+        {/* Square avatar — peers only, on the first message of a run. */}
+        {!isOwn && firstOfRun ? (
+          <div className="uc-avatar-slot">
+            <Avatar image={sender.avatarUrl} seed={sender.id} label={sender.name} size={30} />
+          </div>
+        ) : !isOwn ? (
+          <div className="uc-avatar-slot" style={{ width: 30 }} />
+        ) : null}
+        <div
+          className="uc-msgcol"
+          onMouseEnter={() => setHover(true)}
+          onMouseLeave={() => setHover(false)}
+          style={{ position: 'relative' }}
+        >
+          {/* Peer sender name + timestamp, first of a run only. */}
+          {!isOwn && firstOfRun ? (
+            <div className="uc-metarow">
+              <span className={`sender${sender.isBot ? ' bot' : ''}`}>{sender.name}</span>
+              <span className="t">{clock(msg.created)}</span>
+            </div>
+          ) : null}
+          {hasText ? (
+          <div
+            className={`uc-bubble ${isOwn ? 'own' : 'peer'}${stacked ? ' stack' : ''}${isError ? ' err' : ''}`}
+          >
         {editing ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 260 }}>
             <textarea
@@ -315,10 +334,12 @@ function MessageBody(props: {
                 else if (b.prompt) onButton(b.prompt);
               }}
               style={{
-                fontSize: 13,
+                fontFamily: 'var(--app-font-mono)',
+                fontSize: 11.5,
                 fontWeight: 600,
+                letterSpacing: '0.04em',
                 padding: '7px 13px',
-                borderRadius: 16,
+                borderRadius: 0,
                 border: '1.5px solid var(--app-primary)',
                 background: 'transparent',
                 color: 'var(--app-primary)',
@@ -334,13 +355,21 @@ function MessageBody(props: {
 
       {(msg as { telemetry?: MsgTelemetry }).telemetry ? (
         <div className="uc-receipt" style={{ padding: '0 4px' }}>
-          <b>{(msg as { telemetry?: MsgTelemetry }).telemetry!.model || 'model'}</b>
+          <b>{modelLabel((msg as { telemetry?: MsgTelemetry }).telemetry!.model) || 'model'}</b>
           <span className="dot">·</span>
           {((msg as { telemetry?: MsgTelemetry }).telemetry!.latencyMs / 1000).toFixed(1)}s
           <span className="dot">·</span>
           ↑{formatTokens((msg as { telemetry?: MsgTelemetry }).telemetry!.inputTokens)} ↓{formatTokens((msg as { telemetry?: MsgTelemetry }).telemetry!.outputTokens)} tok
           <span className="dot">·</span>
           <span className="cost">{formatCost((msg as { telemetry?: MsgTelemetry }).telemetry!.costUsd)}</span>
+        </div>
+      ) : null}
+
+      {/* Own-message footer (delivered · HH:MM) — bot chats and any non-stats
+          DM. Human-DM stats render their own richer footer below instead. */}
+      {isOwn && !humanStatsOn && hasText ? (
+        <div className="uc-receipt" style={{ padding: '0 4px', color: 'var(--app-foreground-muted)' }}>
+          <span>delivered</span><span className="dot">·</span>{clock(msg.created)}
         </div>
       ) : null}
 
@@ -441,7 +470,9 @@ function MessageBody(props: {
           ) : null}
         </div>
       ) : null}
-    </div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -502,6 +533,8 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const [botId, setBotId] = useState<string | null>(null);
   const [botButtons, setBotButtons] = useState<{ label: string; prompt: string }[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Per-conversation model override for the bot (picker in the ⋯ menu).
+  const [botModel, setBotModel] = useState<string | null>(null);
   const [typing, setTyping] = useState<ChatTypingEntry[]>([]);
   const [convType, setConvType] = useState<string>('group');
   const [pinnedMessageId, setPinnedMessageId] = useState<string | null>(null);
@@ -514,6 +547,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     setReady(false);
     setMessages([]);
     setBotId(null); // re-derived by the dedicated effect below
+    setBotModel(null);
     setBotButtons([]);
     setMenuOpen(false);
     setTyping([]);
@@ -680,10 +714,12 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     if (botP) setBotId(botP.id);
   }, [roomId, userId, profiles, botId]);
 
-  // Load the bot's starter buttons (shown persistently above the composer).
+  // Load the bot's starter buttons (shown above the composer) + its model
+  // (shown as the header subtitle, e.g. "DeepSeek v4 pro · online").
   useEffect(() => {
     if (!botId) {
       setBotButtons([]);
+      setBotModel(null);
       return;
     }
     let cancelled = false;
@@ -691,12 +727,33 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       .request('botGet', { botId })
       .then((doc) => {
         if (cancelled) return;
-        const btns = (doc as { buttons?: { label: string; prompt: string }[] } | null)?.buttons ?? [];
-        setBotButtons(btns.filter((b) => b.label && b.prompt));
+        const d = doc as { buttons?: { label: string; prompt: string }[]; model?: string } | null;
+        setBotButtons((d?.buttons ?? []).filter((b) => b.label && b.prompt));
+        const defaultModel = d?.model ?? null;
+        // Per-conversation override (set via the ⋯ → Model picker) wins over the
+        // bot's default; falls back to the default when none is set.
+        void socket
+          .getDoc('conversation', roomId)
+          .then((cdoc) => {
+            if (cancelled) return;
+            const bots = (cdoc as { bots?: Record<string, { model?: string }> } | null)?.bots ?? {};
+            setBotModel((botId && bots[botId]?.model) || defaultModel);
+          })
+          .catch(() => { if (!cancelled) setBotModel(defaultModel); });
       })
       .catch(() => undefined);
     return () => { cancelled = true; };
-  }, [socket, botId]);
+  }, [socket, botId, roomId]);
+
+  // Set the bot's model for THIS conversation (⋯ → Model). Optimistic.
+  const pickBotModel = (model: string): void => {
+    if (!botId) return;
+    setBotModel(model);
+    setMenuOpen(false);
+    void socket
+      .request('conversationSetBotModel', { conversationId: roomId, botId, model })
+      .catch(() => undefined);
+  };
 
   // Drop staged (unsent) attachments when switching conversations.
   useEffect(() => {
@@ -1012,6 +1069,22 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       const idx = messages.findIndex((m) => m.id === msg.id);
       const prev = idx > 0 ? messages[idx - 1] : undefined;
       const next = idx >= 0 && idx < messages.length - 1 ? messages[idx + 1] : undefined;
+      const sameDay = (a: number, b: number): boolean => {
+        const da = new Date(a), db = new Date(b);
+        return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
+      };
+      // Day separator at the top of the thread and on each calendar-day boundary.
+      const daySep =
+        !prev || !sameDay(prev.created, msg.created)
+          ? sameDay(msg.created, Date.now())
+            ? `today · ${new Date(msg.created).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+            : new Date(msg.created).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+          : null;
+      // A run = consecutive same-sender messages (no day break between them).
+      const samePrev = !!prev && prev.userId === msg.userId && sameDay(prev.created, msg.created) && !(prev as { systemType?: string }).systemType;
+      const sameNext = !!next && next.userId === msg.userId && sameDay(next.created, msg.created) && !(next as { systemType?: string }).systemType;
+      const firstOfRun = !samePrev || daySep != null;
+      const stacked = samePrev || sameNext;
       // For human DM receipts: find this message's position in the StatMsg array
       // (which is filtered to non-bot messages, same ordering as messages).
       const humanIdx = !hasBot && statsOn
@@ -1023,8 +1096,10 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         <MessageBody
           msg={msg}
           isOwn={msg.userId === userId}
-          rTL={!prev || prev.userId !== msg.userId ? 4 : 0}
-          rBL={!next || next.userId !== msg.userId ? 4 : 0}
+          sender={getUser(msg.userId)}
+          firstOfRun={firstOfRun}
+          stacked={stacked}
+          daySep={daySep}
           onReact={handleReact}
           onDelete={handleDelete}
           onEdit={handleEdit}
@@ -1038,8 +1113,19 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       );
     },
     [messages, userId, handleReact, handleDelete, handleEdit, handlePin, pinnedMessageId, handleSend, profiles,
-      hasBot, statsOn, statMsgs, readers],
+      hasBot, statsOn, statMsgs, readers, getUser],
   );
+
+  // Header subtitle model: the bot's configured model, else the model named on
+  // the most recent telemetry receipt (covers bots whose doc we couldn't read).
+  const headerModel = useMemo(() => {
+    if (botModel) return modelLabel(botModel);
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const t = (messages[i] as { telemetry?: MsgTelemetry }).telemetry;
+      if (t?.model) return modelLabel(t.model);
+    }
+    return '';
+  }, [botModel, messages]);
 
   const body = (
     <div
@@ -1066,9 +1152,16 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--app-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
           {botId ? (
+            // Bot subtitle = the bot's model (from botGet / latest receipt) ·
+            // online. If the model is unknown, fall back to "online" only — we
+            // never fabricate a model string.
             <div className="uc-receipt" style={{ marginTop: 1 }}>
-              <span>{profiles[botId]?.name ?? 'Bot'}</span>
-              <span className="dot">·</span>
+              {headerModel ? (
+                <>
+                  <b>{headerModel}</b>
+                  <span className="dot">·</span>
+                </>
+              ) : null}
               <span style={{ color: 'var(--app-success)' }}>online</span>
             </div>
           ) : null}
@@ -1109,7 +1202,24 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
             {menuOpen ? (
               <>
                 <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 20 }} />
-                <div style={{ position: 'absolute', top: 38, right: 0, zIndex: 21, background: 'var(--app-main)', border: '1px solid var(--app-border)', borderRadius: 10, boxShadow: 'var(--app-shadow-button-default)', minWidth: 168, overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', top: 38, right: 0, zIndex: 21, background: 'var(--app-main)', border: '1px solid var(--app-border)', borderRadius: 10, boxShadow: 'var(--app-shadow-button-default)', minWidth: 200, overflow: 'hidden', maxHeight: 360, overflowY: 'auto' }}>
+                  {botId ? (
+                    <div style={{ borderBottom: '1px solid var(--app-border)' }}>
+                      <div style={{ padding: '8px 14px 4px', fontSize: 11, fontWeight: 700, color: 'var(--app-foreground-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Model</div>
+                      {BOT_MODELS.map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          className="uc-menuitem"
+                          onClick={() => pickBotModel(m.id)}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 9, width: '100%', padding: '9px 14px', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', fontSize: 13, fontWeight: 600, textAlign: 'left' }}
+                        >
+                          <span>{(m.label.split('—')[0] ?? m.id).trim()}</span>
+                          {(botModel ?? BOT_MODELS[0]?.id) === m.id ? <Check size={15} style={{ color: 'var(--app-primary)', flexShrink: 0 }} /> : null}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                   {canManageMembers ? (
                     <button
                       type="button"
@@ -1224,7 +1334,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                     type="button"
                     className="uc-msgbtn"
                     onClick={() => handleSend(b.prompt)}
-                    style={{ fontSize: 13, fontWeight: 600, padding: '7px 13px', borderRadius: 16, border: '1.5px solid var(--app-primary)', background: 'transparent', color: 'var(--app-primary)', cursor: 'pointer' }}
+                    style={{ fontFamily: 'var(--app-font-mono)', fontSize: 11.5, fontWeight: 600, letterSpacing: '0.04em', padding: '7px 13px', borderRadius: 0, border: '1.5px solid var(--app-primary)', background: 'transparent', color: 'var(--app-primary)', cursor: 'pointer' }}
                   >
                     {b.label}
                   </button>
@@ -1284,6 +1394,11 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                   </button>
                 }
               />
+            </div>
+            {/* Faint mono hint line under the composer (mock parity). */}
+            <div className="uc-chint">
+              <span>/ slash · @ mention · ⌘↩ send</span>
+              <span>markdown on</span>
             </div>
           </div>
         </ChatView>

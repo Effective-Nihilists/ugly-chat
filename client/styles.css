@@ -535,6 +535,73 @@ hr {
 .uc-receipt .dot { color: var(--app-border); }
 .uc-pill { display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border: 1.5px solid var(--app-primary); color: var(--app-primary); background: transparent; font-family: var(--app-font-mono); font-size: 11.5px; font-weight: 600; cursor: pointer; }
 .uc-pill:hover { background: var(--app-primary); color: var(--app-on-primary); }
+.uc-receipt b { color: var(--app-foreground); font-weight: 500; }
+.uc-receipt .late { color: var(--app-primary); }
+
+/* ── Chat thread rows (mock parity) ──────────────────────────────────────────
+   The framework ChatMessageBubble wraps each row with a 24px circular avatar +
+   a name header, all in a fixed left-aligned flex row. The mock needs distinct
+   own (right, no avatar/name) vs peer (left, square avatar + name) rows, so we
+   neutralize the framework chrome here and render the *entire* mock row inside
+   ChatPage's `renderMessage`. The framework row is:
+     [data-message-id] > <avatar|placeholder>, <content column>
+   and the content column is `[header?, content]`. Collapse the row to a plain
+   full-width block and hide the avatar + header; our own markup takes over. */
+.uc-chat-scroll [data-message-id] {
+  display: block !important;
+  padding: 2px 18px !important;
+}
+/* Hide the framework's own duration/date separators — we render a mock-style
+   `today · MON DD` separator on real day boundaries from renderMessage instead.
+   (ChatPage passes no hasMore/onLoadMore, so the only non-message direct child
+   of the inner list is the framework separator.) */
+.uc-chat-scroll [data-testid='message-list-inner'] > div:not([data-message-id]) {
+  display: none !important;
+}
+/* avatar / placeholder = the row's first direct child */
+.uc-chat-scroll [data-message-id] > :first-child {
+  display: none !important;
+}
+/* the content column = last direct child; strip its flex so our row controls width */
+.uc-chat-scroll [data-message-id] > :last-child {
+  display: block !important;
+  flex: none !important;
+}
+/* the framework name header = the content column's first child, when present.
+   Our renderMessage returns a fragment of [.uc-daysep?, .uc-msg], so exclude
+   both of ours; whatever else is first must be the framework's header. */
+.uc-chat-scroll [data-message-id] > :last-child > div:first-child:not(.uc-msg):not(.uc-daysep) {
+  display: none !important;
+}
+
+/* One thread row, fully owned by us. */
+.uc-msg { display: flex; gap: 10px; max-width: 78%; }
+.uc-msg.me { margin-left: auto; flex-direction: row-reverse; }
+.uc-msg .uc-msgcol { display: flex; flex-direction: column; gap: 4px; min-width: 0; align-items: flex-start; }
+.uc-msg.me .uc-msgcol { align-items: flex-end; }
+.uc-msg .uc-avatar-slot { align-self: flex-end; flex: none; }
+
+.uc-metarow { display: flex; align-items: center; gap: 8px; padding: 0 4px; }
+.uc-metarow .sender { font-family: var(--app-font-heading); font-weight: 700; font-size: 12px; color: var(--app-foreground); }
+.uc-metarow .sender.bot { color: var(--app-primary); }
+.uc-metarow .t { font-family: var(--app-font-mono); font-size: 9.5px; color: var(--app-foreground-muted); }
+
+.uc-bubble { padding: 9px 13px; font-size: 14px; line-height: 1.5; word-break: break-word; max-width: 100%; }
+.uc-bubble.peer { background: var(--app-tertiary); border: 1px solid var(--app-border); color: var(--app-foreground); border-radius: 14px 14px 14px 3px; }
+.uc-bubble.own { background: var(--app-gradient-primary); color: var(--app-on-primary); border: none; border-radius: 14px 14px 3px 14px; }
+.uc-bubble.own.stack, .uc-bubble.peer.stack { border-radius: 14px; }
+.uc-bubble.err { background: var(--app-error); color: #fff; border: none; }
+/* Markdown inside the own (gradient) bubble inherits the on-primary color. */
+.uc-bubble.own, .uc-bubble.own * { color: var(--app-on-primary); }
+
+/* Thread date separator (today · MON DD). */
+.uc-daysep { display: flex; align-items: center; gap: 12px; margin: 10px 0 14px; padding: 0 4px; }
+.uc-daysep::before, .uc-daysep::after { content: ''; height: 1px; background: var(--app-border); flex: 1; }
+.uc-daysep span { font-family: var(--app-font-mono); font-size: 9.5px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--app-foreground-muted); }
+
+/* Composer hint line under the input. */
+.uc-chint { display: flex; justify-content: space-between; margin-top: 7px; padding: 0 2px; }
+.uc-chint span { font-family: var(--app-font-mono); font-size: 10px; color: var(--app-foreground-muted); letter-spacing: 0.04em; }
 
 /* ---- call transcript panel + subtitle overlay (ported from mockups
    call-bot.html / call-2p.html). The panel is themed with --app-* tokens; the
