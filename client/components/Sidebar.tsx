@@ -2,13 +2,13 @@ import React, { useCallback, useState } from 'react';
 import { Plus, PanelLeft, PanelLeftClose, Bot, Palette, MessageSquare, UserCog } from 'lucide-react';
 import { useApp } from 'ugly-app/client';
 import { useRouter } from '../router';
-import { useConversations } from '../lib/conversations';
+import { useConversations, deleteOrLeaveConversation } from '../lib/conversations';
 import { Avatar } from '../lib/conversations';
 import { ConversationListBody } from './ConversationListBody';
 import { openNewChatPopup } from './NewChatPopup';
 import { openBotsPopup } from './BotsPopup';
 import { openThemeMenu } from './ThemeMenu';
-import { openProfilePopup } from './ProfilePopup';
+import { openUglyBotSettings } from '../lib/uglyBot';
 
 // Matches ugly.bot's SidebarInternal: collapsed = 72px (avatar-only), expanded =
 // resizable 250–400px persisted to localStorage 'leftSidebarWidth'; the
@@ -66,7 +66,6 @@ export function Sidebar(): React.ReactElement {
   }, [router, socket, userId, navigate]);
 
   const openTheme = useCallback(() => openThemeMenu(router), [router]);
-  const openProfile = useCallback(() => openProfilePopup(router, socket), [router, socket]);
 
   const openFeedback = useCallback(() => {
     document.querySelector<HTMLElement>('[data-id="feedback-button"]')?.click();
@@ -82,6 +81,18 @@ export function Sidebar(): React.ReactElement {
         .catch((err: unknown) => console.error('[sidebar] pin failed', err));
     },
     [socket],
+  );
+
+  // Delete (or leave, for non-owners) a conversation. The userConversation
+  // trackDocs subscription picks up the removed list row and refetches, so the
+  // row disappears on its own — no manual refetch.
+  const removeConversation = useCallback(
+    (conversationId: string) => {
+      void deleteOrLeaveConversation(socket, conversationId, userId).catch((err: unknown) =>
+        console.error('[sidebar] delete failed', err),
+      );
+    },
+    [socket, userId],
   );
 
   // Drag the right edge to resize (clamped 250–400, persisted).
@@ -120,7 +131,7 @@ export function Sidebar(): React.ReactElement {
         <button type="button" title="New chat" onClick={openNew} className="uc-iconbtn" style={{ ...iconBtnStyle, alignSelf: 'center', marginBottom: 6 }}>
           <Plus size={20} />
         </button>
-        <button type="button" title="Edit profile" onClick={openProfile} className="uc-iconbtn" style={{ ...iconBtnStyle, alignSelf: 'center', marginBottom: 6 }}>
+        <button type="button" title="User settings" onClick={openUglyBotSettings} className="uc-iconbtn" style={{ ...iconBtnStyle, alignSelf: 'center', marginBottom: 6 }}>
           <UserCog size={20} />
         </button>
         <button type="button" title="Bots" onClick={openBots} className="uc-iconbtn" style={{ ...iconBtnStyle, alignSelf: 'center', marginBottom: 6 }}>
@@ -169,7 +180,7 @@ export function Sidebar(): React.ReactElement {
 
         {/* Right-aligned icon cluster: Bots · Theme · Feedback */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
-          <button type="button" title="Edit profile" onClick={openProfile} className="uc-iconbtn" style={smallIconBtn}>
+          <button type="button" title="User settings" onClick={openUglyBotSettings} className="uc-iconbtn" style={smallIconBtn}>
             <UserCog size={18} />
           </button>
           <button type="button" title="Bots" onClick={openBots} className="uc-iconbtn" style={smallIconBtn}>
@@ -186,7 +197,7 @@ export function Sidebar(): React.ReactElement {
 
       {/* Search + create */}
       <div style={{ padding: '2px 10px 8px', display: 'flex', gap: 8, alignItems: 'center' }}>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '0 10px', height: 38, borderRadius: 0, border: '1px solid var(--app-border)', background: 'var(--app-tertiary)' }}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '0 10px', height: 38, borderRadius: 0, border: '1px solid var(--app-border)', background: 'var(--app-tertiary)' }}>
           <SearchIcon />
           <input
             value={q}
@@ -210,6 +221,7 @@ export function Sidebar(): React.ReactElement {
           activeId={activeId}
           onSelect={navigate}
           onTogglePin={togglePin}
+          onDelete={removeConversation}
         />
       </div>
 
