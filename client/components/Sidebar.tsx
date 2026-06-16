@@ -86,6 +86,12 @@ export function Sidebar(): React.ReactElement {
     ? conversations.filter((c) => (c.title || '').toLowerCase().includes(q.trim().toLowerCase()))
     : conversations;
 
+  // Group pinned conversations at the top under a // PINNED header; the rest
+  // fall under // DIRECT. We don't reliably know which rows are bots from the
+  // list payload, so we don't invent a // BOTS section.
+  const pinned = filtered.filter((c) => c.pinned);
+  const rest = filtered.filter((c) => !c.pinned);
+
   // ── Collapsed (icon rail) ────────────────────────────────────────────────
   if (!expanded) {
     return (
@@ -127,10 +133,12 @@ export function Sidebar(): React.ReactElement {
         <button type="button" title="Collapse" onClick={() => setExpanded(false)} className="uc-iconbtn" style={{ ...iconBtnStyle, border: 'none', background: 'transparent' }}>
           <PanelLeftClose size={20} />
         </button>
-        <button type="button" onClick={() => router.push('chat', {})} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', cursor: 'pointer' }}>
-          <img src="/icon.png" width={24} height={24} alt="" style={{ borderRadius: 7 }} />
-          <span style={{ fontFamily: 'var(--app-font-heading)', fontWeight: 800, fontSize: 17, color: 'var(--app-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            Ugly Chat
+        <button type="button" onClick={() => router.push('chat', {})} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
+          <span style={{ fontFamily: 'var(--app-font-heading)', fontWeight: 800, fontSize: 19, letterSpacing: '-0.03em', color: 'var(--app-foreground)', lineHeight: 1, whiteSpace: 'nowrap' }}>
+            ugly<span style={{ color: 'var(--app-primary)' }}>.</span>chat
+          </span>
+          <span style={{ fontFamily: 'var(--app-font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.16em', color: 'var(--app-foreground-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+            your keys · your data · no filter
           </span>
         </button>
       </div>
@@ -153,21 +161,41 @@ export function Sidebar(): React.ReactElement {
 
       {/* Conversation list */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '2px 0 16px' }}>
-        <div className="uc-mono-label" style={{ padding: '10px 14px 4px' }}><span style={{ color: 'var(--app-primary)' }}>//</span> conversations</div>
         {loading && conversations.length === 0 ? (
           <EmptyHint text="Loading…" />
         ) : filtered.length === 0 ? (
           <EmptyHint text={q ? 'No matches' : 'No conversations yet'} />
         ) : (
-          filtered.map((c) => (
-            <ConversationRow
-              key={c.conversationId}
-              row={c}
-              selected={c.conversationId === activeId}
-              onClick={() => router.push('chat/:conversationId', { conversationId: c.conversationId })}
-              onTogglePin={() => togglePin(c.conversationId, !c.pinned)}
-            />
-          ))
+          <>
+            {pinned.length > 0 ? (
+              <>
+                <SectionLabel text="pinned" />
+                {pinned.map((c) => (
+                  <ConversationRow
+                    key={c.conversationId}
+                    row={c}
+                    selected={c.conversationId === activeId}
+                    onClick={() => router.push('chat/:conversationId', { conversationId: c.conversationId })}
+                    onTogglePin={() => togglePin(c.conversationId, !c.pinned)}
+                  />
+                ))}
+              </>
+            ) : null}
+            {rest.length > 0 ? (
+              <>
+                <SectionLabel text="direct" />
+                {rest.map((c) => (
+                  <ConversationRow
+                    key={c.conversationId}
+                    row={c}
+                    selected={c.conversationId === activeId}
+                    onClick={() => router.push('chat/:conversationId', { conversationId: c.conversationId })}
+                    onTogglePin={() => togglePin(c.conversationId, !c.pinned)}
+                  />
+                ))}
+              </>
+            ) : null}
+          </>
         )}
       </div>
 
@@ -234,6 +262,14 @@ const footBtnStyle: React.CSSProperties = {
   letterSpacing: '0.06em',
   cursor: 'pointer',
 };
+
+function SectionLabel({ text }: { text: string }): React.ReactElement {
+  return (
+    <div className="uc-mono-label" style={{ padding: '12px 14px 4px' }}>
+      <span style={{ color: 'var(--app-primary)' }}>//</span> {text}
+    </div>
+  );
+}
 
 function EmptyHint({ text }: { text: string }): React.ReactElement {
   return (
