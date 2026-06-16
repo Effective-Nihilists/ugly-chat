@@ -156,6 +156,11 @@ function MessageBody(props: {
     humanIdx, humanSorted, humanMeId, humanStatsOn, humanSeen } = props;
   const voice = useVoice();
   const [hover, setHover] = useState(false);
+  // The hover action menu sits in a gap above the bubble; hide it on a short
+  // delay so the pointer can cross the gap to reach it (the menu is a DOM
+  // descendant of .uc-msgcol, so entering it re-fires the column's onMouseEnter).
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (hideTimer.current) clearTimeout(hideTimer.current); }, []);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
@@ -204,8 +209,8 @@ function MessageBody(props: {
         ) : null}
         <div
           className="uc-msgcol"
-          onMouseEnter={() => setHover(true)}
-          onMouseLeave={() => setHover(false)}
+          onMouseEnter={() => { if (hideTimer.current) clearTimeout(hideTimer.current); setHover(true); }}
+          onMouseLeave={() => { hideTimer.current = setTimeout(() => setHover(false), 250); }}
           style={{ position: 'relative' }}
         >
           {/* Peer sender name + timestamp, first of a run only. */}
