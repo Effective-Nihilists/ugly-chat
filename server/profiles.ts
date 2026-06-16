@@ -8,7 +8,6 @@ import { dbDefaults } from 'ugly-app/shared';
 import { botUser } from './bots';
 import { uglyBotRequest } from './uglybot';
 import { collections } from '../shared/collections';
-import { UGLY_BOT, UGLY_BOT_USER_ID } from '../shared/bots';
 
 export interface Profile {
   id: string;
@@ -17,6 +16,8 @@ export interface Profile {
   isBot: boolean;
   /** 2D conversation background image (the bot's avatar background), if any. */
   backgroundUrl: string | null;
+  /** 3D avatar (GLB) for the call/TalkingAvatar, if any. */
+  avatarGlbUrl: string | null;
 }
 
 interface DbLike {
@@ -50,22 +51,9 @@ export async function resolveProfiles(db: DbLike, userIds: string[]): Promise<Pr
   const localById = new Map<string, Record<string, unknown>>();
 
   for (const id of ids) {
-    // Canonical Ugly Bot — ugly.bot serves its avatar from a hardcoded mascot
-    // (not a userPublic row), so the userPublicBatch path returns nothing and it
-    // degrades to a short-id/initial. Pin its real name + avatar + background.
-    if (id === UGLY_BOT_USER_ID) {
-      out.push({
-        id,
-        name: UGLY_BOT.name,
-        avatarUrl: UGLY_BOT.avatarUrl,
-        isBot: true,
-        backgroundUrl: UGLY_BOT.backgroundUrl,
-      });
-      continue;
-    }
     const bot = botUser(id);
     if (bot) {
-      out.push({ id, name: bot.name, avatarUrl: null, isBot: true, backgroundUrl: null });
+      out.push({ id, name: bot.name, avatarUrl: null, isBot: true, backgroundUrl: null, avatarGlbUrl: null });
       continue;
     }
     // Custom (`bot-`) bots resolve from the local `bot` collection. Migrated
@@ -80,6 +68,7 @@ export async function resolveProfiles(db: DbLike, userIds: string[]): Promise<Pr
         avatarUrl: (botDoc?.['avatarUrl'] as string | null | undefined) ?? null,
         isBot: true,
         backgroundUrl: (botDoc?.['backgroundUrl'] as string | null | undefined) ?? null,
+        avatarGlbUrl: (botDoc?.['avatarGlbUrl'] as string | null | undefined) ?? null,
       });
       continue;
     }
@@ -99,6 +88,7 @@ export async function resolveProfiles(db: DbLike, userIds: string[]): Promise<Pr
         avatarUrl: (cached['avatarResolved'] as string | null | undefined) ?? avatarUrlOf(cached),
         isBot: asBool(cached['isBot']),
         backgroundUrl: (cached['backgroundResolved'] as string | null | undefined) ?? null,
+        avatarGlbUrl: (cached['avatarGlbResolved'] as string | null | undefined) ?? null,
       });
     } else {
       toFetch.push(id);
@@ -115,8 +105,9 @@ export async function resolveProfiles(db: DbLike, userIds: string[]): Promise<Pr
         const name = (local?.['name'] as string | undefined) ?? p.name ?? fallbackName(p.id);
         const avatarUrl = p.avatarUrl ?? (local ? avatarUrlOf(local) : null);
         const backgroundUrl = p.backgroundUrl ?? null;
+        const avatarGlbUrl = (p as { avatarGlbUrl?: string | null }).avatarGlbUrl ?? null;
         const isBot = asBool(local?.['isBot']);
-        out.push({ id: p.id, name, avatarUrl, isBot, backgroundUrl });
+        out.push({ id: p.id, name, avatarUrl, isBot, backgroundUrl, avatarGlbUrl });
         got.add(p.id);
         await db.setDoc(collections.userPublic, {
           ...(local ?? {}),
@@ -125,6 +116,7 @@ export async function resolveProfiles(db: DbLike, userIds: string[]): Promise<Pr
           isBot,
           avatarResolved: avatarUrl,
           backgroundResolved: backgroundUrl,
+          avatarGlbResolved: avatarGlbUrl,
           avatarFetchedAt: Date.now(),
           ...dbDefaults(),
         });
@@ -141,6 +133,7 @@ export async function resolveProfiles(db: DbLike, userIds: string[]): Promise<Pr
         avatarUrl: local ? avatarUrlOf(local) : null,
         isBot: asBool(local?.['isBot']),
         backgroundUrl: null,
+        avatarGlbUrl: null,
       });
     }
   }

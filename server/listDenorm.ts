@@ -15,7 +15,7 @@
  * without a circular dependency.
  */
 import { collections } from '../shared/collections';
-import { UGLY_BOT_USER_ID } from '../shared/bots';
+import { UGLY_BOT_ID } from '../shared/bots';
 
 interface DbLike {
   getDoc(col: unknown, id: string): Promise<Record<string, unknown> | null>;
@@ -23,7 +23,7 @@ interface DbLike {
   setDoc(col: unknown, doc: unknown): Promise<void>;
 }
 
-const isBotId = (id: string): boolean => id.startsWith('bot-') || id === UGLY_BOT_USER_ID;
+const isBotId = (id: string): boolean => id.startsWith('bot-') || id === UGLY_BOT_ID;
 
 function preview(text: string): string {
   const t = text.replace(/[#*_`>~]/g, '').replace(/\s+/g, ' ').trim();

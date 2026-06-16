@@ -6,14 +6,12 @@
  * without them `TalkingAvatar` falls back to procedural mouth motion driven by
  * the `speaking` flag (degraded but functional).
  *
- * NOTE: this is a PLACEHOLDER URL. No real GLB exists yet — the binary still
- * needs to be authored and uploaded. blob.ugly.bot has no CORS, so the asset
- * must be re-hosted in our R2 public bucket (see platform notes) and this
- * constant updated. The unit test only asserts the URL *shape* (an https `.glb`),
- * not that the asset resolves.
+ * The mascot GLB is re-hosted in ugly.chat's R2 public bucket and served from
+ * the ugly.chat origin (`/public/avatars/...`) — same-origin, so three.js can
+ * fetch it without CORS (blob.ugly.bot has none). Mirrors UGLY_BOT_GLB_URL in
+ * shared/bots.ts; per-bot GLBs can override via the `glbUrl` prop.
  */
-// TODO: replace with the real ARKit-blendshape GLB hosted in our R2 public bucket
-export const BOT_AVATAR_URL = 'https://blob.ugly.bot/avatars/ugly-bot.glb';
+export const BOT_AVATAR_URL = 'https://ugly.chat/public/avatars/ugly-bot.glb';
 
 /**
  * Map a bot id to its InWorld TTS voice. All custom bots currently share one

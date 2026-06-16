@@ -13,7 +13,7 @@
  */
 import { conversationMessageCreate } from 'ugly-app/conversation/engine';
 import { collections } from '../shared/collections';
-import { UGLY_BOT, UGLY_BOT_USER_ID } from '../shared/bots';
+import { UGLY_BOT_ID } from '../shared/bots';
 import { bumpListForMessage } from './listDenorm';
 import type { MsgTelemetry } from '../shared/telemetry';
 
@@ -85,14 +85,10 @@ export interface BotDef {
   model: string;
 }
 
+// NOTE: the canonical Ugly Bot is no longer a static built-in — it lives in the
+// `bot` collection as `bot-ugly` (carries its 3D avatar + 2D image + background)
+// and resolves through the `bot-` path in getBotConfig.
 export const BOTS: Record<string, BotDef> = {
-  'bot-ugly': {
-    id: 'bot-ugly',
-    name: 'Ugly Bot',
-    systemPrompt:
-      'You are Ugly Bot — a witty, concise, helpful chat assistant. Keep replies short.',
-    model: 'deepseek_v4_flash',
-  },
   'bot-sage': {
     id: 'bot-sage',
     name: 'Sage',
@@ -102,9 +98,8 @@ export const BOTS: Record<string, BotDef> = {
   },
 };
 
-/** Any bot — built-in/custom (`bot-` id) or the canonical migrated Ugly Bot. */
-export const isBot = (id: string): boolean =>
-  id.startsWith('bot-') || id === UGLY_BOT_USER_ID;
+/** Any bot — built-in/custom, all keyed with a `bot-` id (incl. `bot-ugly`). */
+export const isBot = (id: string): boolean => id.startsWith('bot-');
 /** @deprecated kept as alias; use isBot. */
 export const isBotId = isBot;
 
@@ -120,6 +115,7 @@ export interface BotConfig {
   firstMessage: string | null;
   buttons: { label: string; prompt: string }[];
   avatarUrl: string | null;
+  avatarGlbUrl: string | null;
   backgroundUrl: string | null;
 }
 
@@ -145,21 +141,7 @@ const asBool = (v: unknown): boolean => v === true || v === 'true';
 export async function getBotConfig(db: MinimalDb, botId: string): Promise<BotConfig | null> {
   const builtin = BOTS[botId];
   if (builtin) {
-    return { ...builtin, firstMessage: null, buttons: [], avatarUrl: null, backgroundUrl: null };
-  }
-  // Canonical Ugly Bot — hardcoded so it works even before its ugly.bot profile
-  // is cached (e.g. a brand-new user's first reply).
-  if (botId === UGLY_BOT_USER_ID) {
-    return {
-      id: botId,
-      name: UGLY_BOT.name,
-      systemPrompt: UGLY_BOT.systemPrompt,
-      model: UGLY_BOT.model,
-      firstMessage: UGLY_BOT.firstMessage,
-      buttons: [],
-      avatarUrl: UGLY_BOT.avatarUrl,
-      backgroundUrl: UGLY_BOT.backgroundUrl,
-    };
+    return { ...builtin, firstMessage: null, buttons: [], avatarUrl: null, avatarGlbUrl: null, backgroundUrl: null };
   }
   if (botId.startsWith('bot-')) {
     const doc = await db.getDoc(collections.bot, botId);
@@ -172,6 +154,7 @@ export async function getBotConfig(db: MinimalDb, botId: string): Promise<BotCon
       firstMessage: (doc['firstMessage'] as string | null | undefined) ?? null,
       buttons: (doc['buttons'] as { label: string; prompt: string }[] | undefined) ?? [],
       avatarUrl: (doc['avatarUrl'] as string | null | undefined) ?? null,
+      avatarGlbUrl: (doc['avatarGlbUrl'] as string | null | undefined) ?? null,
       backgroundUrl: (doc['backgroundUrl'] as string | null | undefined) ?? null,
     };
   }
@@ -190,6 +173,7 @@ export async function getBotConfig(db: MinimalDb, botId: string): Promise<BotCon
       firstMessage: null,
       buttons: [],
       avatarUrl: (up['avatarResolved'] as string | null | undefined) ?? null,
+      avatarGlbUrl: (up['avatarGlbResolved'] as string | null | undefined) ?? null,
       backgroundUrl: (up['backgroundResolved'] as string | null | undefined) ?? null,
     };
   }

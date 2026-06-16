@@ -169,6 +169,11 @@ export const BotSchema = z
     ownerId: z.string(),
     name: z.string().default('Bot'),
     avatarUrl: z.string().nullable().optional(),
+    // 3D avatar (GLB) for the call/TalkingAvatar, and the 2D conversation
+    // background. Used by the built-in Ugly Bot (bot-ugly) and any future
+    // bot that ships a 3D model.
+    avatarGlbUrl: z.string().nullable().optional(),
+    backgroundUrl: z.string().nullable().optional(),
     instruction: z.string().default(''),
     model: z.string().default('deepseek_v4_flash'),
     firstMessage: z.string().nullable().optional(),

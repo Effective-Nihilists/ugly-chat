@@ -12,7 +12,7 @@ import { openMembersPopup } from '../components/MembersPopup';
 import { VoiceProvider, useVoice } from '../components/VoiceProvider';
 import { useRouter } from '../router';
 import { Avatar, pingConversationActivity } from '../lib/conversations';
-import { UGLY_BOT_USER_ID } from '../../shared/bots';
+import { UGLY_BOT_ID } from '../../shared/bots';
 import type { MsgTelemetry } from '../../shared/telemetry';
 import { formatTokens, formatCost } from '../../shared/telemetry';
 import { TelemetryStrip } from '../components/TelemetryStrip';
@@ -661,7 +661,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
 
   // Derive the conversation's bot id (drives the ⋯ menu + starter buttons).
   // Covered cases: a `bc-<botId>-<userId>` custom-bot room, the canonical Ugly
-  // Bot DM (`<UGLY_BOT_USER_ID>+<userId>`), or any resolved participant flagged
+  // Bot DM (`<UGLY_BOT_ID>+<userId>`), or any resolved participant flagged
   // isBot (other migrated bots). Runs whenever profiles resolve.
   useEffect(() => {
     if (botId) return;
@@ -671,7 +671,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     }
     if (roomId.includes('+')) {
       const other = roomId.split('+').filter(Boolean).find((p) => p !== userId);
-      if (other === UGLY_BOT_USER_ID) {
+      if (other === UGLY_BOT_ID) {
         setBotId(other);
         return;
       }

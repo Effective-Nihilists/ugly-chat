@@ -28,7 +28,7 @@ import { triggerBotReplies, getBotConfig, isBot } from './bots';
 import { fireMessageWebhooks } from './webhooks';
 import { unfurlMessageLinks } from './linkPreview';
 import { bumpListForMessage, markRead } from './listDenorm';
-import { UGLY_BOT_USER_ID } from '../shared/bots';
+import { UGLY_BOT_ID } from '../shared/bots';
 import { resolveProfiles, type Profile } from './profiles';
 import { videoJoin, videoLeave, videoEnd, videoBotJoin, videoPublish, videoState, videoCaption, type CallState, type DbLike } from './video';
 import {
@@ -366,7 +366,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       const dmRows = rows
         .filter((r) => {
           const other = deriveOtherUserId(r.conversationId, userId);
-          return !!other && (!r.title || other === UGLY_BOT_USER_ID);
+          return !!other && (!r.title || other === UGLY_BOT_ID);
         })
         .slice(0, 90);
       const otherIds = [...new Set(dmRows.map((r) => deriveOtherUserId(r.conversationId, userId)!))];
@@ -379,7 +379,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
           if (p) {
             if (!r.title) r.title = p.name;
             // Canonical bot: pin its avatar even over a stale/blank image.
-            if (other === UGLY_BOT_USER_ID ? !!p.avatarUrl : !r.image && !!p.avatarUrl) {
+            if (other === UGLY_BOT_ID ? !!p.avatarUrl : !r.image && !!p.avatarUrl) {
               r.image = p.avatarUrl;
             }
           }

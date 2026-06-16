@@ -1,24 +1,27 @@
-// The canonical "Ugly Bot" — a real ugly.bot account userId that the chat
-// migration carried over. It's a plain userId (not a `bot-` id), so it's
-// special-cased as a known bot: its DMs reply + show the bot UI, and every user
-// gets a conversation with it. Shared between client (auto-create the DM) and
-// server (recognize it + generate replies).
-export const UGLY_BOT_USER_ID = 'jY0oTxnxd3Ff5AQn6qpFJ';
+// The canonical "Ugly Bot". Migrated (2026-06) from the legacy plain ugly.bot
+// userId (`jY0oTxnxd3Ff5AQn6qpFJ`, stored as a `userPublic` isBot row) to a
+// proper `bot` collection row with the `bot-` id below — so it resolves through
+// the same path as every other bot and carries a 3D avatar + 2D image +
+// background. Shared between client (auto-create the DM, id format
+// `bot-ugly+<userId>`) and server (recognize it + generate replies).
+export const UGLY_BOT_ID = 'bot-ugly';
 
-// Canonical profile, mirrored from ugly.bot's hardcoded mascot avatar
-// (app/shared/MascotAvatar.ts). ugly.bot serves the bot's avatar from this
-// constant, NOT a normal userPublic row, so the migrated userPublicBatch lookup
-// returns nothing for it — hence we pin name + avatar + background here.
+// The mascot avatar, re-hosted in ugly.chat's R2 public bucket and served from
+// the ugly.chat origin (blob.ugly.bot has no CORS; same-origin avoids it). The
+// GLB drives the 3D TalkingAvatar; the webp is the 2D bubble/list image; the
+// background is the conversation backdrop. These seed the `bot-ugly` row.
+export const UGLY_BOT_GLB_URL = 'https://ugly.chat/public/avatars/ugly-bot.glb';
 export const UGLY_BOT_AVATAR_URL =
   'https://blob.ugly.bot/user/jY0oTxnxd3Ff5AQn6qpFJ/K4iCNInoEjgMMmhY_XVFB.webp';
 export const UGLY_BOT_BACKGROUND_URL =
   'https://blob.ugly.bot/user/jY0oTxnxd3Ff5AQn6qpFJ/3JQdhJcBXmvDfrlDC8kPI';
 
 export const UGLY_BOT = {
-  id: UGLY_BOT_USER_ID,
+  id: UGLY_BOT_ID,
   name: 'Ugly Bot',
   model: 'deepseek_v4_flash',
   avatarUrl: UGLY_BOT_AVATAR_URL,
+  avatarGlbUrl: UGLY_BOT_GLB_URL,
   backgroundUrl: UGLY_BOT_BACKGROUND_URL,
   systemPrompt:
     "You are Ugly Bot — a witty, sarcastic chatbot with no chill and an endless " +
