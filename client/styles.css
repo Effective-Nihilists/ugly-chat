@@ -519,6 +519,52 @@ hr {
   box-sizing: border-box;
 }
 
+/* ── Floating composer + typing overlay anchoring ───────────────────────────
+   The chat-scroll wrapper is the positioning context for the floating composer
+   (pinned to its bottom) and the typing overlay pill (pinned to its top). The
+   framework's scroll container fills the wrapper, so messages scroll *under* the
+   absolutely-positioned composer; the inner list reserves bottom room so the
+   last message can still scroll clear above it. */
+.uc-chat-scroll {
+  position: relative;
+}
+.uc-composer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+  background: var(--app-main);
+  /* A short top fade so messages read clearly as they scroll behind the edge. */
+  box-shadow: 0 -8px 12px -8px var(--app-main);
+  border-top: 1px solid var(--app-border);
+}
+.uc-chat-scroll [data-testid='message-list-inner'] {
+  /* Room for the floating composer (input + hint line) so the last message
+     scrolls clear above it. Tune to the composer height. */
+  padding-bottom: 96px;
+}
+/* Typing-indicator overlay pill — pinned at the top of the chat area, never
+   shifts the message list (the framework's in-flow indicator is suppressed via
+   typingEntries={[]}). */
+.uc-typing-overlay {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  pointer-events: none;
+  font-family: var(--app-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  color: var(--app-foreground-muted);
+  background: var(--app-secondary);
+  border: 1px solid var(--app-border);
+  border-radius: 0;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
 /* ── Composer (chat input) ──────────────────────────────────────────────────
    The framework composer container bottom-aligns its children (align-items:
    flex-end) for multi-line growth; for our single-line chat input that left the

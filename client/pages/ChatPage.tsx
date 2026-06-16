@@ -1334,6 +1334,14 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           flexDirection: 'column',
         }}
       >
+        {/* Typing overlay — pinned at the TOP of the chat area so it never
+            shifts the message list (the framework's in-flow indicator is
+            suppressed via typingEntries={[]}). */}
+        {typingEntries.length > 0 ? (
+          <div className="uc-typing-overlay">
+            {typingEntries.map((e) => getUser(e.userId).name).join(', ')} typing…
+          </div>
+        ) : null}
         <ChatView
           messages={messages}
           userId={userId}
@@ -1342,7 +1350,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           onReact={(id, reaction) => handleReact(id, reaction)}
           getUser={getUser}
           renderMessage={renderMessage}
-          typingEntries={typingEntries}
+          typingEntries={[]}
           onTypingStart={signalTyping}
         >
           <div
