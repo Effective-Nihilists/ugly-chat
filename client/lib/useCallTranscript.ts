@@ -124,6 +124,13 @@ export function useCallTranscript(
       setTurns((cur) =>
         upsertTurn(cur, { speaker: meId, text: t, final: true, typed: true, at: Date.now() }),
       );
+      // Relay to peers IN-CALL so it shows in their transcript AND their client
+      // speaks it via TTS (typed=true; STT captions are typed=false so they're
+      // not double-spoken — peers already hear live mic audio over the SFU).
+      void socket
+        .request('conversationCaption', { conversationId, text: t, final: true, typed: true })
+        .catch(() => undefined);
+      // Also persist as a real message (history + bot replies in bot rooms).
       void socket
         .request('conversationMessageCreate', {
           conversationId,

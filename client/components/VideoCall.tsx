@@ -1,5 +1,5 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { useApp } from 'ugly-app/client';
+import { useApp, useTTS } from 'ugly-app/client';
 import type { UglyBotSocket } from 'ugly-app/client';
 import type { DBObject } from 'ugly-app/shared';
 import { Mic, MicOff, Video, VideoOff, Captions, UserPlus, Bot as BotIcon, PhoneOff } from 'lucide-react';
@@ -83,9 +83,17 @@ interface CallParticipant {
   sessionId?: string;
   tracks?: string[];
 }
+interface CallCaptionDoc {
+  userId: string;
+  text: string;
+  final: boolean;
+  at: number;
+  typed?: boolean;
+}
 interface CallState {
   active: boolean;
   participants: Record<string, CallParticipant>;
+  captions?: Record<string, CallCaptionDoc>;
 }
 interface ConversationDoc extends DBObject {
   call?: CallState;
@@ -178,6 +186,28 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
   useEffect(() => {
     onJoinedChangeRef.current?.(joined);
   }, [joined]);
+
+  // ── Speak a peer's TYPED message via TTS (so silent typed text is heard) ────
+  // STT captions are live mic audio (already heard over the SFU) → never spoken.
+  // The speaking peer's tile lip-syncs (3D avatar) / pulses (audio viz) off the
+  // shared TTS analyser. Bots speak via their own BotAvatarTile path.
+  const peerTts = useTTS(uglyBotSocket!);
+  const [speakingPeerId, setSpeakingPeerId] = useState<string | null>(null);
+  const spokenCaptionAt = useRef<Map<string, number>>(new Map());
+  useEffect(() => {
+    if (!joined || !uglyBotSocket) return;
+    const captions = call.captions ?? {};
+    for (const cap of Object.values(captions)) {
+      if (!cap.typed || !cap.final || cap.userId === userId) continue;
+      if (spokenCaptionAt.current.get(cap.userId) === cap.at) continue;
+      spokenCaptionAt.current.set(cap.userId, cap.at);
+      setSpeakingPeerId(cap.userId);
+      void peerTts
+        .play(cap.text)
+        .catch((err: unknown) => console.warn('[VideoCall] peer TTS failed', err))
+        .finally(() => setSpeakingPeerId((cur) => (cur === cap.userId ? null : cur)));
+    }
+  }, [call.captions, joined, uglyBotSocket, userId, peerTts]);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -625,15 +655,22 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
           {other ? (
             <div data-id="call-tile-peer" style={{ position: 'absolute', inset: 0 }}>
               {remoteStreams.has(other.userId) ? (
-                <RemoteTile stream={remoteStreams.get(other.userId)!} speakerId={speakerId} />
+                <>
+                  <RemoteTile stream={remoteStreams.get(other.userId)!} speakerId={speakerId} />
+                  {/* Camera on (no avatar) → a simple audio pulse when speaking. */}
+                  {speakingPeerId === other.userId ? <SpeakingPulse /> : null}
+                </>
               ) : (
                 // No remote video yet (camera off, or still connecting) → show
-                // the peer's avatar (3D over background, or circular image).
+                // the peer's avatar (3D over background, or circular image). When
+                // they speak a typed message, the avatar lip-syncs to the TTS.
                 <ParticipantAvatarTile
                   name={resolveName(other.userId, userId, other.isBot, profiles)}
                   glbUrl={profiles[other.userId]?.avatarGlbUrl ?? null}
                   imageUrl={profiles[other.userId]?.avatarUrl ?? null}
                   backgroundUrl={profiles[other.userId]?.backgroundUrl ?? null}
+                  speaking={speakingPeerId === other.userId}
+                  analyser={peerTts.analyser}
                 />
               )}
               <span
@@ -880,6 +917,26 @@ function PeerPlaceholder({ name }: { name: string }): React.ReactElement {
 }
 
 // Remote peer tile — binds the pulled MediaStream to a <video>.
+// Simple audio visualization shown over a peer's VIDEO tile while they "speak"
+// a typed message (the rule's "no avatar → simple visualization to indicate
+// audio"). A small equalizer bottom-center.
+function SpeakingPulse(): React.ReactElement {
+  return (
+    <div
+      data-id="speaking-pulse"
+      style={{ position: 'absolute', left: '50%', bottom: 18, transform: 'translateX(-50%)', display: 'flex', alignItems: 'flex-end', gap: 3, height: 18, zIndex: 3 }}
+    >
+      <style>{`@keyframes uc-eq {0%,100%{height:4px}50%{height:16px}}`}</style>
+      {[0, 1, 2, 3].map((i) => (
+        <span
+          key={i}
+          style={{ width: 3, background: '#ff5500', borderRadius: 1, height: 4, animation: `uc-eq 0.7s ease-in-out ${i * 0.12}s infinite` }}
+        />
+      ))}
+    </div>
+  );
+}
+
 function RemoteTile({ stream, speakerId }: { stream: MediaStream; speakerId?: string }): React.ReactElement {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {

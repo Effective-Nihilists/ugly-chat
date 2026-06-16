@@ -28,6 +28,10 @@ export interface CallCaption {
   text: string;
   final: boolean;
   at: number;
+  /** True when this came from a TYPED message (peers should speak it via TTS).
+   *  STT captions (live mic) are false — peers already hear that audio over the
+   *  SFU, so TTS-ing it would double. */
+  typed?: boolean;
 }
 export interface CallState {
   active: boolean;
@@ -151,8 +155,9 @@ export async function videoCaption(
   userId: string,
   text: string,
   final: boolean,
+  typed = false,
 ): Promise<void> {
-  const caption: CallCaption = { userId, text, final, at: Date.now() };
+  const caption: CallCaption = { userId, text, final, at: Date.now(), ...(typed ? { typed: true } : {}) };
   await db.setDocFields(collections.conversation, conversationId, {
     [`call.captions.${userId}`]: caption,
   });
