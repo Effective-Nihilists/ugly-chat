@@ -16,6 +16,8 @@ import { openUglyBotSettings } from '../lib/uglyBot';
 const COLLAPSED_WIDTH = 72;
 const MIN_WIDTH = 250;
 const MAX_WIDTH = 400;
+// Below this the wordmark can't fit beside the header icon cluster, so hide it.
+const LOGO_MIN_WIDTH = 300;
 
 function loadNum(key: string, def: number): number {
   if (typeof window === 'undefined') return def;
@@ -169,13 +171,21 @@ export function Sidebar(): React.ReactElement {
         <button type="button" title="Collapse" onClick={() => setExpanded(false)} className="uc-iconbtn" style={{ ...iconBtnStyle, border: 'none', background: 'transparent' }}>
           <PanelLeftClose size={20} />
         </button>
-        <button type="button" onClick={() => router.push('', {})} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
-          <span style={{ fontFamily: 'var(--app-font-heading)', fontWeight: 800, fontSize: 19, letterSpacing: '-0.03em', color: 'var(--app-foreground)', lineHeight: 1, whiteSpace: 'nowrap' }}>
-            ugly<span style={{ color: 'var(--app-primary)' }}>.</span>chat
-          </span>
-          <span style={{ fontFamily: 'var(--app-font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.16em', color: 'var(--app-foreground-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
-            your keys · your data · no filter
-          </span>
+        {/* Wordmark doubles as a flex spacer that keeps the icon cluster
+            right-aligned. Below ~300px the logo can't fit beside the icons, so
+            hide its text (the empty button stays as the spacer) to avoid the
+            wordmark overlapping the icon buttons in a narrow sidebar. */}
+        <button type="button" onClick={() => router.push('', {})} style={{ flex: 1, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
+          {width >= LOGO_MIN_WIDTH ? (
+            <>
+              <span style={{ fontFamily: 'var(--app-font-heading)', fontWeight: 800, fontSize: 19, letterSpacing: '-0.03em', color: 'var(--app-foreground)', lineHeight: 1, whiteSpace: 'nowrap' }}>
+                ugly<span style={{ color: 'var(--app-primary)' }}>.</span>chat
+              </span>
+              <span style={{ fontFamily: 'var(--app-font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.16em', color: 'var(--app-foreground-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                your keys · your data · no filter
+              </span>
+            </>
+          ) : null}
         </button>
 
         {/* Right-aligned icon cluster: Bots · Theme · Feedback */}
