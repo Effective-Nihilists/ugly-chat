@@ -1391,7 +1391,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                 e.target.value = '';
               }}
             />
-            <div style={{ border: '2px solid var(--app-primary)', borderRadius: 0, background: 'var(--app-main)' }}>
+            <div style={{ border: '1px solid var(--app-primary)', borderRadius: 0, background: 'var(--app-main)' }}>
               <ConversationInput
                 placeholder={`Message ${title}…`}
                 autoFocus
@@ -1413,7 +1413,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
             </div>
             {/* Faint mono hint line under the composer (mock parity). */}
             <div className="uc-chint">
-              <span>/ slash · @ mention · ⌘↩ send</span>
+              <span>/ slash · @ mention · ↩ send · ⇧↩ new line</span>
               <span>markdown on</span>
             </div>
           </div>

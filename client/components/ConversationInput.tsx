@@ -230,7 +230,7 @@ const containerStyle: CSSProperties = {
   gap: 6,
   padding: '4px 6px 4px 10px',
   borderRadius: 0,
-  border: '2px solid var(--app-primary)',
+  border: 'none',
   background: 'var(--app-main)',
 };
 
