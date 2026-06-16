@@ -1,13 +1,15 @@
 /**
- * CallLayout — wraps the existing VideoCall stage with a live transcript.
+ * CallLayout — wraps the immersive VideoCall stage with a live transcript.
  *
  * VideoCall keeps ALL of its SFU / track / renegotiation logic; this component
  * only (a) provides the surrounding layout, (b) feeds it the transcript via
  * useCallTranscript, and (c) renders the TranscriptPanel / SubtitleOverlay.
  *
- * Desktop: flex row — VideoCall stage (flex 1, dark) + TranscriptPanel (fixed
- * width). Collapse hides the panel, the stage goes full width, and the
- * SubtitleOverlay shows over the video (mockups/call-bot.html collapsed).
+ * Desktop: flex row — VideoCall stage (flex 1, full-bleed dark with its own HUD /
+ * tiles / control bar / self-PiP) + TranscriptPanel (fixed width). Collapse hides
+ * the panel, the stage goes full width, and the SubtitleOverlay shows over the
+ * video (mockups/call-bot.html collapsed). The control bar's captions button (in
+ * VideoCall) drives the same collapse.
  *
  * Mobile (< SIDEBAR_MIN_WIDTH): the stage fills with a SubtitleOverlay + a slim
  * compose bar; an expand control grows the chat into a full TranscriptPanel
@@ -17,9 +19,9 @@
  * wrapper renders nothing visible until a call starts.
  */
 import React, { forwardRef, useEffect, useState } from 'react';
-import { Captions, MessageSquare, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import type { DBObject } from 'ugly-app/shared';
-import { VideoCall, type VideoCallHandle } from './VideoCall';
+import { VideoCall, type VideoCallHandle, type CallProfiles } from './VideoCall';
 import { TranscriptPanel, type SpeakerProfiles } from './TranscriptPanel';
 import { SubtitleOverlay } from './SubtitleOverlay';
 import { useCallTranscript } from '../lib/useCallTranscript';
@@ -41,38 +43,14 @@ export interface CallLayoutProps {
   socket: AppSocketT;
   uglyBotSocket: UglyBotSocket | null;
   profiles: SpeakerProfiles;
-}
-
-// Reusable dark "stage" wrapper so the SubtitleOverlay can sit over the video.
-function Stage({
-  children,
-  overlay,
-  style,
-}: {
-  children: React.ReactNode;
-  overlay?: React.ReactNode;
-  style?: React.CSSProperties;
-}): React.ReactElement {
-  return (
-    <div
-      style={{
-        position: 'relative',
-        flex: 1,
-        minWidth: 0,
-        minHeight: 0,
-        background: '#0a0a0a',
-        overflow: 'auto',
-        ...style,
-      }}
-    >
-      {children}
-      {overlay}
-    </div>
-  );
+  /** The bot's configured model label, for the HUD stat line. */
+  botModel?: string | null;
+  /** Notifies the host (ChatPage) so it can hide the thread + composer. */
+  onActiveChange?: (active: boolean) => void;
 }
 
 export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(function CallLayout(
-  { conversationId, meId, socket, uglyBotSocket, profiles },
+  { conversationId, meId, socket, uglyBotSocket, profiles, botModel = null, onActiveChange },
   ref,
 ) {
   const [active, setActive] = useState(false);
@@ -93,6 +71,10 @@ export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(function 
   }, [socket, conversationId]);
 
   useEffect(() => {
+    onActiveChange?.(active);
+  }, [active, onActiveChange]);
+
+  useEffect(() => {
     const onResize = (): void => {
       setWide(window.innerWidth >= SIDEBAR_MIN_WIDTH);
     };
@@ -110,20 +92,40 @@ export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(function 
     active,
   );
 
+  // SpeakerProfiles → CallProfiles (same shape; explicit cast keeps the contract
+  // narrow and avoids `any`).
+  const callProfiles: CallProfiles = profiles;
+
+  // Build the VideoCall stage. `subtitleSlot` shows over the video when the
+  // transcript is collapsed (desktop) or always on mobile (overlay below).
   const stage = (
+    showSubs: boolean,
+    subBottom: number,
+    onToggle: (() => void) | undefined,
+    transcriptCollapsed: boolean,
+  ): React.ReactElement => (
     <VideoCall
       ref={ref}
       conversationId={conversationId}
       uglyBotSocket={uglyBotSocket}
+      profiles={callProfiles}
+      botModel={botModel}
+      transcriptCollapsed={transcriptCollapsed}
+      {...(onToggle ? { onToggleTranscript: onToggle } : {})}
+      subtitleSlot={
+        showSubs ? <SubtitleOverlay turns={turns} meId={meId} profiles={profiles} bottom={subBottom} /> : null
+      }
       onBotTurn={(botId, text, final) => {
         upsertExternalTurn(botId, text, final);
       }}
     />
   );
 
-  // No call → render just the (null-rendering) VideoCall so its start() ref and
+  // No call → render the (null-rendering) VideoCall so its start() ref and
   // roster subscription stay mounted; no layout chrome.
-  if (!active) return stage;
+  if (!active) {
+    return stage(false, 24, undefined, false);
+  }
 
   if (!wide) {
     // ── Mobile ──────────────────────────────────────────────────────────────
@@ -137,50 +139,27 @@ export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(function 
           background: 'var(--app-main)',
         }}
       >
-        <Stage
+        <div
           style={{
+            position: 'relative',
             flex: expanded ? 'none' : 1,
+            minHeight: 0,
+            overflow: 'hidden',
             ...(expanded ? { height: 296 } : {}),
           }}
-          overlay={
-            expanded ? null : (
-              <>
-                <SubtitleOverlay turns={turns} meId={meId} profiles={profiles} bottom={64} />
-                <div
-                  className="uc-mcompose"
-                  style={{ position: 'absolute', left: 16, right: 16, bottom: 14, zIndex: 4 }}
-                >
-                  <MobileCompose onSend={appendTyped} />
-                  <button
-                    type="button"
-                    data-id="call-open-chat"
-                    onClick={() => {
-                      setExpanded(true);
-                    }}
-                    aria-label="Open chat"
-                    title="Open chat"
-                    style={{
-                      width: 30,
-                      height: 30,
-                      flex: 'none',
-                      display: 'grid',
-                      placeItems: 'center',
-                      border: 'none',
-                      borderRadius: 8,
-                      background: 'rgba(255,255,255,0.16)',
-                      color: '#fff',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <MessageSquare size={15} />
-                  </button>
-                </div>
-              </>
-            )
-          }
         >
-          {stage}
-        </Stage>
+          {/* Subtitles + slim compose are rendered over the stage only when the
+              chat sheet is NOT expanded. The control bar lives inside VideoCall. */}
+          {stage(!expanded, 124, () => setExpanded((v) => !v), expanded)}
+          {!expanded ? (
+            <div
+              className="uc-mcompose"
+              style={{ position: 'absolute', left: 16, right: 16, bottom: 78, zIndex: 4 }}
+            >
+              <MobileCompose onSend={appendTyped} />
+            </div>
+          ) : null}
+        </div>
         {expanded ? (
           <div
             style={{
@@ -226,45 +205,9 @@ export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(function 
   // ── Desktop ─────────────────────────────────────────────────────────────
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'row' }}>
-      <Stage
-        overlay={
-          collapsed ? (
-            <>
-              <SubtitleOverlay turns={turns} meId={meId} profiles={profiles} bottom={24} />
-              <button
-                type="button"
-                data-id="call-show-transcript"
-                onClick={() => {
-                  setCollapsed(false);
-                }}
-                aria-label="Show transcript"
-                title="Show transcript"
-                style={{
-                  position: 'absolute',
-                  top: 12,
-                  right: 12,
-                  zIndex: 5,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '6px 10px',
-                  borderRadius: 8,
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  background: 'rgba(0,0,0,0.55)',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  fontSize: 12,
-                  fontFamily: 'var(--app-font-mono)',
-                }}
-              >
-                <Captions size={14} /> Transcript
-              </button>
-            </>
-          ) : null
-        }
-      >
-        {stage}
-      </Stage>
+      <div style={{ position: 'relative', flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
+        {stage(collapsed, 96, () => setCollapsed((v) => !v), collapsed)}
+      </div>
       {collapsed ? null : (
         <TranscriptPanel
           turns={turns}

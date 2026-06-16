@@ -1,7 +1,8 @@
-import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Button, Text, useApp } from 'ugly-app/client';
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { useApp } from 'ugly-app/client';
 import type { UglyBotSocket } from 'ugly-app/client';
 import type { DBObject } from 'ugly-app/shared';
+import { Mic, MicOff, Video, VideoOff, Captions, UserPlus, Bot as BotIcon, PhoneOff } from 'lucide-react';
 import { BotAvatarTile } from './BotAvatarTile';
 
 export interface VideoCallHandle {
@@ -22,6 +23,14 @@ interface MessageDoc extends DBObject {
 const toMs = (v: unknown): number =>
   v instanceof Date ? v.getTime() : typeof v === 'number' ? v : typeof v === 'string' ? Date.parse(v) : 0;
 
+// Minimal profile shape (name + avatar) — supplied by ChatPage's resolved roster
+// so call tiles/chips never show a raw `5c0e5c0e…` id.
+export interface CallProfile {
+  name?: string;
+  avatarUrl?: string | null;
+}
+export type CallProfiles = Record<string, CallProfile>;
+
 export interface VideoCallProps {
   conversationId: string;
   /** ugly.bot socket for bot TTS (null when unavailable → emoji fallback). */
@@ -31,6 +40,18 @@ export interface VideoCallProps {
    * spoken text into the call transcript (`final` once the turn is done).
    */
   onBotTurn?: (botId: string, text: string, final: boolean) => void;
+  /** Resolved roster (real names + avatars) — keyed by userId. */
+  profiles?: CallProfiles;
+  /** The bot's configured model label, for the HUD stat line (no fabrication). */
+  botModel?: string | null;
+  /** Whether the transcript panel is collapsed (controls the captions toggle). */
+  transcriptCollapsed?: boolean;
+  /** Toggle the transcript panel / subtitles (owned by CallLayout). */
+  onToggleTranscript?: () => void;
+  /** Add-person handler (group calls). When omitted the add control is hidden. */
+  onAddPerson?: () => void;
+  /** Subtitle overlay rendered over the stage (shown when collapsed). */
+  subtitleSlot?: React.ReactNode;
 }
 
 interface CallParticipant {
@@ -56,16 +77,38 @@ interface TracksResponse {
   tracks?: { mid?: string; trackName?: string }[];
 }
 
-const tileBase: React.CSSProperties = {
-  aspectRatio: '4 / 3',
-  background: '#111',
-  borderRadius: 8,
-  position: 'relative',
-  overflow: 'hidden',
+// ── Immersive stage palette (fixed dark/light-on-dark in EVERY theme) ─────────
+const C = {
+  stageBg:
+    'radial-gradient(circle at 50% 38%, rgba(255,85,0,0.10), transparent 58%),' +
+    ' radial-gradient(circle at 50% 90%, rgba(59,130,246,0.06), transparent 55%), #07080B',
+  hairline: 'rgba(255,255,255,0.12)',
+  panel: 'rgba(8,9,11,0.72)',
+  textOnDark: '#fff',
+  faintOnDark: 'rgba(255,255,255,0.4)',
+  brand: '#ff5500',
+  brandGrad: 'linear-gradient(135deg, #ff8a4d 0%, #ff5500 50%, #d2470f 100%)',
+  brandGlow: 'rgba(255,85,0,0.30)',
 };
-const center: React.CSSProperties = {
-  position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-};
+
+function resolveName(id: string, meId: string, isBot: boolean, profiles: CallProfiles): string {
+  if (isBot) return profiles[id]?.name ?? 'ugly-bot';
+  return profiles[id]?.name ?? id.slice(0, 8);
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return (parts[0] ?? '?').slice(0, 2).toUpperCase();
+  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase();
+}
+
+function fmtClock(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const mm = Math.floor(s / 60);
+  const ss = s % 60;
+  return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+}
 
 /**
  * Video call panel on Cloudflare Realtime (SFU). One RTCPeerConnection per
@@ -75,9 +118,23 @@ const center: React.CSSProperties = {
  * via renegotiate). The SFU app secret never reaches the browser — all SDP goes
  * through the server-brokered `realtime*` RPCs. Bots render as a "fake call"
  * avatar tile (no media).
+ *
+ * NOTE: the SFU / track / renegotiation logic below is unchanged — only the
+ * RENDER (the immersive stage: HUD, tiles, controls, self-PiP) is restyled to
+ * match mockups/call-bot.html + call-2p.html.
  */
 export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function VideoCall(
-  { conversationId, uglyBotSocket = null, onBotTurn },
+  {
+    conversationId,
+    uglyBotSocket = null,
+    onBotTurn,
+    profiles = {},
+    botModel = null,
+    transcriptCollapsed = false,
+    onToggleTranscript,
+    onAddPerson,
+    subtitleSlot,
+  },
   ref,
 ) {
   const { socket, userId } = useApp();
@@ -311,81 +368,427 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
 
   useImperativeHandle(ref, () => ({ start: () => void join() }), [join]);
 
+  // ── Local device toggles (render-level only — flips track.enabled; never
+  // touches the SFU/track/renegotiation path). ───────────────────────────────
+  const [micOn, setMicOn] = useState(true);
+  const [camOn, setCamOn] = useState(true);
+  const toggleMic = useCallback(() => {
+    setMicOn((on) => {
+      const next = !on;
+      streamRef.current?.getAudioTracks().forEach((t) => (t.enabled = next));
+      return next;
+    });
+  }, []);
+  const toggleCam = useCallback(() => {
+    setCamOn((on) => {
+      const next = !on;
+      streamRef.current?.getVideoTracks().forEach((t) => (t.enabled = next));
+      return next;
+    });
+  }, []);
+
+  // ── Elapsed-call timer (real time from local join). ─────────────────────────
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!joined) return undefined;
+    if (!joinedAtRef.current) joinedAtRef.current = Date.now();
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [joined]);
+  const elapsed = joined && joinedAtRef.current ? now - joinedAtRef.current : 0;
+
   const participants = Object.values(call.participants);
+
+  // Resolve the "other" participant for the name-chip (first non-self).
+  const other = useMemo(
+    () => participants.find((p) => p.userId !== userId) ?? null,
+    [participants, userId],
+  );
+  const botParticipant = useMemo(() => participants.find((p) => p.isBot) ?? null, [participants]);
+
   if (!call.active && !joined) return null;
 
-  return (
-    <div data-id="video-call" style={{ borderBottom: '1px solid var(--app-border, #ddd)', padding: 8 }}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <Button size="sm" variant="secondary" onClick={() => void leave()}>Leave call</Button>
-        {joined && <Button size="sm" variant="secondary" onClick={addBot}>+ Bot</Button>}
-        {call.active && (
-          <Text size="sm" style={{ opacity: 0.6 }}>
-            {participants.length} in call{status ? ` · ${status}` : ''}
-          </Text>
-        )}
-      </div>
+  const connState = status || (joined ? 'connecting' : '');
+  const otherName = other ? resolveName(other.userId, userId, other.isBot, profiles) : 'ugly-bot';
+  const otherState = botParticipant ? (pendingBotText ? 'speaking' : 'in call') : 'in call';
 
-      {call.active && participants.length > 0 && (
-        <div
+  // HUD stat line — REAL values only. Bot call → model · live; else → roster.
+  const statLine = botParticipant
+    ? `${botModel ? `${botModel} · ` : ''}live`
+    : `${participants.length} in call${connState ? ` · ${connState}` : ''}`;
+
+  return (
+    <div
+      data-id="video-call"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        overflow: 'hidden',
+        background: C.stageBg,
+      }}
+    >
+      {/* ── viewport corner brackets ──────────────────────────────────────── */}
+      {(['tl', 'tr', 'bl', 'br'] as const).map((c) => {
+        const base: React.CSSProperties = {
+          position: 'absolute',
+          width: 16,
+          height: 16,
+          border: `1px solid rgba(255,255,255,0.18)`,
+          pointerEvents: 'none',
+        };
+        const pos: Record<string, React.CSSProperties> = {
+          tl: { top: 14, left: 14, borderRight: 'none', borderBottom: 'none' },
+          tr: { top: 14, right: 14, borderLeft: 'none', borderBottom: 'none' },
+          bl: { bottom: 14, left: 14, borderRight: 'none', borderTop: 'none' },
+          br: { bottom: 14, right: 14, borderLeft: 'none', borderTop: 'none' },
+        };
+        return <span key={c} style={{ ...base, ...pos[c] }} aria-hidden />;
+      })}
+
+      {/* ── HUD top-left: LIVE timer + real stat line ─────────────────────── */}
+      <div style={{ position: 'absolute', top: 18, left: 18, zIndex: 4, display: 'flex', flexDirection: 'column', gap: 5 }}>
+        <span
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-            gap: 8,
-            marginTop: 8,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 7,
+            fontFamily: 'var(--app-font-mono, monospace)',
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: '0.1em',
+            color: C.textOnDark,
           }}
         >
-          {participants.map((p) => (
-            <div key={p.userId} data-id={`call-tile-${p.userId === userId ? 'self' : 'peer'}`} style={tileBase}>
-              {p.userId === userId ? (
-                <video ref={localVideoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : p.isBot ? (
-                uglyBotSocket ? (
-                  <BotAvatarTile
-                    socket={uglyBotSocket}
-                    botId={p.userId}
-                    speakText={
-                      pendingBotText && pendingBotText.botId === p.userId
-                        ? pendingBotText.text
-                        : null
-                    }
-                    onSubtitleIndex={(i) => {
-                      const full =
-                        pendingBotText && pendingBotText.botId === p.userId
-                          ? pendingBotText.text
-                          : '';
-                      if (!full) return;
-                      const revealed = full.slice(0, i);
-                      onBotTurn?.(p.userId, revealed, i >= full.length);
-                    }}
-                  />
-                ) : (
-                  <div style={{ ...center }}>
-                    <Text size="sm" style={{ opacity: 0.5 }}>ugly-bot</Text>
-                  </div>
-                )
-              ) : remoteStreams.has(p.userId) ? (
-                <RemoteTile stream={remoteStreams.get(p.userId)!} />
-              ) : (
-                <div style={center}>
-                  <Text size="sm" style={{ opacity: 0.5, textAlign: 'center' }}>
-                    {p.userId.slice(0, 8)}
-                    <br />
-                    connecting…
-                  </Text>
-                </div>
-              )}
-              <div style={{ position: 'absolute', bottom: 4, left: 6, color: '#fff', fontSize: 11, textShadow: '0 1px 2px #000' }}>
-                {p.isBot ? 'ugly-bot' : p.userId.slice(0, 8)}
-                {p.userId === userId ? ' (you)' : ''}
-              </div>
+          <span className="uc-call-rec" style={{ width: 8, height: 8, background: '#f87171', borderRadius: '50%' }} />
+          LIVE · {fmtClock(elapsed)}
+        </span>
+        <span
+          style={{
+            fontFamily: 'var(--app-font-mono, monospace)',
+            fontSize: 10,
+            color: C.faintOnDark,
+            letterSpacing: '0.06em',
+          }}
+        >
+          {statLine}
+        </span>
+      </div>
+
+      {/* ── name-chip top-right ───────────────────────────────────────────── */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 18,
+          right: 18,
+          zIndex: 4,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '7px 11px',
+          border: `1px solid ${C.hairline}`,
+          background: 'rgba(0,0,0,0.45)',
+          backdropFilter: 'blur(8px)',
+        }}
+      >
+        <span
+          aria-hidden
+          style={{
+            width: 22,
+            height: 22,
+            display: 'grid',
+            placeItems: 'center',
+            fontSize: 9,
+            fontWeight: 800,
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.18)',
+            color: '#fff',
+            fontFamily: 'var(--app-font-heading, sans-serif)',
+          }}
+        >
+          {botParticipant ? <BotIcon size={12} /> : initials(otherName)}
+        </span>
+        <div>
+          <div style={{ fontFamily: 'var(--app-font-heading, sans-serif)', fontWeight: 700, fontSize: 12, color: '#fff' }}>
+            {otherName}
+          </div>
+          <div style={{ fontFamily: 'var(--app-font-mono, monospace)', fontSize: 9, color: C.brand, letterSpacing: '0.08em' }}>
+            {otherState}
+          </div>
+        </div>
+      </div>
+
+      {/* ── tiles / stage centre ──────────────────────────────────────────── */}
+      {botParticipant ? (
+        // BOT call — centered avatar fills the stage; self is a PiP.
+        <div style={{ position: 'absolute', inset: 0 }} data-id="call-tile-peer">
+          {uglyBotSocket ? (
+            <BotAvatarTile
+              socket={uglyBotSocket}
+              botId={botParticipant.userId}
+              speakText={
+                pendingBotText && pendingBotText.botId === botParticipant.userId ? pendingBotText.text : null
+              }
+              onSubtitleIndex={(i) => {
+                const full =
+                  pendingBotText && pendingBotText.botId === botParticipant.userId ? pendingBotText.text : '';
+                if (!full) return;
+                const revealed = full.slice(0, i);
+                onBotTurn?.(botParticipant.userId, revealed, i >= full.length);
+              }}
+            />
+          ) : (
+            <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: C.faintOnDark }}>
+              ugly-bot
             </div>
-          ))}
+          )}
+        </div>
+      ) : (
+        // 1:1 / 2-person — remote large; self is a PiP in the corner.
+        <div style={{ position: 'absolute', inset: 0 }}>
+          {other ? (
+            <div data-id="call-tile-peer" style={{ position: 'absolute', inset: 0 }}>
+              {remoteStreams.has(other.userId) ? (
+                <RemoteTile stream={remoteStreams.get(other.userId)!} />
+              ) : (
+                <PeerPlaceholder name={resolveName(other.userId, userId, other.isBot, profiles)} />
+              )}
+              <span
+                style={{
+                  position: 'absolute',
+                  left: 16,
+                  bottom: 16,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '6px 10px',
+                  background: 'rgba(0,0,0,0.55)',
+                  backdropFilter: 'blur(8px)',
+                  fontFamily: 'var(--app-font-heading, sans-serif)',
+                  fontWeight: 700,
+                  fontSize: 13,
+                  color: '#fff',
+                  zIndex: 3,
+                }}
+              >
+                {resolveName(other.userId, userId, other.isBot, profiles)}
+              </span>
+            </div>
+          ) : (
+            <PeerPlaceholder name="Waiting for others…" />
+          )}
         </div>
       )}
+
+      {/* ── self PiP bottom-right ─────────────────────────────────────────── */}
+      <div
+        data-id="call-tile-self"
+        style={{
+          position: 'absolute',
+          right: 18,
+          bottom: 88,
+          width: 132,
+          height: 92,
+          border: '1px solid rgba(255,255,255,0.2)',
+          overflow: 'hidden',
+          background: 'linear-gradient(135deg, #2a2d35, #14161b)',
+          zIndex: 4,
+        }}
+      >
+        <video
+          ref={localVideoRef}
+          autoPlay
+          muted
+          playsInline
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: camOn ? 'block' : 'none' }}
+        />
+        {!camOn ? (
+          <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.5)' }}>
+            <VideoOff size={22} />
+          </div>
+        ) : null}
+        <span
+          style={{
+            position: 'absolute',
+            left: 6,
+            bottom: 5,
+            fontFamily: 'var(--app-font-mono, monospace)',
+            fontSize: 9,
+            color: '#fff',
+            textShadow: '0 1px 3px #000',
+            letterSpacing: '0.06em',
+          }}
+        >
+          you
+        </span>
+        {!micOn ? (
+          <span style={{ position: 'absolute', right: 6, bottom: 5, color: '#f87171', display: 'grid', placeItems: 'center' }}>
+            <MicOff size={13} />
+          </span>
+        ) : null}
+      </div>
+
+      {/* ── subtitle overlay slot (shown when transcript collapsed) ───────── */}
+      {subtitleSlot}
+
+      {/* ── control bar, floating bottom-center ───────────────────────────── */}
+      <div
+        style={{
+          position: 'absolute',
+          left: '50%',
+          bottom: 20,
+          transform: 'translateX(-50%)',
+          zIndex: 5,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: 9,
+          border: `1px solid ${C.hairline}`,
+          background: C.panel,
+          backdropFilter: 'blur(12px)',
+        }}
+      >
+        <CtrlButton
+          dataId="call-mic"
+          label={micOn ? 'Mute mic' : 'Unmute mic'}
+          active={false}
+          off={!micOn}
+          onClick={toggleMic}
+        >
+          {micOn ? <Mic size={21} /> : <MicOff size={21} />}
+        </CtrlButton>
+        <CtrlButton
+          dataId="call-camera"
+          label={camOn ? 'Stop camera' : 'Start camera'}
+          active={false}
+          off={!camOn}
+          onClick={toggleCam}
+        >
+          {camOn ? <Video size={21} /> : <VideoOff size={21} />}
+        </CtrlButton>
+        {onToggleTranscript ? (
+          <CtrlButton
+            dataId="call-captions"
+            label="Toggle transcript"
+            active={!transcriptCollapsed}
+            off={false}
+            onClick={onToggleTranscript}
+          >
+            <Captions size={21} />
+          </CtrlButton>
+        ) : null}
+        <span style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.14)' }} />
+        {onAddPerson ? (
+          <CtrlButton dataId="call-add-person" label="Add person" active={false} off={false} onClick={onAddPerson}>
+            <UserPlus size={21} />
+          </CtrlButton>
+        ) : null}
+        {joined ? (
+          <CtrlButton dataId="call-add-bot" label="Add ugly-bot" active={false} off={false} dashed onClick={addBot}>
+            <BotIcon size={21} />
+          </CtrlButton>
+        ) : null}
+        <span style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.14)' }} />
+        <button
+          type="button"
+          data-id="call-end"
+          onClick={() => void leave()}
+          aria-label="End call"
+          title="End call"
+          style={{
+            height: 46,
+            padding: '0 22px',
+            display: 'grid',
+            placeItems: 'center',
+            border: 'none',
+            background: C.brandGrad,
+            color: '#fff',
+            cursor: 'pointer',
+          }}
+        >
+          <PhoneOff size={20} />
+        </button>
+      </div>
     </div>
   );
 });
+
+// Square dark control button (mock .cbig).
+function CtrlButton({
+  children,
+  onClick,
+  label,
+  dataId,
+  active,
+  off,
+  dashed = false,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  label: string;
+  dataId: string;
+  active: boolean;
+  off: boolean;
+  dashed?: boolean;
+}): React.ReactElement {
+  return (
+    <button
+      type="button"
+      data-id={dataId}
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      style={{
+        width: 46,
+        height: 46,
+        display: 'grid',
+        placeItems: 'center',
+        border: active
+          ? '1px solid #ff5500'
+          : dashed
+            ? '1px dashed #ff5500'
+            : '1px solid rgba(255,255,255,0.14)',
+        background: active ? 'rgba(255,85,0,0.30)' : 'rgba(255,255,255,0.05)',
+        color: active || dashed ? '#ff5500' : off ? 'rgba(255,255,255,0.4)' : '#fff',
+        cursor: 'pointer',
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+// Neutral peer placeholder (no media yet) — dark silhouette like the mock.
+function PeerPlaceholder({ name }: { name: string }): React.ReactElement {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        display: 'grid',
+        placeItems: 'center',
+        background: 'radial-gradient(circle at 50% 40%, #2f3b4a, #182230 60%, #0b1018 100%)',
+      }}
+    >
+      <div
+        style={{
+          width: 120,
+          height: 120,
+          borderRadius: '50%',
+          border: '1px solid rgba(255,255,255,0.12)',
+          background: 'radial-gradient(circle at 45% 35%, rgba(255,255,255,0.16), rgba(255,255,255,0.02))',
+          display: 'grid',
+          placeItems: 'center',
+          fontFamily: 'var(--app-font-heading, sans-serif)',
+          fontWeight: 800,
+          fontSize: 22,
+          color: 'rgba(255,255,255,0.85)',
+        }}
+      >
+        {initials(name)}
+      </div>
+    </div>
+  );
+}
 
 // Remote peer tile — binds the pulled MediaStream to a <video>.
 function RemoteTile({ stream }: { stream: MediaStream }): React.ReactElement {

@@ -522,6 +522,9 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const [convImage, setConvImage] = useState<unknown>(null);
   const [profiles, setProfiles] = useState<Record<string, ChatUser>>({});
   const videoRef = useRef<VideoCallHandle>(null);
+  // When a call is active the immersive stage takes over the conversation area
+  // and the chat thread + composer are hidden behind it (mock parity).
+  const [callActive, setCallActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastTypingSent = useRef(0);
   const typingStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1294,11 +1297,23 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         socket={socket}
         uglyBotSocket={uglyBotSocket}
         profiles={profiles}
+        botModel={headerModel}
+        onActiveChange={setCallActive}
       />
 
       {/* Full-width scroll area (like ugly.bot) so the chat scrollbar sits at the
-          pane's right edge, not at a centered column's edge. */}
-      <div className="uc-chat-scroll" style={{ flex: 1, minHeight: 0, width: '100%', display: 'flex', flexDirection: 'column' }}>
+          pane's right edge, not at a centered column's edge. Hidden while a call
+          is active — the immersive call stage takes over the conversation area. */}
+      <div
+        className="uc-chat-scroll"
+        style={{
+          flex: 1,
+          minHeight: 0,
+          width: '100%',
+          display: callActive ? 'none' : 'flex',
+          flexDirection: 'column',
+        }}
+      >
         <ChatView
           messages={messages}
           userId={userId}

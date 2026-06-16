@@ -199,7 +199,16 @@ export function BotAvatarTile({
   return (
     <div
       data-id="bot-avatar-tile"
-      style={{ position: 'relative', width: '100%', height: '100%', background: '#07080B' }}
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        display: 'grid',
+        placeItems: 'center',
+        // Dark stage + soft orange radial glow behind the head (mock parity).
+        background:
+          'radial-gradient(circle at 50% 43%, rgba(255,85,0,0.18), transparent 55%), #07080B',
+      }}
     >
       {failed || hidden ? (
         <NeutralBotTile label={label} />

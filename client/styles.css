@@ -612,6 +612,9 @@ hr {
 /* Live "recording" dot on the transcript header. */
 .uc-tp-livedot { width: 6px; height: 6px; border-radius: 50%; background: var(--app-success); animation: uc-rec 1.4s ease-in-out infinite; }
 
+/* Red "LIVE" dot on the immersive call HUD (fixed light-on-dark). */
+.uc-call-rec { animation: uc-rec 1.4s ease-in-out infinite; }
+
 /* Composer box (transcript footer). */
 .uc-tp-cbox { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 12px; border: 1px solid var(--app-border); border-radius: 10px; background: var(--app-input); transition: border-color 0.15s ease; }
 .uc-tp-cbox:focus-within { border-color: var(--app-primary); }
