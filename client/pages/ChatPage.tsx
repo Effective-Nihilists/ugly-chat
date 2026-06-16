@@ -993,30 +993,72 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     (e) => e.userId !== userId && Date.now() - e.start < 6000,
   );
 
-  // When *I* send a message the framework won't auto-scroll unless I'm already
-  // within 40px of the bottom — so force the thread down to my own newest
-  // message (only when the latest arrival is mine, i.e. a fresh send).
+  // ── Bottom-pinning ──────────────────────────────────────────────────────
+  // The thread stays pinned to the bottom on open and as new messages arrive,
+  // until the user scrolls up; it re-pins once they scroll back to the bottom.
+  // The framework's ChatView pins on new *messages* while at the bottom, but it
+  // (a) does its one-shot open scroll before async content (avatars, images,
+  // markdown, theme fonts) has laid out — landing short of the true bottom — and
+  // (b) never re-pins when that late content then grows the thread. We own the
+  // behaviour here: track "at bottom" from real scroll events and re-pin on any
+  // content resize while pinned.
+  const atBottomRef = useRef(true);
+  const scrollEl = (): HTMLElement | null => {
+    const el = document.querySelector('.uc-chat-scroll [data-testid="conversation-scroll-container"]');
+    return el instanceof HTMLElement ? el : null;
+  };
+  const pinToBottom = useCallback((force = false): void => {
+    const el = scrollEl();
+    if (!el) return;
+    if (force) atBottomRef.current = true;
+    if (!atBottomRef.current) return;
+    el.scrollTop = el.scrollHeight;
+    // Keep the framework's own at-bottom tracking in sync so it cooperates on
+    // subsequent incoming messages.
+    el.dispatchEvent(new Event('scroll'));
+  }, []);
+
+  // Track the user's position and re-pin as late content (images/fonts/markdown)
+  // lays out. Re-attached per conversation.
+  useEffect(() => {
+    const el = scrollEl();
+    if (!el) return;
+    const inner = el.querySelector('[data-testid="message-list-inner"]');
+    const PIN_THRESHOLD = 80; // px from the bottom that still counts as "pinned"
+    const onScroll = (): void => {
+      atBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < PIN_THRESHOLD;
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    const ro = new ResizeObserver(() => { if (atBottomRef.current) el.scrollTop = el.scrollHeight; });
+    if (inner) ro.observe(inner);
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      ro.disconnect();
+    };
+  }, [roomId, ready]);
+
+  // Open + own-send: force the thread to the bottom. Other people's incoming
+  // messages keep it pinned only when already at the bottom (handled by the
+  // ResizeObserver above). Multiple frames + timeouts catch async layout.
   const prevLenRef = useRef(0);
   useEffect(() => {
     const len = messages.length;
     const last = messages[len - 1];
-    // Pin to the bottom when a conversation first loads (open) AND when my own
-    // new message arrives. The framework keeps it pinned while already at the
-    // bottom and un-pins once the user scrolls up.
     const firstLoad = prevLenRef.current === 0 && len > 0;
     const myNewMessage = len > prevLenRef.current && !!last && last.userId === userId;
-    if (firstLoad || myNewMessage) {
-      const el = document.querySelector('.uc-chat-scroll [data-testid="conversation-scroll-container"]');
-      if (el instanceof HTMLElement) {
-        requestAnimationFrame(() => {
-          el.scrollTop = el.scrollHeight;
-          // Tell ChatView we're at the bottom so it keeps auto-pinning new messages.
-          el.dispatchEvent(new Event('scroll'));
-        });
-      }
-    }
     prevLenRef.current = len;
-  }, [messages, userId]);
+    if (!firstLoad && !myNewMessage) return;
+    atBottomRef.current = true;
+    let raf = 0;
+    const tick = (i: number): void => {
+      pinToBottom(true);
+      if (i < 2) raf = requestAnimationFrame(() => tick(i + 1));
+    };
+    tick(0);
+    const t1 = setTimeout(() => pinToBottom(true), 120);
+    const t2 = setTimeout(() => pinToBottom(true), 320);
+    return () => { cancelAnimationFrame(raf); clearTimeout(t1); clearTimeout(t2); };
+  }, [messages, userId, pinToBottom]);
 
   // DM ids are `{a}+{b}` / `{a}:{b}` containing self; everything else that's a
   // group gets the member-management UI (the ⋯ → Members panel).
