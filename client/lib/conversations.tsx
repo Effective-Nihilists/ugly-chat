@@ -78,7 +78,7 @@ function initial(s: string): string {
 }
 
 /**
- * Circular avatar — the real image when there is one, otherwise a colored
+ * Square avatar — the real image when there is one, otherwise a colored
  * initial derived from the label/seed. (We used to fall back to a single
  * hardcoded blob.ugly.bot image, which showed a random stranger's face for
  * every avatar-less user — e.g. the DM couple chat header and sidebar.)
@@ -93,7 +93,7 @@ export function Avatar(props: { image?: unknown; seed: string; label?: string; s
         width={size}
         height={size}
         alt=""
-        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, display: 'block' }}
+        style={{ width: size, height: size, borderRadius: 0, border: '1px solid var(--app-border)', objectFit: 'cover', flexShrink: 0, display: 'block' }}
       />
     );
   }
@@ -103,7 +103,7 @@ export function Avatar(props: { image?: unknown; seed: string; label?: string; s
       style={{
         width: size,
         height: size,
-        borderRadius: '50%',
+        borderRadius: 0,
         flexShrink: 0,
         display: 'flex',
         alignItems: 'center',
