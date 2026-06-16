@@ -1205,19 +1205,19 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--app-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
           {botId ? (
-            // Bot subtitle = the bot's model (from botGet / latest receipt) ·
-            // online. If the model is unknown, fall back to "online" only — we
-            // never fabricate a model string.
+            // Bot subtitle = the bot's model only. Bots have no "online" status
+            // (they're always available); we never fabricate a model string.
+            headerModel ? (
+              <div className="uc-receipt" style={{ marginTop: 1 }}>
+                <b>{headerModel}</b>
+              </div>
+            ) : null
+          ) : (
+            // Humans show presence.
             <div className="uc-receipt" style={{ marginTop: 1 }}>
-              {headerModel ? (
-                <>
-                  <b>{headerModel}</b>
-                  <span className="dot">·</span>
-                </>
-              ) : null}
               <span style={{ color: 'var(--app-success)' }}>online</span>
             </div>
-          ) : null}
+          )}
         </div>
         {/* Theme picker — mobile only (desktop has it in the sidebar header). */}
         {narrow ? (
