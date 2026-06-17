@@ -281,11 +281,15 @@ export async function triggerBotReplies(
   if (botIds.length === 0) return;
   const botSet = new Set(botIds);
 
-  const recent = await db.getDocs(
+  // Fetch the NEWEST 20 (created: -1), then re-sort ascending for the model.
+  // With created: 1 the window was the OLDEST 20 messages, so in any conversation
+  // with >20 messages the bot never saw recent turns (incl. the user's latest
+  // question) and replied to stale context. Same fix as the client's trackDocs.
+  const recent = (await db.getDocs(
     collectionsArg.message,
     { conversationId },
-    { sort: { created: 1 }, limit: 20 },
-  );
+    { sort: { created: -1 }, limit: 20 },
+  )).reverse();
   const history = recent
     .filter((m) => m['deleted'] !== true)
     .map((m) => ({

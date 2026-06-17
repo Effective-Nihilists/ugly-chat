@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ThumbsUp, ThumbsDown, Heart, Laugh, HelpCircle, AlertTriangle, Trash2, Video, Paperclip, X, FileText, MoreVertical, Eraser, Pencil, Users, Volume2, VolumeX, Pin, Settings, Check, Palette } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Heart, Laugh, HelpCircle, AlertTriangle, Trash2, Video, Paperclip, X, FileText, MoreVertical, Eraser, Pencil, Users, Volume2, VolumeX, Pin, Settings, Check, Palette, Copy } from 'lucide-react';
 import { useApp, uploadBlob, promoteBlob, downscaleImage, useSafeAreaInsets } from 'ugly-app/client';
-import { ChatView } from 'ugly-app/conversation/client';
 import { MdastViewer } from 'ugly-app/markdown/client';
 import { ConversationInput } from '../components/ConversationInput';
+import { VirtualMessageList } from '../components/VirtualMessageList';
 import { createPortal } from 'react-dom';
 import { extractImages, ChatImage, ImageZoomViewer } from '../components/ChatMedia';
 import type { ChatMessage, ChatUser, ChatTypingEntry } from 'ugly-app/conversation/shared';
@@ -116,6 +116,11 @@ const splitId = (docId: string): string => {
 // ugly.bot's six reactions, in picker order.
 const REACTIONS = ['thumbsUp', 'thumbsDown', 'heart', 'tearsOfJoy', 'question', 'exclamation'] as const;
 
+// Messages fetched on open. More than a screenful so the thread fills + scrolls,
+// but far below the old flat 200 so first paint stays fast on long conversations.
+const INITIAL_MSG_LIMIT = 75;
+const LOAD_MORE_STEP = 100;
+
 function useNarrow(): boolean {
   const [narrow, setNarrow] = useState(() => (typeof window === 'undefined' ? false : window.innerWidth < 820));
   useEffect(() => {
@@ -168,6 +173,7 @@ function MessageBody(props: {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
   const reactions = msg.reactionCount
     ? Object.entries(msg.reactionCount).filter(([, n]) => n > 0)
     : [];
@@ -487,6 +493,23 @@ function MessageBody(props: {
           ) : null}
           {hasText ? (
             <button
+              title={copied ? 'Copied' : 'Copy'}
+              onClick={() => {
+                void navigator.clipboard
+                  ?.writeText(text)
+                  .then(() => {
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 1200);
+                  })
+                  .catch(() => undefined);
+              }}
+              style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: copied ? 1 : 0.6, color: copied ? 'var(--app-primary)' : 'var(--app-foreground)' }}
+            >
+              {copied ? <Check size={14} /> : <Copy size={14} />}
+            </button>
+          ) : null}
+          {hasText ? (
+            <button
               title={pinned ? 'Unpin' : 'Pin'}
               onClick={() => onPin(msg.id)}
               style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: pinned ? 1 : 0.6, color: pinned ? 'var(--app-primary)' : 'var(--app-foreground)' }}
@@ -553,6 +576,12 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const roomId = conversationId ?? 'demo-room';
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Initial message window — kept small for a fast first paint. Long
+  // conversations (hundreds–thousands of messages) made the old flat 200-message
+  // load ship ~700KB+ over the socket and parse 200 markdown bodies on mount.
+  // The user pulls older history in on demand via ChatView's "Load more".
+  const [msgLimit, setMsgLimit] = useState(INITIAL_MSG_LIMIT);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
   const [ready, setReady] = useState(false);
   const [title, setTitle] = useState('Conversation');
   const [convImage, setConvImage] = useState<unknown>(null);
@@ -594,6 +623,8 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     openedAtRef.current = Date.now();
     setReady(false);
     setMessages([]);
+    setMsgLimit(INITIAL_MSG_LIMIT);
+    setHasMoreMessages(false);
     setBotId(null); // re-derived by the dedicated effect below
     setBotModel(null);
     setBotButtons([]);
@@ -602,7 +633,6 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     setPinnedMessageId(null);
     setPinnedMessage(null);
     setReaders([]);
-    let unsubMsg: (() => void) | undefined;
     let unsubConv: (() => void) | undefined;
     let unsubUserConv: (() => void) | undefined;
     let cancelled = false;
@@ -672,46 +702,51 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           setConvImage((img: unknown) => doc.image ?? img);
         }
       });
-      // Subscribe to the NEWEST 200 (created: -1), not the oldest. With
-      // `created: 1` the window was the oldest 200 messages, so on any
-      // conversation with >200 messages a freshly-sent message fell outside the
-      // window and trackDocs never delivered it — the composer cleared but the
-      // message never rendered. We re-sort ascending for display below.
-      unsubMsg = socket.trackDocs<MessageDoc>(
-        'message',
-        { keys: { conversationId: roomId }, sort: { created: -1 }, limit: 200 },
-        (docs) => {
-          setMessages(
-            (Array.isArray(docs) ? docs : [])
-              .filter((d) => !d.deleted)
-              .map(toChatMessage)
-              .sort((a, b) => a.created - b.created),
-          );
-          pingConversationActivity();
-          // Viewing the conversation clears its unread (on open + as messages
-          // arrive while it's focused). Skipped for background tabs.
-          if (typeof document === 'undefined' || document.visibilityState === 'visible') {
-            void socket
-              .request('conversationMarkRead', { conversationId: roomId })
-              .then(() => pingConversationActivity())
-              .catch(() => undefined);
-            // Refresh the simple per-user last-read timestamps (for "Seen").
-            void socket
-              .request('conversationReadState', { conversationId: roomId })
-              .then((r) => setReaders((r as { readers?: { userId: string; viewed: number }[] }).readers ?? []))
-              .catch(() => undefined);
-          }
-        },
-      );
+      // Messages are tracked in their own effect below (so "Load more" can grow
+      // the window without re-running this conversation setup).
       setReady(true);
     })();
     return () => {
       cancelled = true;
-      unsubMsg?.();
       unsubConv?.();
       unsubUserConv?.();
     };
   }, [socket, userId, roomId]);
+
+  // Message subscription — isolated from the conversation setup above so that
+  // "Load more" (which grows msgLimit) re-subscribes ONLY the message window.
+  // We fetch the newest `msgLimit` (created: -1) and re-sort ascending for
+  // display; `hasMore` is true while we're getting a full window (older history
+  // likely remains). Marking-read + read-state refresh ride along on each batch.
+  useEffect(() => {
+    const unsub = socket.trackDocs<MessageDoc>(
+      'message',
+      { keys: { conversationId: roomId }, sort: { created: -1 }, limit: msgLimit },
+      (docs) => {
+        const list = (Array.isArray(docs) ? docs : [])
+          .filter((d) => !d.deleted)
+          .map(toChatMessage)
+          .sort((a, b) => a.created - b.created);
+        setMessages(list);
+        setHasMoreMessages(list.length >= msgLimit);
+        pingConversationActivity();
+        // Viewing the conversation clears its unread (on open + as messages
+        // arrive while it's focused). Skipped for background tabs.
+        if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+          void socket
+            .request('conversationMarkRead', { conversationId: roomId })
+            .then(() => pingConversationActivity())
+            .catch(() => undefined);
+          // Refresh the simple per-user last-read timestamps (for "Seen").
+          void socket
+            .request('conversationReadState', { conversationId: roomId })
+            .then((r) => setReaders((r as { readers?: { userId: string; viewed: number }[] }).readers ?? []))
+            .catch(() => undefined);
+        }
+      },
+    );
+    return () => unsub();
+  }, [socket, roomId, msgLimit]);
 
   // Resolve participant profiles (real names + avatars). Also resolve membership
   // system-message targets (`systemParam`) so we can name them.
@@ -1048,72 +1083,9 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     (e) => e.userId !== userId && Date.now() - e.start < 6000,
   );
 
-  // ── Bottom-pinning ──────────────────────────────────────────────────────
-  // The thread stays pinned to the bottom on open and as new messages arrive,
-  // until the user scrolls up; it re-pins once they scroll back to the bottom.
-  // The framework's ChatView pins on new *messages* while at the bottom, but it
-  // (a) does its one-shot open scroll before async content (avatars, images,
-  // markdown, theme fonts) has laid out — landing short of the true bottom — and
-  // (b) never re-pins when that late content then grows the thread. We own the
-  // behaviour here: track "at bottom" from real scroll events and re-pin on any
-  // content resize while pinned.
-  const atBottomRef = useRef(true);
-  const scrollEl = (): HTMLElement | null => {
-    const el = document.querySelector('.uc-chat-scroll [data-testid="conversation-scroll-container"]');
-    return el instanceof HTMLElement ? el : null;
-  };
-  const pinToBottom = useCallback((force = false): void => {
-    const el = scrollEl();
-    if (!el) return;
-    if (force) atBottomRef.current = true;
-    if (!atBottomRef.current) return;
-    el.scrollTop = el.scrollHeight;
-    // Keep the framework's own at-bottom tracking in sync so it cooperates on
-    // subsequent incoming messages.
-    el.dispatchEvent(new Event('scroll'));
-  }, []);
-
-  // Track the user's position and re-pin as late content (images/fonts/markdown)
-  // lays out. Re-attached per conversation.
-  useEffect(() => {
-    const el = scrollEl();
-    if (!el) return;
-    const inner = el.querySelector('[data-testid="message-list-inner"]');
-    const PIN_THRESHOLD = 80; // px from the bottom that still counts as "pinned"
-    const onScroll = (): void => {
-      atBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < PIN_THRESHOLD;
-    };
-    el.addEventListener('scroll', onScroll, { passive: true });
-    const ro = new ResizeObserver(() => { if (atBottomRef.current) el.scrollTop = el.scrollHeight; });
-    if (inner) ro.observe(inner);
-    return () => {
-      el.removeEventListener('scroll', onScroll);
-      ro.disconnect();
-    };
-  }, [roomId, ready]);
-
-  // Open + own-send: force the thread to the bottom. Other people's incoming
-  // messages keep it pinned only when already at the bottom (handled by the
-  // ResizeObserver above). Multiple frames + timeouts catch async layout.
-  const prevLenRef = useRef(0);
-  useEffect(() => {
-    const len = messages.length;
-    const last = messages[len - 1];
-    const firstLoad = prevLenRef.current === 0 && len > 0;
-    const myNewMessage = len > prevLenRef.current && !!last && last.userId === userId;
-    prevLenRef.current = len;
-    if (!firstLoad && !myNewMessage) return;
-    atBottomRef.current = true;
-    let raf = 0;
-    const tick = (i: number): void => {
-      pinToBottom(true);
-      if (i < 2) raf = requestAnimationFrame(() => tick(i + 1));
-    };
-    tick(0);
-    const t1 = setTimeout(() => pinToBottom(true), 120);
-    const t2 = setTimeout(() => pinToBottom(true), 320);
-    return () => { cancelAnimationFrame(raf); clearTimeout(t1); clearTimeout(t2); };
-  }, [messages, userId, pinToBottom]);
+  // Scroll/pin behaviour (initial pin, follow-on-send, re-pin on keyboard +
+  // late content, scroll-up paging, prepend restoration) is owned by
+  // VirtualMessageList below.
 
   // DM ids are `{a}+{b}` / `{a}:{b}` containing self; everything else that's a
   // group gets the member-management UI (the ⋯ → Members panel).
@@ -1514,17 +1486,14 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
             {typingEntries.map((e) => getUser(e.userId).name).join(', ')} typing…
           </div>
         ) : null}
-        <ChatView
+        <VirtualMessageList
+          key={roomId}
           messages={messages}
-          userId={userId}
-          onSend={handleSend}
-          onDelete={handleDelete}
-          onReact={(id, reaction) => handleReact(id, reaction)}
-          getUser={getUser}
-          renderMessage={renderMessage}
-          typingEntries={[]}
-          onTypingStart={signalTyping}
-        >
+          currentUserId={userId}
+          renderItem={renderMessage}
+          hasMore={hasMoreMessages}
+          onLoadMore={() => setMsgLimit((l) => l + LOAD_MORE_STEP)}
+          bottom={
           <div
             className="uc-composer"
             style={{
@@ -1605,7 +1574,8 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
               />
             </div>
           </div>
-        </ChatView>
+          }
+        />
       </div>
       {zoomImg && typeof document !== 'undefined'
         ? createPortal(
