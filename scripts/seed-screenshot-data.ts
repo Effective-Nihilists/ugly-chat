@@ -21,7 +21,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createAdapter, query } from 'ugly-app/server';
-import { UGLY_BOT, UGLY_BOT_AVATAR_URL, UGLY_BOT_USER_ID } from '../shared/bots';
+import { UGLY_BOT, UGLY_BOT_AVATAR_URL, UGLY_BOT_ID as UGLY_BOT_USER_ID } from '../shared/bots';
 
 const SCREENSHOT_NAME = 'Alex Rivera';
 const SCREENSHOT_AVATAR = 'https://api.dicebear.com/9.x/thumbs/png?seed=alex-rivera&size=256';
