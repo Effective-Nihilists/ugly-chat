@@ -180,7 +180,7 @@ export function VirtualMessageList({
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        onClick={() => onBackgroundClick?.()}
+        onClick={() => { onBackgroundClick?.(); }}
         data-testid="conversation-scroll-container"
         style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}
       >
