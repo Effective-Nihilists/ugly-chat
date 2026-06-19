@@ -27,8 +27,8 @@ importers:
         specifier: ^0.183.2
         version: 0.183.2
       ugly-app:
-        specifier: ^0.1.612
-        version: 0.1.612(@types/react@19.2.17)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.183.2)(typescript@5.9.3)(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)(y-protocols@1.0.7(yjs@13.6.31))(yjs@13.6.31)
+        specifier: ^0.1.613
+        version: 0.1.613(@types/react@19.2.17)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.183.2)(typescript@5.9.3)(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)(y-protocols@1.0.7(yjs@13.6.31))(yjs@13.6.31)
       yjs:
         specifier: ^13.6.30
         version: 13.6.31
@@ -1123,9 +1123,6 @@ packages:
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-
-  '@tanstack/virtual-core@3.17.0':
-    resolution: {integrity: sha512-gOxY/hFkPh/XQYhnThBHzkbkX3Ed+z/iushyz+R+JAr213aXxUDgQoTgTdrDpBSRsjFM73P/KfUyWmaF9WHMkQ==}
 
   '@tanstack/virtual-core@3.17.1':
     resolution: {integrity: sha512-VZyW2Uiml5tmBZwPGrSD3Sz73OxzljQMCmzYHsUTPEuTsERf5xwa+uWb01xEzkz3ZSYTjj8NEb/mKHvgKxyZdA==}
@@ -3844,8 +3841,8 @@ packages:
     engines: {node: '>=0.8.0'}
     hasBin: true
 
-  ugly-app@0.1.612:
-    resolution: {integrity: sha512-ZP+kd/VFORFhE4boOvTwJi8EXi5bz4/qMGKLtVlStLtzAuJrRIa8QZyOSQQBxnbfuaNbWn4f54CSsU7K58staw==}
+  ugly-app@0.1.613:
+    resolution: {integrity: sha512-AmnR3wkbgRqVASA2SOAV9on3NXbgwcFuJ9GY9b2AB1EiwPlkBGcj/6m1vA6834UAvhGUZoB3ZRbhXVPGyo532A==}
     hasBin: true
     peerDependencies:
       '@types/react': '>=18.0.0'
@@ -5334,8 +5331,6 @@ snapshots:
       '@tanstack/virtual-core': 3.17.1
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
-
-  '@tanstack/virtual-core@3.17.0': {}
 
   '@tanstack/virtual-core@3.17.1': {}
 
@@ -8771,7 +8766,7 @@ snapshots:
   uglify-js@3.19.3:
     optional: true
 
-  ugly-app@0.1.612(@types/react@19.2.17)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.183.2)(typescript@5.9.3)(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)(y-protocols@1.0.7(yjs@13.6.31))(yjs@13.6.31):
+  ugly-app@0.1.613(@types/react@19.2.17)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.183.2)(typescript@5.9.3)(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)(y-protocols@1.0.7(yjs@13.6.31))(yjs@13.6.31):
     dependencies:
       '@aws-sdk/client-s3': 3.1068.0
       '@aws-sdk/s3-request-presigner': 3.1068.0
@@ -8782,7 +8777,7 @@ snapshots:
       '@codemirror/view': 6.43.1
       '@eslint/js': 8.57.1
       '@neondatabase/serverless': 1.1.0
-      '@tanstack/virtual-core': 3.17.0
+      '@tanstack/virtual-core': 3.17.1
       '@types/jsonwebtoken': 9.0.10
       '@types/turndown': 5.0.6
       '@types/url-parse': 1.4.11

@@ -12,6 +12,7 @@
  * is unavailable). Replies are delivered to clients via trackDocs.
  */
 import { conversationMessageCreate } from 'ugly-app/conversation/engine';
+import { runBotSearch, SEARCH_BOT_ID } from './searchBot';
 import { getUserToken } from 'ugly-app/server/adapter/workers';
 import { defaultAvatar, type Avatar } from 'ugly-app/shared';
 import { toAvatar } from './avatar';
@@ -162,6 +163,15 @@ export const BOTS: Record<string, BotDef> = {
     name: 'Sage',
     systemPrompt:
       'You are Sage — a calm, thoughtful advisor. Answer briefly and kindly.',
+    model: 'deepseek_v4_flash',
+  },
+  // Perplexity-style web search bot — answers with cited sources via the shared
+  // ugly-app/search AnswerEngine (handled specially in triggerBotReplies).
+  'bot-search': {
+    id: 'bot-search',
+    name: 'Search',
+    systemPrompt:
+      'You search the web and answer with cited sources.',
     model: 'deepseek_v4_flash',
   },
 };
@@ -326,6 +336,26 @@ export async function triggerBotReplies(
     const cfg = convBots[botId] ?? {};
     const mode = cfg.mode ?? 'chat';
     const model = cfg.model ?? bot.model;
+
+    // Search bot (or any conversation in 'search' mode): run the shared
+    // AnswerEngine and stream a cited reply via the conversation hub. It
+    // persists its own message on commit, so skip the normal reply path.
+    if (botId === SEARCH_BOT_ID || mode === 'search') {
+      try {
+        await runBotSearch({
+          conversationId,
+          botId,
+          history,
+          model,
+          textGen: uglyBotTextGen,
+          mode: cfg.mode === 'deep' ? 'deep' : 'quick',
+        });
+      } catch (err) {
+        console.warn(`[bots] search failed for ${botId}:`, (err as Error).message);
+      }
+      continue;
+    }
+
     let reply = '';
     let replyColor: string | undefined;
     let usage: MsgTelemetry | undefined;
