@@ -608,7 +608,7 @@ hr {
   padding-left: 16px;
   padding-right: 16px;
   /* Breathing room so the last message isn't flush against the composer. */
-  padding-bottom: 10px;
+  padding-bottom: 24px;
   box-sizing: border-box;
 }
 
@@ -643,7 +643,7 @@ hr {
   max-width: 820px;
   margin-left: auto;
   margin-right: auto;
-  padding-bottom: 12px;
+  padding-bottom: 24px;
 }
 /* Typing-indicator overlay pill — pinned at the top of the chat area, never
    shifts the message list (the framework's in-flow indicator is suppressed via
@@ -706,39 +706,16 @@ hr {
 .uc-receipt .late { color: var(--app-primary); }
 
 /* ── Chat thread rows (mock parity) ──────────────────────────────────────────
-   The framework ChatMessageBubble wraps each row with a 24px circular avatar +
-   a name header, all in a fixed left-aligned flex row. The mock needs distinct
-   own (right, no avatar/name) vs peer (left, square avatar + name) rows, so we
-   neutralize the framework chrome here and render the *entire* mock row inside
-   ChatPage's `renderMessage`. The framework row is:
-     [data-message-id] > <avatar|placeholder>, <content column>
-   and the content column is `[header?, content]`. Collapse the row to a plain
-   full-width block and hide the avatar + header; our own markup takes over. */
+   VirtualMessageList renders each row as `[data-message-id]` wrapping ChatPage's
+   `renderMessage` output directly (a fragment of [.uc-daysep?, .uc-msg]) — there
+   is NO framework ChatMessageBubble chrome to neutralize anymore. The row is just
+   a full-width block with side padding; .uc-msg owns its own (own/peer) layout.
+   (The previous build composed the framework ChatView and needed display:none
+   hacks on the row's children to hide the framework avatar/header — those rules
+   matched our own .uc-msgcol once we virtualized, collapsing every bubble.) */
 .uc-chat-scroll [data-message-id] {
   display: block !important;
   padding: 2px 18px !important;
-}
-/* Hide the framework's own duration/date separators — we render a mock-style
-   `today · MON DD` separator on real day boundaries from renderMessage instead.
-   (ChatPage passes no hasMore/onLoadMore, so the only non-message direct child
-   of the inner list is the framework separator.) */
-.uc-chat-scroll [data-testid='message-list-inner'] > div:not([data-message-id]) {
-  display: none !important;
-}
-/* avatar / placeholder = the row's first direct child */
-.uc-chat-scroll [data-message-id] > :first-child {
-  display: none !important;
-}
-/* the content column = last direct child; strip its flex so our row controls width */
-.uc-chat-scroll [data-message-id] > :last-child {
-  display: block !important;
-  flex: none !important;
-}
-/* the framework name header = the content column's first child, when present.
-   Our renderMessage returns a fragment of [.uc-daysep?, .uc-msg], so exclude
-   both of ours; whatever else is first must be the framework's header. */
-.uc-chat-scroll [data-message-id] > :last-child > div:first-child:not(.uc-msg):not(.uc-daysep) {
-  display: none !important;
 }
 
 /* One thread row, fully owned by us. */
