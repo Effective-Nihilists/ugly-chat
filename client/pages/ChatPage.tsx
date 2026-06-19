@@ -6,6 +6,7 @@ import { ConversationInput } from '../components/ConversationInput';
 import { VirtualMessageList } from '../components/VirtualMessageList';
 import { createPortal } from 'react-dom';
 import { extractImages, ChatImage, ImageZoomViewer } from '../components/ChatMedia';
+import { nextSelectedId } from '../lib/messageSelection';
 import type { ChatMessage, ChatUser, ChatTypingEntry } from 'ugly-app/conversation/shared';
 import type { DBObject } from 'ugly-app/shared';
 import { type VideoCallHandle } from '../components/VideoCall';
@@ -154,6 +155,8 @@ function MessageBody(props: {
   pinned: boolean;
   onButton: (prompt: string) => void;
   onOpenImage: (src: string, alt: string) => void;
+  isSelected: boolean;
+  onSelect: (id: string) => void;
   // Human DM receipt props (only provided when !hasBot && statsOn)
   humanIdx?: number;
   humanSorted?: StatMsg[];
@@ -162,14 +165,8 @@ function MessageBody(props: {
   humanSeen?: boolean;
 }): React.ReactElement {
   const { msg, isOwn, sender, firstOfRun, stacked, daySep, onReact, onDelete, onEdit, onPin, pinned, onButton,
-    onOpenImage, humanIdx, humanSorted, humanMeId, humanStatsOn, humanSeen } = props;
+    onOpenImage, isSelected, onSelect, humanIdx, humanSorted, humanMeId, humanStatsOn, humanSeen } = props;
   const voice = useVoice();
-  const [hover, setHover] = useState(false);
-  // The hover action menu sits in a gap above the bubble; hide it on a short
-  // delay so the pointer can cross the gap to reach it (the menu is a DOM
-  // descendant of .uc-msgcol, so entering it re-fires the column's onMouseEnter).
-  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => { if (hideTimer.current) clearTimeout(hideTimer.current); }, []);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
@@ -228,20 +225,19 @@ function MessageBody(props: {
         ) : null}
         <div
           className="uc-msgcol"
-          onMouseEnter={() => { if (hideTimer.current) clearTimeout(hideTimer.current); setHover(true); }}
-          onMouseLeave={() => { hideTimer.current = setTimeout(() => setHover(false), 250); }}
+          onClick={(e) => { e.stopPropagation(); onSelect(msg.id); }}
           style={{ position: 'relative' }}
         >
           {/* Peer sender name + timestamp, first of a run only. */}
           {!isOwn && firstOfRun ? (
             <div className="uc-metarow">
               <span className={`sender${sender.isBot ? ' bot' : ''}`}>{sender.name}</span>
-              <span className="t">{clock(msg.created)}</span>
+              {isSelected ? <span className="t">{clock(msg.created)}</span> : null}
             </div>
           ) : null}
           {hasText ? (
           <div
-            className={`uc-bubble ${isOwn ? 'own' : 'peer'}${stacked ? ' stack' : ''}${isError ? ' err' : ''}${mediaBubble ? ' media' : ''}`}
+            className={`uc-bubble ${isOwn ? 'own' : 'peer'}${stacked ? ' stack' : ''}${isError ? ' err' : ''}${mediaBubble ? ' media' : ''}${isSelected ? ' selected' : ''}`}
           >
         {editing ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 260 }}>
@@ -371,7 +367,8 @@ function MessageBody(props: {
               key={`${b.text}-${i}`}
               type="button"
               className="uc-msgbtn"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 if (b.uri) window.open(b.uri, '_blank', 'noopener');
                 else if (b.prompt) onButton(b.prompt);
               }}
@@ -395,7 +392,7 @@ function MessageBody(props: {
         </div>
       ) : null}
 
-      {(msg as { telemetry?: MsgTelemetry }).telemetry ? (
+      {isSelected && (msg as { telemetry?: MsgTelemetry }).telemetry ? (
         <div className="uc-receipt" style={{ padding: '0 4px' }}>
           <b>{modelLabel((msg as { telemetry?: MsgTelemetry }).telemetry!.model) || 'model'}</b>
           <span className="dot">·</span>
@@ -409,14 +406,14 @@ function MessageBody(props: {
 
       {/* Own-message footer (delivered · HH:MM) — bot chats and any non-stats
           DM. Human-DM stats render their own richer footer below instead. */}
-      {isOwn && !humanStatsOn && hasText ? (
+      {isSelected && isOwn && !humanStatsOn && hasText ? (
         <div className="uc-receipt" style={{ padding: '0 4px', color: 'var(--app-foreground-muted)' }}>
           <span>delivered</span><span className="dot">·</span>{clock(msg.created)}
         </div>
       ) : null}
 
       {/* Human DM per-message receipt (no bot, stats enabled) */}
-      {humanStatsOn && humanSorted && humanIdx != null && humanMeId != null ? (
+      {isSelected && humanStatsOn && humanSorted && humanIdx != null && humanMeId != null ? (
         <div className="uc-receipt" style={{ padding: '0 4px', color: 'var(--app-foreground-muted)' }}>
           {(() => {
             const lat = replyLatencyMs(humanSorted, humanIdx, humanMeId);
@@ -455,8 +452,9 @@ function MessageBody(props: {
         </div>
       ) : null}
 
-      {hover ? (
+      {isSelected ? (
         <div
+          onClick={(e) => e.stopPropagation()}
           style={{
             position: 'absolute',
             // Sit clear above the bubble so it doesn't cover the message text.
@@ -602,6 +600,14 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const [botButtons, setBotButtons] = useState<{ label: string; prompt: string }[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDeleteConv, setConfirmDeleteConv] = useState(false);
+  // Tap-to-select: the single message whose metadata + action menu are revealed.
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+  const selectMessage = useCallback((id: string) => {
+    // Don't hijack a click that is really a text drag-selection (desktop copy).
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed && sel.toString().length > 0) return;
+    setSelectedMessageId((cur) => nextSelectedId(cur, id));
+  }, []);
   // Per-conversation bot config (the ⋯ menu): mode + text model + image model/size.
   const [botModel, setBotModel] = useState<string | null>(null);
   const [botMode, setBotMode] = useState<string>('chat');
@@ -1217,6 +1223,8 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           pinned={pinnedMessageId === msg.id}
           onButton={(prompt) => handleSend(prompt)}
           onOpenImage={openImage}
+          isSelected={selectedMessageId === msg.id}
+          onSelect={selectMessage}
           {...(humanIdx >= 0 ? { humanIdx } : {})}
           {...(!hasBot && statsOn ? { humanSorted: statMsgs, humanMeId: userId, humanStatsOn: true as const } : {})}
           {...(humanSeen ? { humanSeen: true as const } : {})}
@@ -1224,7 +1232,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       );
     },
     [messages, userId, handleReact, handleDelete, handleEdit, handlePin, pinnedMessageId, handleSend, profiles,
-      hasBot, statsOn, statMsgs, readers, getUser, openImage],
+      hasBot, statsOn, statMsgs, readers, getUser, openImage, selectedMessageId, selectMessage],
   );
 
   // Header subtitle model: the bot's configured model, else the model named on

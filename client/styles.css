@@ -737,6 +737,9 @@ hr {
 .uc-bubble.own { background: var(--app-gradient-primary); color: var(--app-on-primary); border: none; border-radius: 14px 14px 3px 14px; }
 .uc-bubble.own.stack, .uc-bubble.peer.stack { border-radius: 14px; }
 .uc-bubble.err { background: var(--app-error); color: #fff; border: none; }
+/* Selected message — subtle ring so the active row reads clearly while its
+   metadata + action menu are revealed. */
+.uc-bubble.selected { box-shadow: 0 0 0 2px var(--app-primary); }
 /* Markdown inside the own (gradient) bubble inherits the on-primary color. */
 .uc-bubble.own, .uc-bubble.own * { color: var(--app-on-primary); }
 
