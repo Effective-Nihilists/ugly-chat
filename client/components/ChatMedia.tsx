@@ -17,7 +17,7 @@
  * (two fingers) + drag + double-tap.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Maximize2 } from 'lucide-react';
 
 export const MEDIA_MAX = 480; // desktop cap for an edge-to-edge media bubble
 const TALL_MAX_H = 480; // an image never renders taller than this
@@ -48,13 +48,48 @@ export function ChatImage({
   alt,
   edgeToEdge,
   onOpen,
+  isSelected,
 }: {
   src: string;
   alt: string;
   edgeToEdge: boolean;
   onOpen: (src: string, alt: string) => void;
+  isSelected: boolean;
 }): React.ReactElement {
   const [ar, setAr] = useState<number | null>(null); // naturalWidth / naturalHeight
+
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longFiredRef = useRef(false);
+  const startRef = useRef<{ x: number; y: number } | null>(null);
+
+  const cancelPress = useCallback(() => {
+    if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; }
+  }, []);
+
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    longFiredRef.current = false;
+    startRef.current = { x: e.clientX, y: e.clientY };
+    cancelPress();
+    pressTimer.current = setTimeout(() => {
+      longFiredRef.current = true;
+      onOpen(src, alt);
+    }, 450);
+  }, [cancelPress, onOpen, src, alt]);
+
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    const s = startRef.current;
+    if (s && Math.hypot(e.clientX - s.x, e.clientY - s.y) > 10) cancelPress();
+  }, [cancelPress]);
+
+  const onClickCapture = useCallback((e: React.MouseEvent) => {
+    // If a long-press already opened the viewer, swallow the trailing click so
+    // it doesn't also select the message.
+    if (longFiredRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      longFiredRef.current = false;
+    }
+  }, []);
 
   // Wrapper width policy:
   //  - text-dominant  → modest, centered column.
@@ -71,7 +106,7 @@ export function ChatImage({
   }
 
   return (
-    <div style={wrap}>
+    <div style={{ ...wrap, position: 'relative' }}>
       <img
         src={src}
         alt={alt}
@@ -81,17 +116,48 @@ export function ChatImage({
           const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
           if (w > 0 && h > 0) setAr(w / h);
         }}
-        onClick={() => onOpen(src, alt)}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={cancelPress}
+        onPointerCancel={cancelPress}
+        onClickCapture={onClickCapture}
         style={{
           display: 'block',
           width: '100%',
           height: 'auto',
           maxHeight: TALL_MAX_H,
           objectFit: 'contain',
-          cursor: 'zoom-in',
+          cursor: 'pointer',
           borderRadius: edgeToEdge ? 0 : 8,
+          touchAction: 'manipulation',
         }}
       />
+      {isSelected ? (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onOpen(src, alt); }}
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+            fontFamily: 'var(--app-font-mono)',
+            fontSize: 11,
+            fontWeight: 600,
+            padding: '5px 9px',
+            border: '1px solid var(--app-border)',
+            borderRadius: 6,
+            background: 'var(--app-main)',
+            color: 'var(--app-foreground)',
+            cursor: 'pointer',
+            boxShadow: 'var(--app-shadow-button-default)',
+          }}
+        >
+          <Maximize2 size={13} /> Open
+        </button>
+      ) : null}
     </div>
   );
 }

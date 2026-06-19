@@ -294,7 +294,7 @@ function MessageBody(props: {
             {edgeToEdge ? (
               <div className="uc-media">
                 {images.map((im, i) => (
-                  <ChatImage key={`${im.url}-${i}`} src={im.url} alt={im.alt} edgeToEdge onOpen={onOpenImage} />
+                  <ChatImage key={`${im.url}-${i}`} src={im.url} alt={im.alt} edgeToEdge onOpen={onOpenImage} isSelected={isSelected} />
                 ))}
               </div>
             ) : null}
@@ -309,7 +309,7 @@ function MessageBody(props: {
             {hasImages && !edgeToEdge ? (
               <div className="uc-media uc-media-centered">
                 {images.map((im, i) => (
-                  <ChatImage key={`${im.url}-${i}`} src={im.url} alt={im.alt} edgeToEdge={false} onOpen={onOpenImage} />
+                  <ChatImage key={`${im.url}-${i}`} src={im.url} alt={im.alt} edgeToEdge={false} onOpen={onOpenImage} isSelected={isSelected} />
                 ))}
               </div>
             ) : null}
