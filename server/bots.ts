@@ -84,9 +84,17 @@ async function uglyBotTextGen(
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${bearer}` },
     body: JSON.stringify({ model, messages, options: { maxTokens } }),
   });
-  if (!res.ok) throw new Error(`textGen HTTP ${res.status}`);
-  const data = await res.json() as Record<string, unknown>;
-  if (data['error']) throw new Error(`textGen ${String(data['error'])}: ${String(data['detail'] ?? '')}`);
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  // Carry the HTTP status on the thrown error so callers can distinguish a
+  // payment failure (402 — payer out of credits) from a model/other error and
+  // surface the right message. ugly.bot returns `{ error }` on both non-2xx and
+  // some 200 envelopes, so check both.
+  if (!res.ok || data['error']) {
+    const detail = String(data['error'] ?? `HTTP ${res.status}`);
+    const err = new Error(`textGen ${detail}`) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
+  }
   const parsed = parseTextGenResponse(data);
   parsed.usage.latencyMs = Date.now() - t0;
   if (!parsed.usage.model) parsed.usage.model = model;
@@ -126,6 +134,17 @@ const MODE_PROMPTS: Record<string, string> = {
     'satirical; never lie harmfully about real people, products, or companies. ' +
     'Do not add disclaimers or notes.',
 };
+
+// ugly.bot's metered AI bills the chatting user; a 402 means their balance is
+// empty. Surface a clear, actionable message (with a fix link) instead of a
+// confusing echo of the user's own text, which read as "the bot is repeating me".
+const BILLING_URL = 'https://ugly.bot/billing';
+const PAYMENT_REPLY =
+  `**AI is paused — out of credits.** Bot replies run on ugly.bot's metered AI ` +
+  `and the balance on this account is empty. ` +
+  `[Add credits or subscribe](${BILLING_URL}) to keep chatting.`;
+const isPaymentError = (err: unknown): boolean =>
+  (err as { status?: number } | null)?.status === 402;
 
 export interface BotDef {
   id: string;
@@ -308,6 +327,7 @@ export async function triggerBotReplies(
     const mode = cfg.mode ?? 'chat';
     const model = cfg.model ?? bot.model;
     let reply = '';
+    let replyColor: string | undefined;
     let usage: MsgTelemetry | undefined;
 
     if (mode === 'image') {
@@ -320,6 +340,7 @@ export async function triggerBotReplies(
         }
       } catch (err) {
         console.warn(`[bots] imageGen failed for ${botId}:`, (err as Error).message);
+        if (isPaymentError(err)) { reply = PAYMENT_REPLY; replyColor = 'error'; }
       }
       if (!reply) reply = "Couldn't generate an image for that — try again, or switch back to Chat mode.";
     } else {
@@ -333,23 +354,29 @@ export async function triggerBotReplies(
             ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
             ...history,
           ],
-          // DeepSeek is a reasoning model — it burns tokens on a hidden "thinking"
-          // block before the visible answer, so a small cap leaves no text. Give
-          // it room for the reasoning plus a real reply.
-          1200,
+          // Reasoning models (DeepSeek, Gemini 2.5, …) burn output tokens on a
+          // hidden "thinking" block before the visible answer. 1200 was too low
+          // for Gemini — it spent the whole budget thinking and returned an empty
+          // MAX_TOKENS response, which fell through to the echo fallback. Give the
+          // reasoning + a real reply ample room.
+          4096,
         );
         reply = out.text;
         usage = out.usage;
       } catch (err) {
-        console.warn(`[bots] textGen unavailable for ${botId}; using fallback:`, (err as Error).message);
+        const status = (err as { status?: number }).status;
+        console.warn(`[bots] textGen failed for ${botId} (status ${status ?? '?'}):`, (err as Error).message);
+        if (isPaymentError(err)) { reply = PAYMENT_REPLY; replyColor = 'error'; }
       }
+      // No echo fallback: repeating the user's message read as "the bot is just
+      // repeating me". A genuine failure gets a clear, actionable message.
       if (!reply) {
-        const last = history[history.length - 1]?.content ?? '';
-        reply = `Hi, I'm ${bot.name}. You said: "${last.slice(0, 120)}"`;
+        reply = `I couldn't generate a reply just now. Please try again in a moment, or pick a different model from the ⋯ menu.`;
+        replyColor = 'error';
       }
     }
     await conversationMessageCreate(
-      { conversationId, message: { text: reply, markdown: reply, onlyUserIds: ['global'], ...(usage ? { telemetry: usage } : {}) } },
+      { conversationId, message: { text: reply, markdown: reply, onlyUserIds: ['global'], ...(replyColor ? { color: replyColor } : {}), ...(usage ? { telemetry: usage } : {}) } },
       botId,
     );
     // Surface the bot's reply in the sidebar (preview + unread for recipients).
