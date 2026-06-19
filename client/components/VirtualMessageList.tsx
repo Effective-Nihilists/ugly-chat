@@ -40,6 +40,10 @@ export interface VirtualMessageListProps {
   onLoadMore: () => void;
   /** The composer, pinned below the scroll area. */
   bottom?: ReactNode;
+  /** Fired on a user-initiated scroll (not programmatic auto-follow). */
+  onUserScroll?: () => void;
+  /** Fired when the user clicks the thread background (not a message). */
+  onBackgroundClick?: () => void;
 }
 
 /**
@@ -55,17 +59,17 @@ export function VirtualMessageList({
   hasMore,
   onLoadMore,
   bottom,
+  onUserScroll,
+  onBackgroundClick,
 }: VirtualMessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
-  const virtualContainerRef = useRef<HTMLDivElement>(null);
 
   const atBottomRef = useRef(true);
   const programmaticRef = useRef(false);
   const isLoadingMoreRef = useRef(false);
   const prevScrollHeightRef = useRef(0);
   const [showButton, setShowButton] = useState(false);
-  const [scrollMargin, setScrollMargin] = useState(0);
 
   const getItemKey = useCallback(
     (index: number) => messages[index]?.id ?? index,
@@ -77,16 +81,6 @@ export function VirtualMessageList({
     estimateSize: () => 72,
     overscan: 8,
     getItemKey,
-    scrollMargin,
-  });
-
-  // Measure the offset from the scroll-container top to the virtual list. With
-  // flex-end alignment a short thread is pushed to the bottom, so this offset is
-  // dynamic — feed it back into both the virtualizer and each row's transform.
-  useLayoutEffect(() => {
-    if (!virtualContainerRef.current) return;
-    const margin = virtualContainerRef.current.offsetTop;
-    if (margin !== scrollMargin) setScrollMargin(margin);
   });
 
   const scrollToBottom = useCallback(() => {
@@ -150,6 +144,7 @@ export function VirtualMessageList({
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el || programmaticRef.current) return;
+    onUserScroll?.();
     const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
     atBottomRef.current = dist <= BOTTOM_THRESHOLD;
     setShowButton(dist > SCROLL_BUTTON_THRESHOLD);
@@ -158,7 +153,7 @@ export function VirtualMessageList({
       prevScrollHeightRef.current = el.scrollHeight;
       onLoadMore();
     }
-  }, [hasMore, onLoadMore]);
+  }, [hasMore, onLoadMore, onUserScroll]);
 
   // Keep the bottom anchored when the container shrinks (keyboard opens and the
   // composer's safe-area padding grows) or content grows (images/markdown lay
@@ -185,40 +180,36 @@ export function VirtualMessageList({
       <div
         ref={scrollRef}
         onScroll={handleScroll}
+        onClick={() => onBackgroundClick?.()}
         data-testid="conversation-scroll-container"
         style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}
       >
         <div
           ref={innerRef}
           data-testid="message-list-inner"
-          style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', minHeight: '100%' }}
+          style={{ height: totalSize, width: '100%', position: 'relative' }}
         >
-          {hasMore ? (
-            <div style={{ textAlign: 'center', padding: '12px 0', fontSize: 12, opacity: 0.5 }}>Loading earlier messages…</div>
-          ) : null}
-          <div ref={virtualContainerRef} style={{ height: totalSize, width: '100%', position: 'relative' }}>
-            {items.map((row) => {
-              const item = messages[row.index];
-              if (!item) return null;
-              return (
-                <div
-                  key={item.id}
-                  data-index={row.index}
-                  data-message-id={item.id}
-                  ref={virtualizer.measureElement}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    transform: `translateY(${row.start - scrollMargin}px)`,
-                  }}
-                >
-                  <RowErrorBoundary>{renderItem(item)}</RowErrorBoundary>
-                </div>
-              );
-            })}
-          </div>
+          {items.map((row) => {
+            const item = messages[row.index];
+            if (!item) return null;
+            return (
+              <div
+                key={item.id}
+                data-index={row.index}
+                data-message-id={item.id}
+                ref={virtualizer.measureElement}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${row.start}px)`,
+                }}
+              >
+                <RowErrorBoundary>{renderItem(item)}</RowErrorBoundary>
+              </div>
+            );
+          })}
         </div>
       </div>
       {showButton ? (

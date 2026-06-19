@@ -1501,6 +1501,8 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           renderItem={renderMessage}
           hasMore={hasMoreMessages}
           onLoadMore={() => setMsgLimit((l) => l + LOAD_MORE_STEP)}
+          onUserScroll={() => setSelectedMessageId(null)}
+          onBackgroundClick={() => setSelectedMessageId(null)}
           bottom={
           <div
             className="uc-composer"
