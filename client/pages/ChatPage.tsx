@@ -565,9 +565,13 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const router = useRouter();
   const narrow = useNarrow();
   // Keyboard-inclusive bottom inset (home-indicator when closed, keyboard height
-  // when open). The page declares interactive-widget=overlays-content so the
-  // webview never resizes/scrolls for the keyboard — the composer's bottom
-  // padding grows by this instead, and ChatView's flex layout shrinks the
+  // when open). The framework's KeyboardProvider derives the keyboard height from
+  // visual-viewport occlusion (window.innerHeight - visualViewport.height), so the
+  // page must use the DEFAULT interactive-widget behavior (the viewport shrinks on
+  // keyboard open). Do NOT add interactive-widget=overlays-content to the viewport
+  // meta: overlay mode stops the viewport from shrinking, occlusion reads 0, and
+  // safeArea.bottom never grows — the composer ends up behind the keyboard. The
+  // composer's bottom padding grows by this inset, and the flex layout shrinks the
   // message area above it so the latest message stays visible.
   const safeArea = useSafeAreaInsets();
 
