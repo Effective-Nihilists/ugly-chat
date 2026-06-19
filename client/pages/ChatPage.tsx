@@ -575,6 +575,36 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   // message area above it so the latest message stays visible.
   const safeArea = useSafeAreaInsets();
 
+  // iOS hardware-keyboard accessory bar fix. When a HARDWARE keyboard is attached
+  // iOS shows no soft keyboard, only its ~55px shortcut/dismiss bar at the bottom.
+  // That bar occludes the visual viewport by < 100px, which the framework's
+  // KeyboardProvider deliberately floors to 0 (its keyboard threshold), so
+  // safeArea.bottom never accounts for it and the bar covers the composer. Measure
+  // the raw bottom occlusion ourselves (no threshold) and fold it in via max()
+  // below — this also matches the full soft keyboard (same occlusion), so taking
+  // the max never double-counts.
+  const [viewportBottomInset, setViewportBottomInset] = useState(0);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const measure = (): void => {
+      // Layout-viewport bottom not covered by the visual viewport (offsetTop is 0
+      // when the document itself isn't scrolled — our chat scrolls an inner pane).
+      const occluded = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setViewportBottomInset(occluded);
+    };
+    measure();
+    vv.addEventListener('resize', measure);
+    vv.addEventListener('scroll', measure);
+    return () => {
+      vv.removeEventListener('resize', measure);
+      vv.removeEventListener('scroll', measure);
+    };
+  }, []);
+  // Effective bottom inset for the composer: the larger of the device/keyboard
+  // inset the framework reports and the raw viewport occlusion we measure.
+  const composerBottomInset = Math.max(16, safeArea.bottom, viewportBottomInset);
+
   const roomId = conversationId ?? 'demo-room';
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -1513,7 +1543,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
             style={{
               paddingLeft: 16,
               paddingRight: 16,
-              paddingBottom: Math.max(16, safeArea.bottom),
+              paddingBottom: composerBottomInset,
               // Ride up smoothly with the keyboard (matches the iOS curve).
               transition: 'padding-bottom 0.25s cubic-bezier(0.38, 0.7, 0.125, 1)',
             }}
