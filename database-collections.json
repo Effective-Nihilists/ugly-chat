@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-17T17:32:39.485Z",
+  "generatedAt": "2026-06-20T20:49:05.032Z",
   "source": "shared/collections.ts",
   "collections": {
     "perfLog": {
@@ -450,7 +450,13 @@
         "cascadeFrom": "conversation",
         "trackKeys": [
           "conversationId"
-        ]
+        ],
+        "search": {
+          "fields": [
+            "text",
+            "markdown"
+          ]
+        }
       }
     },
     "messageReaction": {
