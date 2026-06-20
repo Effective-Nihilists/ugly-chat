@@ -238,7 +238,10 @@ export const collections = defineCollections({
   },
   message: {
     schema: MessageSchema,
-    meta: { cache: false, trackable: true, public: false, cascadeFrom: 'conversation', trackKeys: ['conversationId'] },
+    // Declarative FTS: the framework maintains a generated `search` tsvector
+    // column (+ GIN) from text+markdown — replaces the bespoke trigger in
+    // migration 006. Queried via db.searchDocs → getDocs({search}).
+    meta: { cache: false, trackable: true, public: false, cascadeFrom: 'conversation', trackKeys: ['conversationId'], search: { fields: ['text', 'markdown'] } },
   },
   messageReaction: {
     schema: MessageReactionSchema,
