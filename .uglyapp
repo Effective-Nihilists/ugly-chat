@@ -18,11 +18,12 @@
       "push": "",
       "search": ""
     },
-    "lastDeployedAt": "2026-06-20T21:51:02.098Z"
+    "lastDeployedAt": "2026-06-20T22:36:55.401Z"
   },
   "name": "ugly-chat",
-  "description": "Text and video chat with humans and bots — cheap models by default.",
+  "description": "Text and video chat with real people and AI bots, all in one place. Cheap, capable models run by default so everyday conversations cost next to nothing, with premium models a single tap away when you need more horsepower. Build your own bot personas with custom instructions, personalities, and avatars, drop them into group chats, and only ever pay for what you actually use. It's messaging, AI assistance, and bot-building rolled into one fast, no-frills app — powerful when you want it, dead simple when you don't.",
   "icon": "https://ugly.chat/icon.png",
   "image": "https://ugly.chat/icon.png",
-  "title": "Ugly Chat"
+  "title": "Ugly Chat",
+  "shortDescription": "Text & video chat with humans and bots."
 }
