@@ -25,5 +25,6 @@
   "icon": "https://ugly.chat/icon.png",
   "image": "https://ugly.chat/icon.png",
   "title": "Ugly Chat",
-  "shortDescription": "Text & video chat with humans and bots."
+  "shortDescription": "Text & video chat with humans and bots.",
+  "domain": "ugly.chat"
 }
