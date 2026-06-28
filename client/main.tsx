@@ -1,4 +1,4 @@
-import { bootstrapApp, FeedbackButton } from 'ugly-app/client';
+import { bootstrapApp, FeedbackButton, initClientLogger } from 'ugly-app/client';
 import { requests } from '../shared/api';
 import en from '../shared/lang/en';
 import { stringsDef } from '../shared/strings';
@@ -6,6 +6,12 @@ import { AppShell } from './components/AppShell';
 import { RouterProvider, RouterView } from './router';
 import './styles.css';
 import { loadTheme, applyTheme } from './lib/theme';
+
+// Initialize the client logger so console.error/warn + uncaught errors are
+// forwarded to our Postgres errorLog. Importing+calling this is required to keep
+// ugly-app's Logger module (whose load-time `interceptConsole()` installs the
+// console hooks) from being tree-shaken out of the production bundle.
+initClientLogger();
 
 // Apply persisted theme ASAP so first paint is correct (auto = no attribute → OS media query).
 applyTheme(loadTheme());
