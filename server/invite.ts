@@ -3,6 +3,7 @@
 // Cloudflare Email Sending (send.ugly.bot) using creds in `.env.publish`. The
 // exact path is a deploy-time secret, so it's isolated behind injected env +
 // fetch (same shape as resolveEmail.ts) and `buildInviteEmail` is pure.
+import { shareLink } from 'ugly-app/server/adapter/workers';
 
 export interface InviteMessage {
   to: string;
@@ -10,18 +11,19 @@ export interface InviteMessage {
   html: string;
 }
 
-/** Pure: build the invite email body. `appUrl` is the deployed app origin. */
+/**
+ * Pure: build the invite email body. `appUrl` is the deployed app origin (brand
+ * label); `link` is the central short share link (https://ugly.bot/l/<code>)
+ * that deep-links into the conversation.
+ */
 export function buildInviteEmail(
   to: string,
   inviterId: string,
   conversationId: string,
   appUrl: string,
+  link: string,
 ): InviteMessage {
   const base = appUrl.replace(/\/+$/, '');
-  // Link straight into the (group) conversation; the recipient joins after auth.
-  const link = conversationId
-    ? `${base}/#/chat/${encodeURIComponent(conversationId)}`
-    : `${base}/`;
   return {
     to,
     subject: 'You have been invited to a chat on ugly.chat',
@@ -59,11 +61,23 @@ export async function sendInviteEmail(
   conversationId = '',
   env: InviteEnv = readEnv(),
   fetchFn: typeof fetch = fetch,
+  shareLinkFn: typeof shareLink = shareLink,
 ): Promise<void> {
   const sendUrl = env.EMAIL_SEND_URL ?? 'https://send.ugly.bot';
   const token = env.EMAIL_SEND_TOKEN;
   const appUrl = env.APP_URL ?? 'https://ugly.chat';
-  const msg = buildInviteEmail(to, inviterId, conversationId, appUrl);
+  const base = appUrl.replace(/\/+$/, '');
+  const target = conversationId
+    ? `${base}/#/chat/${encodeURIComponent(conversationId)}`
+    : `${base}/`;
+  // Central short link → deep-links into the chat; requireAuth so the recipient
+  // signs in with this email before joining.
+  const link = await shareLinkFn({
+    target,
+    og: { title: 'You have been invited to chat on ugly.chat' },
+    requireAuth: true,
+  });
+  const msg = buildInviteEmail(to, inviterId, conversationId, appUrl, link);
   if (!token) {
     console.warn('[invite] EMAIL_SEND_TOKEN not set — skipping invite to', to);
     return;
