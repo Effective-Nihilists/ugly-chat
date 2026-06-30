@@ -1,6 +1,6 @@
 {
   "name": "ugly-chat",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "type": "module",
   "scripts": {
     "dev": "ugly-app dev --watch",
@@ -41,7 +41,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "three": "^0.183.2",
-    "ugly-app": "^0.1.712",
+    "ugly-app": "^0.1.727",
     "yjs": "^13.6.30",
     "zod": "^4.3.6"
   },
