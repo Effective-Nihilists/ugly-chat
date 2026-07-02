@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Plus, PanelLeft, PanelLeftClose, Bot, Palette, MessageSquare, UserCog } from 'lucide-react';
+import { Plus, PanelLeft, PanelLeftClose, Bot, Palette, UserCog } from 'lucide-react';
 import { useApp } from 'ugly-app/client';
 import { useRouter } from '../router';
 import { useConversations, deleteOrLeaveConversation } from '../lib/conversations';
@@ -68,10 +68,6 @@ export function Sidebar(): React.ReactElement {
   }, [router, socket, userId, navigate]);
 
   const openTheme = useCallback(() => openThemeMenu(router), [router]);
-
-  const openFeedback = useCallback(() => {
-    document.querySelector<HTMLElement>('[data-id="feedback-button"]')?.click();
-  }, []);
 
   // Pin/unpin a conversation. The userConversation trackDocs subscription
   // (keyed by userId) picks up the visibility change and refetches the list,
@@ -142,9 +138,6 @@ export function Sidebar(): React.ReactElement {
         <button type="button" title="Theme" onClick={openTheme} className="uc-iconbtn" style={{ ...iconBtnStyle, alignSelf: 'center', marginBottom: 6 }}>
           <Palette size={18} />
         </button>
-        <button type="button" title="Feedback" onClick={openFeedback} className="uc-iconbtn" style={{ ...iconBtnStyle, alignSelf: 'center', marginBottom: 6 }}>
-          <MessageSquare size={18} />
-        </button>
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '2px 0 16px' }}>
           {filtered.map((c) => (
             <button
@@ -188,7 +181,7 @@ export function Sidebar(): React.ReactElement {
           ) : null}
         </button>
 
-        {/* Right-aligned icon cluster: Bots · Theme · Feedback */}
+        {/* Right-aligned icon cluster: Bots · Theme */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
           <button type="button" title="User settings" onClick={openUglyBotSettings} className="uc-iconbtn" style={smallIconBtn}>
             <UserCog size={18} />
@@ -198,9 +191,6 @@ export function Sidebar(): React.ReactElement {
           </button>
           <button type="button" title="Theme" onClick={openTheme} className="uc-iconbtn" style={smallIconBtn}>
             <Palette size={18} />
-          </button>
-          <button type="button" title="Feedback" onClick={openFeedback} className="uc-iconbtn" style={smallIconBtn}>
-            <MessageSquare size={18} />
           </button>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Plus, Bot, Palette, MessageSquare, UserCog } from 'lucide-react';
+import { Plus, Bot, Palette, UserCog } from 'lucide-react';
 import { useApp } from 'ugly-app/client';
 import { useRouter } from '../router';
 import { useConversations } from '../lib/conversations';
@@ -46,9 +46,6 @@ export default function ChatHomePage(): React.ReactElement {
   }, [router, socket, userId, navigate]);
 
   const openTheme = useCallback(() => openThemeMenu(router), [router]);
-  const openFeedback = useCallback(() => {
-    document.querySelector<HTMLElement>('[data-id="feedback-button"]')?.click();
-  }, []);
 
   const iconCluster = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
@@ -60,9 +57,6 @@ export default function ChatHomePage(): React.ReactElement {
       </button>
       <button type="button" title="Theme" onClick={openTheme} className="uc-iconbtn" style={topIconBtn}>
         <Palette size={18} />
-      </button>
-      <button type="button" title="Feedback" onClick={openFeedback} className="uc-iconbtn" style={topIconBtn}>
-        <MessageSquare size={18} />
       </button>
     </div>
   );

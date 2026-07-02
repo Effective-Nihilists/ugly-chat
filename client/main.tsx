@@ -1,4 +1,4 @@
-import { bootstrapApp, FeedbackButton, initClientLogger } from 'ugly-app/client';
+import { bootstrapApp, initClientLogger } from 'ugly-app/client';
 import { requests } from '../shared/api';
 import en from '../shared/lang/en';
 import { stringsDef } from '../shared/strings';
@@ -22,12 +22,9 @@ bootstrapApp({
   silentSso: true,
   RouterProvider,
   render: () => (
-    <>
-      <AppShell>
-        <RouterView />
-      </AppShell>
-      <FeedbackButton />
-    </>
+    <AppShell>
+      <RouterView />
+    </AppShell>
   ),
   strings: {
     defaultLang: stringsDef.defaultLang,
