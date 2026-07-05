@@ -11,10 +11,11 @@
  * loops, a bot's webhook is NOT fired for a message that bot itself authored.
  */
 import { collections } from '../shared/collections';
+import type { CollectionDef } from 'ugly-app/shared';
 import { isBot } from './bots';
 
 interface WebhookDb {
-  getDoc(col: unknown, id: string): Promise<Record<string, unknown> | null>;
+  getDoc<T>(collection: CollectionDef<T>, id: string): Promise<T | null>;
 }
 
 export type WebhookEventType = 'message.created' | 'message.updated' | 'message.reacted';
@@ -65,18 +66,18 @@ export async function fireMessageWebhooks(
 ): Promise<void> {
   const conv = await db.getDoc(collections.conversation, conversationId);
   if (!conv) return;
-  const appId = conv['appId'] as string | undefined;
-  const authorId = String(message['userId'] ?? '');
+  const appId = conv.appId;
+  const authorId = String(message.userId ?? '');
   // Include the conversation's `custom` so the receiving app can route the event
   // (e.g. love distinguishes coach vs couple conversations) without storing
   // conversations itself.
-  const base = { event, appId, conversationId, custom: conv['custom'] ?? null, message };
+  const base = { event, appId, conversationId, custom: conv.custom ?? null, message };
   const targets: Promise<void>[] = [];
 
   // 1. Conversation-level webhook (observes everything).
-  if (typeof conv['webhookUrl'] === 'string' && conv['webhookUrl']) {
+  if (typeof conv.webhookUrl === 'string' && conv.webhookUrl) {
     targets.push(
-      post(conv['webhookUrl'], conv['webhookSecret'] as string | undefined, {
+      post(conv.webhookUrl, conv.webhookSecret, {
         ...base,
         target: 'conversation',
       }),
@@ -84,15 +85,15 @@ export async function fireMessageWebhooks(
   }
 
   // 2. Each bot member's webhook (so the app can reply) — skip the author bot.
-  const botIds = Object.keys((conv['bots'] as Record<string, unknown> | undefined) ?? {}).filter(
+  const botIds = Object.keys((conv.bots) ?? {}).filter(
     (id) => isBot(id) && id !== authorId,
   );
   for (const botId of botIds) {
     const bot = await db.getDoc(collections.bot, botId);
-    const url = bot?.['webhookUrl'];
+    const url = bot?.webhookUrl;
     if (typeof url === 'string' && url) {
       targets.push(
-        post(url, bot['webhookSecret'] as string | undefined, {
+        post(url, bot.webhookSecret, {
           ...base,
           target: 'bot',
           botId,

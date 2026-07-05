@@ -124,8 +124,7 @@ export async function unfurlMessageLinks(
   );
   if (previews.length === 0) return;
 
-  // Re-read to avoid clobbering concurrent edits, then patch.
-  const current = (await db.getDoc(collections.message, msg._id)) as Record<string, unknown> | null;
-  if (!current) return;
-  await db.setDoc(collections.message, { ...current, linkPreviews: previews });
+  // Patch only `linkPreviews` (dot-path partial update) so we never clobber a
+  // concurrent edit — no read-modify-write of the whole message doc.
+  await db.setDocFields(collections.message, msg._id, { linkPreviews: previews });
 }

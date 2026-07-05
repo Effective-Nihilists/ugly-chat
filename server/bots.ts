@@ -15,8 +15,10 @@ import { conversationMessageCreate } from 'ugly-app/conversation/engine';
 import { runBotSearch, SEARCH_BOT_ID } from './searchBot';
 import { getUserToken } from 'ugly-app/server/adapter/workers';
 import { defaultAvatar, type Avatar } from 'ugly-app/shared';
+import type { CollectionDef, GetDocsOptions } from 'ugly-app/shared';
 import { toAvatar } from './avatar';
 import { collections } from '../shared/collections';
+import type { Conversation, Message } from '../shared/collections';
 import { bumpListForMessage } from './listDenorm';
 import type { MsgTelemetry } from '../shared/telemetry';
 
@@ -27,8 +29,8 @@ import type { MsgTelemetry } from '../shared/telemetry';
  */
 export function parseTextGenResponse(data: unknown): { text: string; usage: MsgTelemetry } {
   const d = data as Record<string, unknown> | null | undefined;
-  const msg = (d?.['message'] ?? (d?.['result'] as Record<string, unknown> | undefined)?.['message']) as Record<string, unknown> | undefined;
-  const content = msg?.['content'];
+  const msg = (d?.message ?? (d?.result as Record<string, unknown> | undefined)?.message) as Record<string, unknown> | undefined;
+  const content = msg?.content;
   let text = '';
   if (typeof content === 'string') {
     text = content.trim();
@@ -44,12 +46,12 @@ export function parseTextGenResponse(data: unknown): { text: string; usage: MsgT
       .join('')
       .trim();
   }
-  const u = (d?.['usage'] ?? (d?.['result'] as Record<string, unknown> | undefined)?.['usage'] ?? {}) as Record<string, unknown>;
+  const u = (d?.usage ?? (d?.result as Record<string, unknown> | undefined)?.usage ?? {}) as Record<string, unknown>;
   const usage: MsgTelemetry = {
-    model: String(u['model'] ?? d?.['model'] ?? ''),
-    inputTokens: Number(u['inputTokens'] ?? u['promptTokens'] ?? 0),
-    outputTokens: Number(u['outputTokens'] ?? u['completionTokens'] ?? 0),
-    costUsd: Number(u['costUsd'] ?? u['cost'] ?? 0),
+    model: String(u.model ?? d?.model ?? ''),
+    inputTokens: Number(u.inputTokens ?? u.promptTokens ?? 0),
+    outputTokens: Number(u.outputTokens ?? u.completionTokens ?? 0),
+    costUsd: Number(u.costUsd ?? u.cost ?? 0),
     latencyMs: 0,
   };
   return { text, usage };
@@ -74,10 +76,10 @@ async function uglyBotTextGen(
   maxTokens: number,
 ): Promise<{ text: string; usage: MsgTelemetry }> {
   const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
-  const base = env['UGLY_BOT_LOCAL'] === '1' ? 'http://localhost:3000' : env['UGLY_BOT_URL'] ?? 'https://ugly.bot';
+  const base = env.UGLY_BOT_LOCAL === '1' ? 'http://localhost:3000' : env.UGLY_BOT_URL ?? 'https://ugly.bot';
   const userToken = getUserToken();
   const endpoint = userToken ? `${base}/v1/ai/user-billed/text` : `${base}/v1/ai/text`;
-  const bearer = userToken ?? env['UGLY_BOT_TOKEN'];
+  const bearer = userToken ?? env.UGLY_BOT_TOKEN;
   if (!bearer) throw new Error('no end-user token and UGLY_BOT_TOKEN not set');
   const t0 = Date.now();
   const res = await fetch(endpoint, {
@@ -90,8 +92,8 @@ async function uglyBotTextGen(
   // payment failure (402 — payer out of credits) from a model/other error and
   // surface the right message. ugly.bot returns `{ error }` on both non-2xx and
   // some 200 envelopes, so check both.
-  if (!res.ok || data['error']) {
-    const detail = String(data['error'] ?? `HTTP ${res.status}`);
+  if (!res.ok || data.error) {
+    const detail = String(data.error ?? `HTTP ${res.status}`);
     const err = new Error(`textGen ${detail}`) as Error & { status?: number };
     err.status = res.status;
     throw err;
@@ -106,10 +108,10 @@ async function uglyBotTextGen(
 // uglyBotTextGen). Returns the generated image URL, or '' on failure.
 async function uglyBotImageGen(model: string, prompt: string, size: string): Promise<string> {
   const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
-  const base = env['UGLY_BOT_LOCAL'] === '1' ? 'http://localhost:3000' : env['UGLY_BOT_URL'] ?? 'https://ugly.bot';
+  const base = env.UGLY_BOT_LOCAL === '1' ? 'http://localhost:3000' : env.UGLY_BOT_URL ?? 'https://ugly.bot';
   const userToken = getUserToken();
   const endpoint = userToken ? `${base}/v1/ai/user-billed/image` : `${base}/v1/ai/image`;
-  const bearer = userToken ?? env['UGLY_BOT_TOKEN'];
+  const bearer = userToken ?? env.UGLY_BOT_TOKEN;
   if (!bearer) throw new Error('no end-user token and UGLY_BOT_TOKEN not set');
   const res = await fetch(endpoint, {
     method: 'POST',
@@ -118,8 +120,8 @@ async function uglyBotImageGen(model: string, prompt: string, size: string): Pro
   });
   if (!res.ok) throw new Error(`imageGen HTTP ${res.status}`);
   const data = (await res.json()) as Record<string, unknown>;
-  if (data['error']) throw new Error(String(data['error']));
-  const url = data['url'] ?? data['imageUrl'] ?? (data['result'] as Record<string, unknown> | undefined)?.['url'];
+  if (data.error) throw new Error(String(data.error));
+  const url = data.url ?? data.imageUrl ?? (data.result as Record<string, unknown> | undefined)?.url;
   return typeof url === 'string' ? url : '';
 }
 
@@ -183,7 +185,7 @@ export const isBotId = isBot;
 
 /** Synchronous resolver for built-in bots only (custom bots need a db read). */
 export const botUser = (id: string): { _id: string; name: string; isBot: true } | null =>
-  BOTS[id] ? { _id: id, name: BOTS[id]!.name, isBot: true } : null;
+  BOTS[id] ? { _id: id, name: BOTS[id].name, isBot: true } : null;
 
 export interface BotConfig {
   id: string;
@@ -196,12 +198,14 @@ export interface BotConfig {
 }
 
 interface MinimalDb {
-  getDoc(collection: unknown, id: string): Promise<Record<string, unknown> | null>;
-  getDocs(
-    collection: unknown,
+  getDoc<T>(collection: CollectionDef<T>, id: string): Promise<T | null>;
+  getDocs<T>(
+    collection: CollectionDef<T>,
     filter?: Record<string, unknown>,
-    options?: { sort?: Record<string, 1 | -1>; limit?: number },
-  ): Promise<Record<string, unknown>[]>;
+    options?: GetDocsOptions,
+  ): Promise<T[]>;
+  // Used transitively via `bumpListForMessage` (sidebar denorm) after a bot reply.
+  setDoc<T>(collection: CollectionDef<T>, doc: T, options?: { skipIfExists?: boolean }): Promise<boolean>;
 }
 
 const asBool = (v: unknown): boolean => v === true || v === 'true';
@@ -227,20 +231,20 @@ export async function getBotConfig(db: MinimalDb, botId: string): Promise<BotCon
   if (doc) {
     return {
       id: botId,
-      name: String(doc['name'] ?? 'Bot'),
-      systemPrompt: String(doc['instruction'] ?? ''),
-      model: String(doc['model'] ?? 'deepseek_v4_flash'),
-      firstMessage: (doc['firstMessage'] as string | null | undefined) ?? null,
-      buttons: (doc['buttons'] as { label: string; prompt: string }[] | undefined) ?? [],
-      avatar: toAvatar(doc['avatar']),
+      name: String(doc.name ?? 'Bot'),
+      systemPrompt: String(doc.instruction ?? ''),
+      model: String(doc.model ?? 'deepseek_v4_flash'),
+      firstMessage: (doc.firstMessage) ?? null,
+      buttons: (doc.buttons as { label: string; prompt: string }[] | undefined) ?? [],
+      avatar: toAvatar(doc.avatar),
     };
   }
   if (botId.startsWith('bot-')) return null;
   // Migrated bot with no editable row yet — plain userId flagged isBot in userPublic.
   const up = await db.getDoc(collections.userProfileCache, botId);
-  if (up && asBool(up['isBot'])) {
-    const name = String(up['name'] ?? 'Bot');
-    const bio = String(up['bio'] ?? '').trim();
+  if (up && asBool(up.isBot)) {
+    const name = String(up.name ?? 'Bot');
+    const bio = String(up.bio ?? '').trim();
     return {
       id: botId,
       name,
@@ -250,7 +254,7 @@ export async function getBotConfig(db: MinimalDb, botId: string): Promise<BotCon
       model: 'deepseek_v4_flash',
       firstMessage: null,
       buttons: [],
-      avatar: toAvatar(up['avatar']),
+      avatar: toAvatar(up.avatar),
     };
   }
   return null;
@@ -264,19 +268,19 @@ export async function getBotConfig(db: MinimalDb, botId: string): Promise<BotCon
  */
 async function botParticipants(
   db: MinimalDb,
-  conv: Record<string, unknown> | null,
+  conv: Conversation | null,
   conversationId: string,
   exclude: string,
 ): Promise<string[]> {
   const ids = new Set<string>();
-  const bots = (conv?.['bots'] as Record<string, unknown> | undefined) ?? {};
+  const bots = (conv?.bots) ?? {};
   for (const k of Object.keys(bots)) if (isBot(k) && k !== exclude) ids.add(k);
   if (conversationId.includes('+')) {
     for (const p of conversationId.split('+').filter(Boolean)) {
       if (p === exclude || ids.has(p)) continue;
       if (isBot(p)) { ids.add(p); continue; }
       const up = await db.getDoc(collections.userProfileCache, p);
-      if (up && asBool(up['isBot'])) ids.add(p);
+      if (up && asBool(up.isBot)) ids.add(p);
     }
   }
   // App-registered bots that declare a `webhookUrl` are driven by their owning
@@ -286,7 +290,7 @@ async function botParticipants(
   for (const id of ids) {
     if (id.startsWith('bot-')) {
       const doc = await db.getDoc(collections.bot, id);
-      if (doc && typeof doc['webhookUrl'] === 'string' && doc['webhookUrl']) continue;
+      if (doc && typeof doc.webhookUrl === 'string' && doc.webhookUrl) continue;
     }
     out.push(id);
   }
@@ -299,7 +303,7 @@ async function botParticipants(
  */
 export async function triggerBotReplies(
   db: MinimalDb,
-  collectionsArg: { conversation: unknown; message: unknown },
+  collectionsArg: { conversation: CollectionDef<Conversation>; message: CollectionDef<Message> },
   conversationId: string,
   senderUserId: string,
 ): Promise<void> {
@@ -320,15 +324,15 @@ export async function triggerBotReplies(
     { sort: { created: -1 }, limit: 20 },
   )).reverse();
   const history = recent
-    .filter((m) => m['deleted'] !== true)
+    .filter((m) => m.deleted !== true)
     .map((m) => ({
-      role: botSet.has(String(m['userId'])) ? ('assistant' as const) : ('user' as const),
-      content: String(m['text'] ?? m['markdown'] ?? ''),
+      role: botSet.has(String(m.userId)) ? ('assistant' as const) : ('user' as const),
+      content: String(m.text ?? m.markdown ?? ''),
     }))
     .filter((m) => m.content.length > 0);
 
-  type BotCfg = { model?: string; mode?: string; imageModel?: string; imageSize?: string };
-  const convBots = (conv?.['bots'] as Record<string, BotCfg> | undefined) ?? {};
+  interface BotCfg { model?: string; mode?: string; imageModel?: string; imageSize?: string }
+  const convBots = (conv?.bots as Record<string, BotCfg> | undefined) ?? {};
   for (const botId of botIds) {
     const bot = await getBotConfig(db, botId);
     if (!bot) continue;
@@ -411,10 +415,10 @@ export async function triggerBotReplies(
     );
     // Surface the bot's reply in the sidebar (preview + unread for recipients).
     await bumpListForMessage(
-      db as unknown as Parameters<typeof bumpListForMessage>[0],
+      db,
       conversationId,
       reply,
       botId,
-    ).catch((err: unknown) => console.error('[bots] list denorm failed', err));
+    ).catch((err: unknown) => { console.error('[bots] list denorm failed', err); });
   }
 }

@@ -21,7 +21,7 @@ import {
   conversationUserRemove as engineConversationUserRemove,
   conversationUserUpdateRole as engineConversationUserUpdateRole,
 } from 'ugly-app/conversation/engine';
-import type { WorkerHandlers } from 'ugly-app/shared';
+import type { WorkerHandlers, CollectionDef, DBObject, DocFields, GetDocsOptions } from 'ugly-app/shared';
 import { dbDefaults, defaultAvatar } from 'ugly-app/shared';
 import { nanoid } from 'nanoid';
 import { getUserToken } from 'ugly-app/server/adapter/workers';
@@ -31,7 +31,7 @@ import { unfurlMessageLinks } from './linkPreview';
 import { bumpListForMessage, markRead } from './listDenorm';
 import { UGLY_BOT_ID } from '../shared/bots';
 import { resolveProfiles, type Profile } from './profiles';
-import { videoJoin, videoLeave, videoEnd, videoBotJoin, videoPublish, videoState, videoCaption, type CallState, type DbLike } from './video';
+import { videoJoin, videoLeave, videoEnd, videoBotJoin, videoPublish, videoState, videoCaption, type CallState } from './video';
 import { notifyIncomingCall, notifyNewMessage } from './callNotify';
 import {
   realtimeIceServers,
@@ -40,7 +40,7 @@ import {
   realtimeRenegotiate,
 } from './realtime';
 import { requests } from '../shared/api';
-import type { Todo, UserPublicDoc } from '../shared/collections';
+import type { Todo, UserPublicDoc, UserProfileCache } from '../shared/collections';
 import { collections } from '../shared/collections';
 import { cronTasks } from '../shared/cron';
 import { resolveEmailToUser, type ResolveEnv } from './resolveEmail';
@@ -52,26 +52,32 @@ import { sendInviteEmail } from './invite';
 function getEnv(): ResolveEnv {
   const env =
     (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
-  return { UGLY_BOT_URL: env['UGLY_BOT_URL'], UGLY_BOT_TOKEN: env['UGLY_BOT_TOKEN'] };
+  return { UGLY_BOT_URL: env.UGLY_BOT_URL, UGLY_BOT_TOKEN: env.UGLY_BOT_TOKEN };
 }
 
-/** Minimal db surface the handlers need; both adapters' TypedDB satisfy it. */
+/**
+ * Minimal db surface the handlers need; both adapters' TypedDB satisfy it.
+ * Typed generically over `CollectionDef<T>` (mirroring the framework `TypedDB`)
+ * so db reads/writes are type-checked at the call site instead of returning
+ * `Record<string, unknown>` and forcing a cast on every field access.
+ */
 export interface DbSurface {
-  setDoc(col: unknown, doc: unknown): Promise<void>;
-  getDoc(col: unknown, id: string): Promise<Record<string, unknown> | null>;
-  getDocs(col: unknown, filter?: unknown, opts?: unknown): Promise<Record<string, unknown>[]>;
+  setDoc<T>(collection: CollectionDef<T>, doc: T, options?: { skipIfExists?: boolean }): Promise<boolean>;
+  setDocFields<T extends DBObject>(collection: CollectionDef<T>, id: string, fields: DocFields<T>): Promise<T>;
+  getDoc<T>(collection: CollectionDef<T>, id: string): Promise<T | null>;
+  getDocs<T>(collection: CollectionDef<T>, filter?: Record<string, unknown>, options?: GetDocsOptions): Promise<T[]>;
   // Batch-fetch by id, order-preserving (null for misses). For getter-backed
   // collections (e.g. `userPublic`) this is a cache-hit-per-id + ONE batched
   // resolver call — the conversation-list profile fast path.
-  getByIds<T>(col: unknown, ids: string[]): Promise<(T | null)[]>;
-  deleteDoc(col: unknown, id: string): Promise<void>;
+  getByIds<T>(collection: CollectionDef<T>, ids: string[]): Promise<(T | null)[]>;
+  deleteDoc(collection: CollectionDef, id: string): Promise<void>;
   // Postgres full-text search (→ pgSearchDocs, `search @@ plainto_tsquery`).
   // Present on the Pg adapter; optional so the interface stays minimal.
-  searchDocs?(
-    col: unknown,
+  searchDocs?<T>(
+    collection: CollectionDef<T>,
     searchQuery: string,
-    opts?: { filter?: unknown; limit?: number },
-  ): Promise<Record<string, unknown>[]>;
+    opts?: { filter?: Record<string, unknown>; limit?: number },
+  ): Promise<T[]>;
 }
 
 export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<typeof requests> {
@@ -85,15 +91,15 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
 
     toggleTodo: async (userId, { todoId }) => {
       const todo = await getDb().getDoc(collections.todo, todoId);
-      if (!todo?.['userId'] || todo['userId'] !== userId) throw new Error('Todo not found');
-      const updated = { ...todo, done: !todo['done'], ...dbDefaults() };
+      if (!todo?.userId || todo.userId !== userId) throw new Error('Todo not found');
+      const updated = { ...todo, done: !todo.done, ...dbDefaults() };
       await getDb().setDoc(collections.todo, updated);
-      return { done: updated.done as boolean };
+      return { done: updated.done };
     },
 
     deleteTodo: async (userId, { todoId }) => {
       const todo = await getDb().getDoc(collections.todo, todoId);
-      if (!todo?.['userId'] || todo['userId'] !== userId) throw new Error('Todo not found');
+      if (!todo?.userId || todo.userId !== userId) throw new Error('Todo not found');
       await getDb().deleteDoc(collections.todo, todoId);
       return { ok: true };
     },
@@ -109,7 +115,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       const todo: Todo = { _id, userId, text, done: false, ...dbDefaults() };
       await getDb().setDoc(collections.todo, todo);
       const readBack = await getDb().getDoc(collections.todo, _id);
-      const verified = readBack?.['_id'] === _id && readBack['text'] === text;
+      const verified = readBack?._id === _id && readBack.text === text;
       await getDb().deleteDoc(collections.todo, _id);
       return { id: _id, verified };
     },
@@ -161,7 +167,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
             message: { text: bot.firstMessage, markdown: bot.firstMessage, onlyUserIds: ['global'] },
           },
           botId,
-        ).catch((err: unknown) => console.error('[bots] first message failed', err));
+        ).catch((err: unknown) => { console.error('[bots] first message failed', err); });
       }
       return conv;
     },
@@ -174,7 +180,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       const loadedId = (loaded as { conversation?: { _id?: string } } | null)?.conversation?._id;
       if (loadedId) {
         void markRead(getDb(), loadedId, userId).catch((err: unknown) =>
-          console.error('[conv] markRead on load failed', err),
+          { console.error('[conv] markRead on load failed', err); },
         );
       }
       return loaded;
@@ -193,10 +199,10 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         input.conversationId,
         previewText,
         userId,
-      ).catch((err: unknown) => console.error('[conv] list denorm failed', err));
+      ).catch((err: unknown) => { console.error('[conv] list denorm failed', err); });
       // Push the other member(s) so they're notified when ugly.chat isn't focused.
       void notifyNewMessage(getDb(), input.conversationId, userId, previewText).catch(
-        (err: unknown) => console.error('[conv] message push failed', err),
+        (err: unknown) => { console.error('[conv] message push failed', err); },
       );
       // Built-in/custom bots WITHOUT a webhook reply via textGen here. App bots
       // (with a webhookUrl) are driven by their owning app instead — see
@@ -206,16 +212,16 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         { conversation: collections.conversation, message: collections.message },
         input.conversationId,
         userId,
-      ).catch((err: unknown) => console.error('[bots] reply failed', err));
+      ).catch((err: unknown) => { console.error('[bots] reply failed', err); });
       void fireMessageWebhooks(
         getDb(),
         'message.created',
         input.conversationId,
         msg as unknown as Record<string, unknown>,
-      ).catch((err: unknown) => console.error('[webhook] fire failed', err));
+      ).catch((err: unknown) => { console.error('[webhook] fire failed', err); });
       // Unfurl any links into a `linkPreviews` card (best-effort, async).
       void unfurlMessageLinks(getDb(), msg as unknown as Parameters<typeof unfurlMessageLinks>[1]).catch(
-        (err: unknown) => console.error('[unfurl] failed', err),
+        (err: unknown) => { console.error('[unfurl] failed', err); },
       );
       return msg;
     },
@@ -250,7 +256,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         `${input.conversationId}:${shortId}`,
       );
       if (!stored) throw new Error('Message not found');
-      if (stored['userId'] !== userId) throw new Error('Can only edit your own messages');
+      if (stored.userId !== userId) throw new Error('Can only edit your own messages');
       const updated = await engineConversationMessageEdit(
         {
           conversationId: input.conversationId,
@@ -263,7 +269,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       void unfurlMessageLinks(
         getDb(),
         updated as unknown as Parameters<typeof unfurlMessageLinks>[1],
-      ).catch((err: unknown) => console.error('[unfurl] edit failed', err));
+      ).catch((err: unknown) => { console.error('[unfurl] edit failed', err); });
       return updated;
     },
 
@@ -282,7 +288,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         convIds = [input.conversationId];
       } else {
         const ucs = await db.getDocs(collections.userConversation, { userPrivateId: userId });
-        convIds = ucs.map((u) => String(u['conversationId'] ?? '')).filter(Boolean);
+        convIds = ucs.map((u) => String(u.conversationId ?? '')).filter(Boolean);
       }
       if (convIds.length === 0) return { items: [] };
       const items = await db.searchDocs(collections.message, input.search, {
@@ -299,7 +305,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
     // ── Video call lifecycle ───────────────────────────────────────────────
     conversationVideoJoin: async (userId, input): Promise<CallState> => {
       const call = await videoJoin(
-        getDb() as unknown as DbLike,
+        getDb(),
         { conversation: collections.conversation },
         input.conversationId,
         userId,
@@ -309,16 +315,16 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       return call;
     },
     conversationVideoLeave: async (userId, input): Promise<CallState> =>
-      videoLeave(getDb() as unknown as DbLike, { conversation: collections.conversation }, input.conversationId, userId),
+      videoLeave(getDb(), { conversation: collections.conversation }, input.conversationId, userId),
     conversationVideoEnd: async (_userId, input): Promise<CallState> =>
-      videoEnd(getDb() as unknown as DbLike, { conversation: collections.conversation }, input.conversationId),
+      videoEnd(getDb(), { conversation: collections.conversation }, input.conversationId),
     conversationVideoBotJoin: async (_userId, input): Promise<CallState> =>
-      videoBotJoin(getDb() as unknown as DbLike, { conversation: collections.conversation }, input.conversationId, input.botId),
+      videoBotJoin(getDb(), { conversation: collections.conversation }, input.conversationId, input.botId),
     conversationVideoState: async (_userId, input): Promise<CallState> =>
-      videoState(getDb() as unknown as DbLike, { conversation: collections.conversation }, input.conversationId),
+      videoState(getDb(), { conversation: collections.conversation }, input.conversationId),
     conversationVideoPublish: async (userId, input): Promise<CallState> =>
       videoPublish(
-        getDb() as unknown as DbLike,
+        getDb(),
         { conversation: collections.conversation },
         input.conversationId,
         userId,
@@ -328,7 +334,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
 
     conversationCaption: async (userId, input): Promise<{ ok: boolean }> => {
       await videoCaption(
-        getDb() as unknown as DbLike,
+        getDb(),
         { conversation: collections.conversation },
         input.conversationId,
         userId,
@@ -359,20 +365,20 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       // and discarding in JS transferred ~1MB+ and was the sidebar bottleneck.
       // `$ne` is null-inclusive (Mongo semantics), so rows with no `visibility`
       // set are still returned (they default to visible).
-      const ucs = (await db.getDocs(collections.userConversation, {
+      const ucs = await db.getDocs(collections.userConversation, {
         userPrivateId: userId,
         visibility: { $ne: 'hidden' },
-      })) as Record<string, unknown>[];
+      });
       const rows: ConversationListRow[] = ucs
         .map((u) => ({
-          conversationId: String(u['conversationId'] ?? ''),
-          title: (u['title'] as string) || '',
-          image: (u['image'] as unknown) ?? null,
-          type: (u['type'] as string) || 'group',
-          preview: (u['notificationText'] as string) || '',
-          unread: (u['notificationCount'] as number) ?? 0,
-          pinned: (u['visibility'] as string) === 'pinned',
-          lastActivity: toMillis(u['updated'] ?? u['viewed'] ?? u['created']),
+          conversationId: String(u.conversationId ?? ''),
+          title: (u.title!) || '',
+          image: (u.image) ?? null,
+          type: (u.type!) || 'group',
+          preview: (u.notificationText!) || '',
+          unread: (u.notificationCount!) ?? 0,
+          pinned: (u.visibility!) === 'pinned',
+          lastActivity: toMillis(u.updated ?? u.viewed ?? u.created),
         }))
         .filter((r) => r.conversationId !== '');
 
@@ -460,8 +466,8 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       });
       const readers = rows
         .map((uc) => ({
-          userId: String(uc['userPrivateId'] ?? ''),
-          viewed: typeof uc['viewed'] === 'number' ? uc['viewed'] : 0,
+          userId: String(uc.userPrivateId ?? ''),
+          viewed: typeof uc.viewed === 'number' ? uc.viewed : 0,
         }))
         .filter((r) => r.userId && r.userId !== userId && !isBot(r.userId) && r.viewed > 0);
       return { readers };
@@ -493,7 +499,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       );
       if (!uc) throw new Error('Not a member of this conversation');
       // Toggle between pinned and visible — don't resurrect a hidden row.
-      if ((uc['visibility'] as string) === 'hidden') return { ok: false };
+      if ((uc.visibility!) === 'hidden') return { ok: false };
       await db.setDoc(collections.userConversation, {
         ...uc,
         visibility: input.pinned ? 'pinned' : 'visible',
@@ -512,14 +518,14 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       if (!uc) throw new Error('Not a member of this conversation');
       const conv = await db.getDoc(collections.conversation, input.conversationId);
       if (!conv) throw new Error('Conversation not found');
-      const bots = { ...((conv['bots'] as Record<string, Record<string, unknown>> | undefined) ?? {}) };
+      const bots = { ...((conv.bots as Record<string, Record<string, unknown>> | undefined) ?? {}) };
       if (!bots[input.botId]) throw new Error('Bot is not a member of this conversation');
       // Patch only the provided fields (mode / text model / image model / size).
       const patch: Record<string, unknown> = { ...bots[input.botId] };
-      if (input.model !== undefined) patch['model'] = input.model;
-      if (input.mode !== undefined) patch['mode'] = input.mode;
-      if (input.imageModel !== undefined) patch['imageModel'] = input.imageModel;
-      if (input.imageSize !== undefined) patch['imageSize'] = input.imageSize;
+      if (input.model !== undefined) patch.model = input.model;
+      if (input.mode !== undefined) patch.mode = input.mode;
+      if (input.imageModel !== undefined) patch.imageModel = input.imageModel;
+      if (input.imageSize !== undefined) patch.imageSize = input.imageSize;
       bots[input.botId] = patch;
       await db.setDoc(collections.conversation, { ...conv, bots, updated: new Date() });
       return { ok: true };
@@ -543,8 +549,8 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       const token = getUserToken();
       if (token) {
         const fields: Record<string, unknown> = {};
-        if (input.name !== undefined) fields['name'] = input.name;
-        if (input.avatarUrl !== undefined) fields['avatar'] = input.avatarUrl;
+        if (input.name !== undefined) fields.name = input.name;
+        if (input.avatarUrl !== undefined) fields.avatar = input.avatarUrl;
         if (Object.keys(fields).length > 0) {
           const res = await fetch(`${base}/api/userUpdate`, {
             method: 'POST',
@@ -556,12 +562,13 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       }
       // Refresh the local cache (resolved fresh now) so the new name/avatar is
       // used immediately by every conversation render this session.
-      const existing = (await db.getDoc(collections.userProfileCache, userId)) ?? {};
-      const name = input.name ?? (existing['name'] as string | undefined) ?? null;
+      const existing: Partial<UserProfileCache> =
+        (await db.getDoc(collections.userProfileCache, userId)) ?? {};
+      const name = input.name ?? (existing.name as string | undefined) ?? null;
       const avatarUrl =
         input.avatarUrl !== undefined
           ? input.avatarUrl
-          : ((existing['avatarResolved'] as string | null | undefined) ?? null);
+          : ((existing.avatarResolved as string | null | undefined) ?? null);
       await db.setDoc(collections.userProfileCache, {
         ...existing,
         _id: userId,
@@ -579,7 +586,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       const db = getDb();
       const ucs = await db.getDocs(collections.userConversation, { userPrivateId: userId });
       const convIds = ucs
-        .map((u) => String(u['conversationId'] ?? ''))
+        .map((u) => String(u.conversationId ?? ''))
         .filter(Boolean)
         .slice(0, 200);
       if (convIds.length === 0) return { users: [] };
@@ -589,7 +596,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       const ids = [
         ...new Set(
           cus
-            .map((r) => String(r['userId'] ?? ''))
+            .map((r) => String(r.userId ?? ''))
             .filter((id) => id && id !== userId && !isBot(id)),
         ),
       ].slice(0, 100);
@@ -616,16 +623,16 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       });
       const profiles = await resolveProfiles(
         db,
-        rows.map((r) => String(r['userId'] ?? '')).filter(Boolean),
+        rows.map((r) => String(r.userId ?? '')).filter(Boolean),
       );
       const byId = new Map(profiles.map((p) => [p.id, p]));
       const members = rows
         .map((r) => {
-          const id = String(r['userId'] ?? '');
+          const id = String(r.userId ?? '');
           const p = byId.get(id);
           return {
             userId: id,
-            role: String(r['role'] ?? 'member'),
+            role: String(r.role ?? 'member'),
             name: p?.name ?? id.slice(0, 8),
             avatar: p?.avatar ?? defaultAvatar,
             isBot: p?.isBot ?? isBot(id),
@@ -675,7 +682,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         collections.conversationUser,
         `${input.conversationId}:${userId}`,
       );
-      if (self?.['role'] !== 'owner') {
+      if (self?.role !== 'owner') {
         throw new Error('Only an owner can delete this conversation');
       }
       // The typed DB cascades to children (message, messageReaction,
@@ -693,7 +700,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       const r = await resolveEmailToUser(input.email, getEnv());
       if (r.status === 'invite') {
         await sendInviteEmail(r.email, userId).catch((err: unknown) =>
-          console.error('[invite] direct invite failed', err),
+          { console.error('[invite] direct invite failed', err); },
         );
         return { conversationId: '', invited: true };
       }
@@ -732,7 +739,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
           );
         } else {
           await sendInviteEmail(r.email, userId, id).catch((err: unknown) =>
-            console.error('[invite] group invite failed', err),
+            { console.error('[invite] group invite failed', err); },
           );
           invited.push(r.email);
         }
@@ -779,7 +786,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       // Only an invite (no known members) — mirror conversationCreateDirect's invite path.
       if (members.length === 0 && invited.length === 1) {
         await sendInviteEmail(invited[0]!, userId).catch((err: unknown) =>
-          console.error('[invite] direct invite failed', err),
+          { console.error('[invite] direct invite failed', err); },
         );
         return { conversationId: '', invited };
       }
@@ -798,7 +805,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       }
       for (const email of invited) {
         await sendInviteEmail(email, userId, id).catch((err: unknown) =>
-          console.error('[invite] group invite failed', err),
+          { console.error('[invite] group invite failed', err); },
         );
       }
       return { conversationId: id, invited };
@@ -823,7 +830,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
 
     botUpdate: async (userId, input): Promise<{ ok: boolean }> => {
       const existing = await getDb().getDoc(collections.bot, input.botId);
-      if (!existing || existing['ownerId'] !== userId) throw new Error('Bot not found');
+      if (existing?.ownerId !== userId) throw new Error('Bot not found');
       const patch: Record<string, unknown> = {};
       for (const k of ['name', 'instruction', 'model', 'avatar', 'firstMessage', 'buttons'] as const) {
         if (input[k] !== undefined) patch[k] = input[k];
@@ -836,13 +843,13 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
 
     botListMine: async (userId): Promise<{ bots: Record<string, unknown>[] }> => {
       const bots = await getDb().getDocs(collections.bot, { ownerId: userId });
-      bots.sort((a, b) => toMillis(b['updated'] ?? b['created']) - toMillis(a['updated'] ?? a['created']));
+      bots.sort((a, b) => toMillis(b.updated ?? b.created) - toMillis(a.updated ?? a.created));
       return { bots };
     },
 
     botDelete: async (userId, input): Promise<{ ok: boolean }> => {
       const existing = await getDb().getDoc(collections.bot, input.botId);
-      if (!existing || existing['ownerId'] !== userId) throw new Error('Bot not found');
+      if (existing?.ownerId !== userId) throw new Error('Bot not found');
       await getDb().deleteDoc(collections.bot, input.botId);
       return { ok: true };
     },
@@ -853,7 +860,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       const db = getDb();
       const conv = await db.getDoc(collections.conversation, input.conversationId);
       if (!conv) throw new Error('Conversation not found');
-      const owners = (conv['ownerIds'] as string[] | undefined) ?? [];
+      const owners = (conv.ownerIds as string[] | undefined) ?? [];
       if (!owners.includes(userId) && !input.conversationId.endsWith(userId)) {
         throw new Error('Not allowed');
       }
@@ -867,11 +874,11 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
           { limit: 500 },
         );
         if (msgs.length === 0) break;
-        for (const m of msgs) await db.deleteDoc(collections.message, String(m['_id']));
+        for (const m of msgs) await db.deleteDoc(collections.message, String(m._id));
         if (msgs.length < 500) break;
       }
       // Re-seed the bot's greeting so a cleared bot chat starts fresh.
-      const botsField = (conv['bots'] as Record<string, unknown> | undefined) ?? {};
+      const botsField = (conv.bots) ?? {};
       for (const botId of Object.keys(botsField)) {
         if (!isBot(botId)) continue;
         const bot = await getBotConfig(db, botId).catch(() => null);
@@ -925,7 +932,7 @@ async function postSystemMessage(
       message: { systemType, systemParam, text: '', markdown: '', onlyUserIds: ['global'] },
     },
     'global',
-  ).catch((err: unknown) => console.error('[system-message] failed', err));
+  ).catch((err: unknown) => { console.error('[system-message] failed', err); });
 }
 
 function toMillis(v: unknown): number {

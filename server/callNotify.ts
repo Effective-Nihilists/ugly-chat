@@ -17,6 +17,7 @@ import { uglyBotRequest } from './uglybot';
 import { isBot } from './bots';
 import { collections } from '../shared/collections';
 import type { UserPublicDoc } from '../shared/collections';
+import type { CollectionDef } from 'ugly-app/shared';
 
 interface CallParticipantLike {
   userId: string;
@@ -26,7 +27,7 @@ interface CallStateLike {
   participants?: Record<string, CallParticipantLike>;
 }
 interface DbLike {
-  getByIds<T>(col: unknown, ids: string[]): Promise<(T | null)[]>;
+  getByIds<T>(collection: CollectionDef<T>, ids: string[]): Promise<(T | null)[]>;
 }
 
 export async function notifyIncomingCall(
@@ -60,9 +61,7 @@ export async function notifyIncomingCall(
   // the click target must be an ABSOLUTE ugly.chat URL — ugly.bot's service
   // worker opens it, taking the user to the conversation on ugly.chat.
   const base =
-    (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.[
-      'PUBLIC_APP_URL'
-    ] ?? 'https://ugly.chat';
+    (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.PUBLIC_APP_URL ?? 'https://ugly.chat';
   const url = `${base.replace(/\/$/, '')}/${conversationId}`;
 
   await Promise.all(
@@ -92,9 +91,7 @@ export async function notifyIncomingCall(
 // Absolute click target (ugly.bot delivers the push; its SW opens this URL).
 function convUrl(conversationId: string): string {
   const base =
-    (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.[
-      'PUBLIC_APP_URL'
-    ] ?? 'https://ugly.chat';
+    (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.PUBLIC_APP_URL ?? 'https://ugly.chat';
   return `${base.replace(/\/$/, '')}/${conversationId}`;
 }
 

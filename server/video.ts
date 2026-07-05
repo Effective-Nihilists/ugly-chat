@@ -9,6 +9,8 @@
  * "fake call" (avatar + local TTS), needing no media track.
  */
 import { botUser } from './bots';
+import type { CollectionDef, DBObject, DocFields } from 'ugly-app/shared';
+import type { Conversation } from '../shared/collections';
 
 export interface CallParticipant {
   userId: string;
@@ -42,13 +44,17 @@ export interface CallState {
 }
 
 export interface DbLike {
-  getDoc(collection: unknown, id: string): Promise<Record<string, unknown> | null>;
-  setDocFields(collection: unknown, id: string, fields: Record<string, unknown>): Promise<void>;
+  getDoc<T>(collection: CollectionDef<T>, id: string): Promise<T | null>;
+  setDocFields<T extends DBObject>(
+    collection: CollectionDef<T>,
+    id: string,
+    fields: DocFields<T>,
+  ): Promise<T>;
 }
-type Collections = { conversation: unknown };
+interface Collections { conversation: CollectionDef<Conversation> }
 
-function getCall(conv: Record<string, unknown> | null): CallState {
-  const c = conv?.['call'] as CallState | undefined;
+function getCall(conv: Conversation | null): CallState {
+  const c = conv?.call as CallState | undefined;
   return c ?? { active: false, participants: {} };
 }
 

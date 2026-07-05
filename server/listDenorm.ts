@@ -15,12 +15,17 @@
  * without a circular dependency.
  */
 import { collections } from '../shared/collections';
+import type { CollectionDef, GetDocsOptions } from 'ugly-app/shared';
 import { UGLY_BOT_ID } from '../shared/bots';
 
 interface DbLike {
-  getDoc(col: unknown, id: string): Promise<Record<string, unknown> | null>;
-  getDocs(col: unknown, filter?: unknown, opts?: unknown): Promise<Record<string, unknown>[]>;
-  setDoc(col: unknown, doc: unknown): Promise<void>;
+  getDoc<T>(collection: CollectionDef<T>, id: string): Promise<T | null>;
+  getDocs<T>(
+    collection: CollectionDef<T>,
+    filter?: Record<string, unknown>,
+    options?: GetDocsOptions,
+  ): Promise<T[]>;
+  setDoc<T>(collection: CollectionDef<T>, doc: T, options?: { skipIfExists?: boolean }): Promise<boolean>;
 }
 
 const isBotId = (id: string): boolean => id.startsWith('bot-') || id === UGLY_BOT_ID;
@@ -43,14 +48,14 @@ export async function bumpListForMessage(
   const p = preview(text);
   await Promise.all(
     rows.map(async (uc) => {
-      const memberId = String(uc['userPrivateId'] ?? '');
+      const memberId = String(uc.userPrivateId ?? '');
       if (!memberId || isBotId(memberId)) return;
       const isSender = memberId === senderId;
-      const visibility = (uc['visibility'] as string) === 'hidden' ? 'visible' : uc['visibility'];
+      const visibility = (uc.visibility!) === 'hidden' ? 'visible' : uc.visibility;
       await db.setDoc(collections.userConversation, {
         ...uc,
         notificationText: p,
-        notificationCount: isSender ? 0 : num(uc['notificationCount']) + 1,
+        notificationCount: isSender ? 0 : num(uc.notificationCount) + 1,
         ...(isSender ? { viewed: Date.now() } : {}),
         visibility,
         updated: new Date(),
@@ -67,13 +72,13 @@ export async function markRead(
 ): Promise<void> {
   const uc = await db.getDoc(collections.userConversation, `${userId}:${conversationId}`);
   if (!uc) return;
-  const hidden = (uc['visibility'] as string) === 'hidden';
-  if (num(uc['notificationCount']) === 0 && !hidden) return; // nothing to do
+  const hidden = (uc.visibility!) === 'hidden';
+  if (num(uc.notificationCount) === 0 && !hidden) return; // nothing to do
   await db.setDoc(collections.userConversation, {
     ...uc,
     notificationCount: 0,
     viewed: Date.now(),
-    visibility: hidden ? 'visible' : uc['visibility'],
+    visibility: hidden ? 'visible' : uc.visibility,
     updated: new Date(),
   });
 }
