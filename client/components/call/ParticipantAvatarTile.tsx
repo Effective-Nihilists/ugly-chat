@@ -27,7 +27,7 @@ function webglAvailable(): boolean {
   if (typeof document === 'undefined') return false;
   try {
     const c = document.createElement('canvas');
-    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+    return !!(c.getContext('webgl2') ?? c.getContext('webgl'));
   } catch {
     return false;
   }
@@ -88,8 +88,8 @@ export function ParticipantAvatarTile({
   // Fall back to the circular image if the GLB never reports ready.
   useEffect(() => {
     if (!use3d || ready) return undefined;
-    const t = setTimeout(() => setFailed(true), READY_TIMEOUT_MS);
-    return () => clearTimeout(t);
+    const t = setTimeout(() => { setFailed(true); }, READY_TIMEOUT_MS);
+    return () => { clearTimeout(t); };
   }, [use3d, ready]);
 
   const bg: React.CSSProperties = backgroundUrl
@@ -138,16 +138,16 @@ export function ParticipantAvatarTile({
     <div data-id="participant-avatar-tile" style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', ...bg }}>
       <style>{`@keyframes uc-ring-pulse {0%{transform:scale(1);opacity:.9}70%{transform:scale(1.25);opacity:0}100%{opacity:0}}`}</style>
       {use3d ? (
-        <AvatarErrorBoundary fallback={circle} onError={() => setFailed(true)}>
+        <AvatarErrorBoundary fallback={circle} onError={() => { setFailed(true); }}>
           <Suspense fallback={circle}>
             <TalkingAvatar
-              src={glbUrl as string}
+              src={glbUrl}
               analyser={analyser}
               speaking={speaking}
               framing="head"
               background="transparent"
               style={{ width: '100%', height: '100%' }}
-              onReady={() => setReady(true)}
+              onReady={() => { setReady(true); }}
             />
           </Suspense>
         </AvatarErrorBoundary>

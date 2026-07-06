@@ -45,8 +45,9 @@ const app = createApp(
       console.log('[Email] Received:', { from: inbound.from, id: inbound.id, subject: inbound.subject });
     });
 
-    // Conversation engine deps (shared with the Workers entry).
-    wireEngineDeps(getDb);
+    // Conversation engine deps (shared with the Workers entry). The engine needs
+    // the full TypedDB surface, so pass `app.db` directly (not the narrowed getter).
+    wireEngineDeps(() => app.db);
 
     enableCollab(configurator, {
       async loadState(docId) {

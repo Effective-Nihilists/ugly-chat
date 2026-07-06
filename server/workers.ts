@@ -21,11 +21,12 @@ import { wireEngineDeps } from './configure';
 import { registerAppApi } from './appApi';
 import { withUserPublic } from './userPublic';
 
-const getDb = (): DbSurface => {
+const getFullDb = () => {
   const ctx = getAppContext();
   if (!ctx.typedDb) throw new Error('[workers] typedDb not initialized');
-  return ctx.typedDb as unknown as DbSurface;
+  return ctx.typedDb;
 };
+const getDb = (): DbSurface => getFullDb() as unknown as DbSurface;
 
 const app = createWorkersApp(
   { requests, messages },
@@ -35,10 +36,15 @@ const app = createWorkersApp(
   withUserPublic(collections),
   (cfg) => {
     cfg.setWorkers(cronTasks, cronHandlers);
-    wireEngineDeps(getDb);
+    wireEngineDeps(getFullDb);
     // Cross-app chat API (/app/*) — authenticated by ugly.bot chat tokens.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    cfg.setRawRoutes((honoApp: any) => registerAppApi(honoApp, getDb));
+    // `setRawRoutes` hands back a `Hono<{ Bindings: WorkersEnv }>`, but the
+    // cross-app API treats bindings as a generic record (it reads app-specific
+    // vars like UGLY_BOT_URL that WorkersEnv doesn't declare). Bridge the two
+    // Hono binding shapes at this boundary.
+    cfg.setRawRoutes((honoApp) => {
+      registerAppApi(honoApp as unknown as Parameters<typeof registerAppApi>[0], getDb);
+    });
   },
 );
 

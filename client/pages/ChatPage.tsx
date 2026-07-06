@@ -9,6 +9,7 @@ import { extractImages, ChatImage, ImageZoomViewer } from '../components/ChatMed
 import { nextSelectedId } from '../lib/messageSelection';
 import type { ChatMessage, ChatUser, ChatTypingEntry } from 'ugly-app/conversation/shared';
 import type { DBObject } from 'ugly-app/shared';
+import type { UserConversation } from '../../shared/collections';
 import { type VideoCallHandle } from '../components/VideoCall';
 import { CallLayout } from '../components/CallLayout';
 import { openMembersPopup } from '../components/MembersPopup';
@@ -125,9 +126,9 @@ const LOAD_MORE_STEP = 100;
 function useNarrow(): boolean {
   const [narrow, setNarrow] = useState(() => (typeof window === 'undefined' ? false : window.innerWidth < 820));
   useEffect(() => {
-    const f = (): void => setNarrow(window.innerWidth < 820);
+    const f = (): void => { setNarrow(window.innerWidth < 820); };
     window.addEventListener('resize', f);
-    return () => window.removeEventListener('resize', f);
+    return () => { window.removeEventListener('resize', f); };
   }, []);
   return narrow;
 }
@@ -245,7 +246,7 @@ function MessageBody(props: {
               autoFocus
               value={draft}
               disabled={saving}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(e) => { setDraft(e.target.value); }}
               onKeyDown={(e) => {
                 if (e.key === 'Escape') {
                   e.preventDefault();
@@ -273,7 +274,7 @@ function MessageBody(props: {
             <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                onClick={() => setEditing(false)}
+                onClick={() => { setEditing(false); }}
                 disabled={saving}
                 style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--app-border)', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }}
               >
@@ -426,7 +427,7 @@ function MessageBody(props: {
             let runLen = 0;
             for (let i = humanIdx; i >= 0; i--) {
               const m = humanSorted[i];
-              if (m && m.userId === humanMeId) runLen++;
+              if (m?.userId === humanMeId) runLen++;
               else break;
             }
             return (
@@ -454,7 +455,7 @@ function MessageBody(props: {
 
       {isSelected ? (
         <div
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); }}
           style={{
             position: 'absolute',
             // Sit clear above the bubble so it doesn't cover the message text.
@@ -473,7 +474,7 @@ function MessageBody(props: {
           {REACTIONS.map((r) => {
             const Icon = REACTION_ICON[r];
             return (
-              <button key={r} title={r} onClick={() => onReact(msg.id, r)} style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', color: 'var(--app-foreground)' }}>
+              <button key={r} title={r} onClick={() => { onReact(msg.id, r); }} style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', color: 'var(--app-foreground)' }}>
                 {Icon ? <Icon size={15} /> : null}
               </button>
             );
@@ -481,9 +482,9 @@ function MessageBody(props: {
           {voice.enabled && hasBody && !isOwn ? (
             <button
               title={voice.playingId === msg.id ? 'Stop' : 'Read aloud'}
-              onClick={() =>
-                voice.playingId === msg.id ? voice.stop() : voice.speak(msg.id, bodyText)
-              }
+              onClick={() => {
+                if (voice.playingId === msg.id) { voice.stop(); } else { voice.speak(msg.id, bodyText); }
+              }}
               style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: 0.6, color: 'var(--app-foreground)' }}
             >
               {voice.playingId === msg.id ? <VolumeX size={15} /> : <Volume2 size={15} />}
@@ -494,10 +495,10 @@ function MessageBody(props: {
               title={copied ? 'Copied' : 'Copy'}
               onClick={() => {
                 void navigator.clipboard
-                  ?.writeText(text)
+                  .writeText(text)
                   .then(() => {
                     setCopied(true);
-                    setTimeout(() => setCopied(false), 1200);
+                    setTimeout(() => { setCopied(false); }, 1200);
                   })
                   .catch(() => undefined);
               }}
@@ -509,7 +510,7 @@ function MessageBody(props: {
           {hasText ? (
             <button
               title={pinned ? 'Unpin' : 'Pin'}
-              onClick={() => onPin(msg.id)}
+              onClick={() => { onPin(msg.id); }}
               style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: pinned ? 1 : 0.6, color: pinned ? 'var(--app-primary)' : 'var(--app-foreground)' }}
             >
               <Pin size={14} fill={pinned ? 'currentColor' : 'none'} />
@@ -521,7 +522,7 @@ function MessageBody(props: {
             </button>
           ) : null}
           {isOwn ? (
-            <button title="Delete" onClick={() => onDelete(msg.id)} style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: 0.6, color: 'var(--app-foreground)' }}>
+            <button title="Delete" onClick={() => { onDelete(msg.id); }} style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: 0.6, color: 'var(--app-foreground)' }}>
               <Trash2 size={14} />
             </button>
           ) : null}
@@ -614,7 +615,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   // The user pulls older history in on demand via ChatView's "Load more".
   const [msgLimit, setMsgLimit] = useState(INITIAL_MSG_LIMIT);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
-  const [ready, setReady] = useState(false);
+  const [, setReady] = useState(false);
   const [title, setTitle] = useState('Conversation');
   const [convImage, setConvImage] = useState<unknown>(null);
   const [profiles, setProfiles] = useState<Record<string, ChatUser>>({});
@@ -656,7 +657,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   // viewport-relative — the router popup positioner is a transformed ancestor,
   // which would otherwise collapse a fixed overlay to 0×0).
   const [zoomImg, setZoomImg] = useState<{ src: string; alt: string } | null>(null);
-  const openImage = useCallback((src: string, alt: string) => setZoomImg({ src, alt }), []);
+  const openImage = useCallback((src: string, alt: string) => { setZoomImg({ src, alt }); }, []);
   const [, forceTick] = useState(0);
 
   useEffect(() => {
@@ -675,7 +676,11 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     setReaders([]);
     let unsubConv: (() => void) | undefined;
     let unsubUserConv: (() => void) | undefined;
-    let cancelled = false;
+    // Flipped by the cleanup below on unmount/dep-change. Read through a getter so
+    // TS doesn't literal-narrow it to `false` across the async IIFE's awaits (the
+    // cancellation happens on another tick, during an await).
+    const cancel = { current: false };
+    const isCancelled = (): boolean => cancel.current;
     void (async () => {
       try {
         // ONLY the shared Demo Room is auto-created/joined. Real conversations
@@ -693,10 +698,10 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         }
         // Authoritative title from the denormalized per-user row (same source as
         // the sidebar) — a direct read so the header is correct on first paint.
-        const uc = (await socket.getDoc('userConversation', `${userId}:${roomId}`)) as ConversationDoc | null;
-        if (!cancelled && uc?.title) {
+        const uc = await socket.getDoc<UserConversation>('userConversation', `${userId}:${roomId}`);
+        if (!isCancelled() && uc?.title) {
           setTitle(uc.title);
-        } else if (!cancelled) {
+        } else if (!isCancelled()) {
           // DM with no title → show the other participant's name (ugly.bot
           // parity). Direct conversations are keyed by the two user ids joined
           // with ':' (framework native) or legacy '+'. Either way, a 2-part id
@@ -709,28 +714,28 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
               profiles?: { name: string; avatar?: { image?: { uri?: string } } }[];
             };
             const p = res.profiles?.[0];
-            if (p?.name && !cancelled) setTitle(p.name);
+            if (p?.name && !isCancelled()) setTitle(p.name);
             // Use the partner's avatar in the header (the DM has no conv image).
             const partnerImg = p?.avatar?.image?.uri;
-            if (partnerImg && !cancelled) setConvImage((img: unknown) => img ?? partnerImg);
+            if (partnerImg && !isCancelled()) setConvImage((img: unknown) => img ?? partnerImg);
           }
         }
       } catch (err) {
         console.error('[ChatPage] ensure room failed', err);
       }
-      if (cancelled) return;
+      if (isCancelled()) return;
       unsubConv = socket.trackDoc<ConversationDoc>('conversation', roomId, (doc) => {
         if (doc) {
           if (doc.title) setTitle(doc.title);
           setConvImage((img: unknown) => doc.image ?? img);
           // First custom bot member → drives the "⋯ Clear chat" menu + the
           // persistent starter buttons above the composer.
-          const ids = Object.keys((doc.bots as Record<string, unknown> | undefined) ?? {});
+          const ids = Object.keys((doc.bots) ?? {});
           const firstBot = ids.find((b) => b.startsWith('bot-')) ?? null;
           setBotId((cur) => cur ?? firstBot);
           setTyping(((doc as { typing?: ChatTypingEntry[] }).typing ?? []));
           if (typeof doc.type === 'string') setConvType(doc.type);
-          setPinnedMessageId((doc.pinnedMessageId as string | null | undefined) ?? null);
+          setPinnedMessageId((doc.pinnedMessageId) ?? null);
         }
       });
       // The denormalized userConversation row carries the authoritative sidebar
@@ -747,7 +752,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       setReady(true);
     })();
     return () => {
-      cancelled = true;
+      cancel.current = true;
       unsubConv?.();
       unsubUserConv?.();
     };
@@ -775,17 +780,17 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         if (typeof document === 'undefined' || document.visibilityState === 'visible') {
           void socket
             .request('conversationMarkRead', { conversationId: roomId })
-            .then(() => pingConversationActivity())
+            .then(() => { pingConversationActivity(); })
             .catch(() => undefined);
           // Refresh the simple per-user last-read timestamps (for "Seen").
           void socket
             .request('conversationReadState', { conversationId: roomId })
-            .then((r) => setReaders((r as { readers?: { userId: string; viewed: number }[] }).readers ?? []))
+            .then((r) => { setReaders((r as { readers?: { userId: string; viewed: number }[] }).readers ?? []); })
             .catch(() => undefined);
         }
       },
     );
-    return () => unsub();
+    return () => { unsub(); };
   }, [socket, roomId, msgLimit]);
 
   // Resolve participant profiles (real names + avatars). Also resolve membership
@@ -823,7 +828,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           return next;
         });
       })
-      .catch((err: unknown) => console.error('[ChatPage] profilesGet failed', err));
+      .catch((err: unknown) => { console.error('[ChatPage] profilesGet failed', err); });
   }, [messages, profiles, socket, userId]);
 
   // Derive the conversation's bot id (drives the ⋯ menu + starter buttons).
@@ -869,13 +874,13 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           .getDoc('conversation', roomId)
           .then((cdoc) => {
             if (cancelled) return;
-            type Cfg = { model?: string; mode?: string; imageModel?: string; imageSize?: string };
+            interface Cfg { model?: string; mode?: string; imageModel?: string; imageSize?: string }
             const bots = (cdoc as { bots?: Record<string, Cfg> } | null)?.bots ?? {};
-            const cfg = (botId && bots[botId]) || {};
-            setBotModel(cfg.model || defaultModel);
-            setBotMode(cfg.mode || 'chat');
-            setBotImageModel(cfg.imageModel || 'flux_1_dev');
-            setBotImageSize(cfg.imageSize || 'square');
+            const cfg: Cfg = (botId ? bots[botId] : undefined) ?? {};
+            setBotModel(cfg.model ?? defaultModel);
+            setBotMode(cfg.mode ?? 'chat');
+            setBotImageModel(cfg.imageModel ?? 'flux_1_dev');
+            setBotImageSize(cfg.imageSize ?? 'square');
           })
           .catch(() => { if (!cancelled) setBotModel(defaultModel); });
       })
@@ -904,7 +909,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   useEffect(() => {
     return () => {
       setPending((p) => {
-        p.forEach((x) => URL.revokeObjectURL(x.preview));
+        p.forEach((x) => { URL.revokeObjectURL(x.preview); });
         return [];
       });
     };
@@ -927,8 +932,8 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           conversationId: roomId,
           message: { markdown: text, text, ...(parentMessageId ? { parentMessageId } : {}) },
         })
-        .then(() => pingConversationActivity())
-        .catch((err: unknown) => console.error('[ChatPage] send failed', err));
+        .then(() => { pingConversationActivity(); })
+        .catch((err: unknown) => { console.error('[ChatPage] send failed', err); });
     },
     [socket, roomId],
   );
@@ -1001,7 +1006,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     (messageId: string) => {
       void socket
         .request('conversationMessageDelete', { conversationId: roomId, messageId: splitId(messageId) })
-        .catch((err: unknown) => console.error('[ChatPage] delete failed', err));
+        .catch((err: unknown) => { console.error('[ChatPage] delete failed', err); });
     },
     [socket, roomId],
   );
@@ -1010,7 +1015,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     (messageId: string, reaction: string) => {
       void socket
         .request('conversationMessageReact', { conversationId: roomId, messageId: splitId(messageId), reaction })
-        .catch((err: unknown) => console.error('[ChatPage] react failed', err));
+        .catch((err: unknown) => { console.error('[ChatPage] react failed', err); });
     },
     [socket, roomId],
   );
@@ -1057,7 +1062,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       const next = pinnedMessageId === messageId ? null : messageId;
       void socket
         .request('conversationPinMessage', { conversationId: roomId, messageId: next })
-        .catch((err: unknown) => console.error('[ChatPage] pin failed', err));
+        .catch((err: unknown) => { console.error('[ChatPage] pin failed', err); });
     },
     [socket, roomId, pinnedMessageId],
   );
@@ -1066,8 +1071,8 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     setMenuOpen(false);
     void socket
       .request('conversationClear', { conversationId: roomId })
-      .then(() => pingConversationActivity())
-      .catch((err: unknown) => console.error('[ChatPage] clear failed', err));
+      .then(() => { pingConversationActivity(); })
+      .catch((err: unknown) => { console.error('[ChatPage] clear failed', err); });
   }, [socket, roomId]);
 
   // Delete (owner) or leave (non-owner) the conversation, then return home.
@@ -1075,8 +1080,8 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     setConfirmDeleteConv(false);
     setMenuOpen(false);
     void deleteOrLeaveConversation(socket, roomId, userId)
-      .then(() => router.push('', {}))
-      .catch((err: unknown) => console.error('[ChatPage] delete failed', err));
+      .then(() => { router.push('', {}); })
+      .catch((err: unknown) => { console.error('[ChatPage] delete failed', err); });
   }, [socket, roomId, userId, router]);
 
   // Typing indicator. The composer fires `onType` on every edit; we throttle
@@ -1113,8 +1118,8 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const someoneElseTyping = typing.some((e) => e.userId !== userId);
   useEffect(() => {
     if (!someoneElseTyping) return;
-    const t = setInterval(() => forceTick((x) => x + 1), 2000);
-    return () => clearInterval(t);
+    const t = setInterval(() => { forceTick((x) => x + 1); }, 2000);
+    return () => { clearInterval(t); };
   }, [someoneElseTyping]);
 
   // Computed inline (not memoized) so the 2s forceTick re-render re-evaluates
@@ -1171,7 +1176,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     let count = 0;
     for (let i = 0; i < statMsgs.length; i++) {
       const m = statMsgs[i];
-      if (!m || m.userId !== userId) continue;
+      if (m?.userId !== userId) continue;
       // Find the next message from the other side after this one.
       const nextReply = statMsgs.slice(i + 1).find((x) => x.userId !== userId);
       if (nextReply) {
@@ -1185,12 +1190,14 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
 
   // @mention candidates = the conversation's resolved participants.
   const mentionSearch = useCallback(
-    async (q: string): Promise<{ id: string; name: string }[]> => {
+    (q: string): Promise<{ id: string; name: string }[]> => {
       const ql = q.toLowerCase();
-      return Object.values(profiles)
-        .filter((p) => p.name && p.id !== userId && p.name.toLowerCase().includes(ql))
-        .slice(0, 8)
-        .map((p) => ({ id: p.id, name: p.name }));
+      return Promise.resolve(
+        Object.values(profiles)
+          .filter((p) => p.name && p.id !== userId && p.name.toLowerCase().includes(ql))
+          .slice(0, 8)
+          .map((p) => ({ id: p.id, name: p.name })),
+      );
     },
     [profiles, userId],
   );
@@ -1200,7 +1207,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       const sysType = (msg as { systemType?: string }).systemType;
       if (sysType) {
         const param = (msg as { systemParam?: string }).systemParam ?? '';
-        const name = profiles[param]?.name ?? param.slice(0, 8) ?? 'Someone';
+        const name = profiles[param]?.name ?? param.slice(0, 8);
         const text =
           sysType === 'memberAdd'
             ? `${name} joined`
@@ -1255,7 +1262,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           onEdit={handleEdit}
           onPin={handlePin}
           pinned={pinnedMessageId === msg.id}
-          onButton={(prompt) => handleSend(prompt)}
+          onButton={(prompt) => { handleSend(prompt); }}
           onOpenImage={openImage}
           isSelected={selectedMessageId === msg.id}
           onSelect={selectMessage}
@@ -1309,7 +1316,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         {narrow ? (
           <button
             type="button"
-            onClick={() => router.push('', {})}
+            onClick={() => { router.push('', {}); }}
             aria-label="Back"
             style={{ border: 'none', background: 'transparent', fontSize: 22, lineHeight: 1, cursor: 'pointer', color: 'var(--app-foreground)', padding: '0 4px 0 0' }}
           >
@@ -1331,7 +1338,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         {narrow ? (
           <button
             type="button"
-            onClick={() => openThemeMenu(router)}
+            onClick={() => { openThemeMenu(router); }}
             aria-label="Theme"
             title="Theme"
             style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', flexShrink: 0 }}
@@ -1352,7 +1359,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         {canManageMembers ? (
           <button
             type="button"
-            onClick={() => router.push('settings/:conversationId', { conversationId: roomId })}
+            onClick={() => { router.push('settings/:conversationId', { conversationId: roomId }); }}
             aria-label="Group info"
             title="Group info"
             style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', flexShrink: 0 }}
@@ -1380,18 +1387,18 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                   {botId ? (
                     <div style={{ borderBottom: '1px solid var(--app-border)' }}>
                       <div style={menuLabelStyle}>Mode</div>
-                      {availableModes.map((m) => pickRow(`mode-${m.id}`, m.label, botMode === m.id, () => pickBotMode(m.id)))}
+                      {availableModes.map((m) => pickRow(`mode-${m.id}`, m.label, botMode === m.id, () => { pickBotMode(m.id); }))}
                       {botMode === 'image' ? (
                         <>
                           <div style={menuLabelStyle}>Image model</div>
-                          {IMAGE_MODELS.map((m) => pickRow(`im-${m.id}`, m.label, botImageModel === m.id, () => pickImageModel(m.id)))}
+                          {IMAGE_MODELS.map((m) => pickRow(`im-${m.id}`, m.label, botImageModel === m.id, () => { pickImageModel(m.id); }))}
                           <div style={menuLabelStyle}>Image size</div>
-                          {IMAGE_SIZES.map((m) => pickRow(`is-${m.id}`, m.label, botImageSize === m.id, () => pickImageSize(m.id)))}
+                          {IMAGE_SIZES.map((m) => pickRow(`is-${m.id}`, m.label, botImageSize === m.id, () => { pickImageSize(m.id); }))}
                         </>
                       ) : (
                         <>
                           <div style={menuLabelStyle}>Model</div>
-                          {BOT_MODELS.map((m) => pickRow(`tm-${m.id}`, (m.label.split('—')[0] ?? m.id).trim(), (botModel ?? BOT_MODELS[0]?.id) === m.id, () => pickBotModel(m.id)))}
+                          {BOT_MODELS.map((m) => pickRow(`tm-${m.id}`, (m.label.split('—')[0] ?? m.id).trim(), (botModel ?? BOT_MODELS[0]?.id) === m.id, () => { pickBotModel(m.id); }))}
                         </>
                       )}
                     </div>
@@ -1402,7 +1409,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                       className="uc-menuitem"
                       onClick={() => {
                         setMenuOpen(false);
-                        openMembersPopup(router, socket, userId, roomId, () => router.push('', {}));
+                        openMembersPopup(router, socket, userId, roomId, () => { router.push('', {}); });
                       }}
                       style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', fontSize: 14, fontWeight: 600, textAlign: 'left' }}
                     >
@@ -1427,7 +1434,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                         <span style={{ flex: 1, fontSize: 13, color: 'var(--app-error)' }}>Delete this conversation?</span>
                         <button
                           type="button"
-                          onClick={() => setConfirmDeleteConv(false)}
+                          onClick={() => { setConfirmDeleteConv(false); }}
                           style={{ fontSize: 13, fontWeight: 600, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--app-border)', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }}
                         >
                           Cancel
@@ -1444,7 +1451,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                       <button
                         type="button"
                         className="uc-menuitem"
-                        onClick={() => setConfirmDeleteConv(true)}
+                        onClick={() => { setConfirmDeleteConv(true); }}
                         style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', color: 'var(--app-error)', cursor: 'pointer', fontSize: 14, fontWeight: 600, textAlign: 'left' }}
                       >
                         <Trash2 size={16} /> Delete conversation
@@ -1472,7 +1479,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
             type="button"
             title="Unpin"
             aria-label="Unpin"
-            onClick={() => handlePin(pinnedMessage._id)}
+            onClick={() => { handlePin(pinnedMessage._id); }}
             style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, flexShrink: 0, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--app-foreground)', opacity: 0.6, cursor: 'pointer' }}
           >
             <X size={15} />
@@ -1534,7 +1541,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           currentUserId={userId}
           renderItem={renderMessage}
           hasMore={hasMoreMessages}
-          onLoadMore={() => setMsgLimit((l) => l + LOAD_MORE_STEP)}
+          onLoadMore={() => { setMsgLimit((l) => l + LOAD_MORE_STEP); }}
           onUserScroll={() => { setSelectedMessageId(null); }}
           onBackgroundClick={() => { setSelectedMessageId(null); }}
           bottom={
@@ -1555,7 +1562,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                     key={`${b.label}-${i}`}
                     type="button"
                     className="uc-msgbtn"
-                    onClick={() => handleSend(b.prompt)}
+                    onClick={() => { handleSend(b.prompt); }}
                     style={{ fontFamily: 'var(--app-font-mono)', fontSize: 11.5, fontWeight: 600, letterSpacing: '0.04em', padding: '7px 13px', borderRadius: 0, border: '1.5px solid var(--app-primary)', background: 'transparent', color: 'var(--app-primary)', cursor: 'pointer' }}
                   >
                     {b.label}
@@ -1580,7 +1587,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                         <div className="uc-spin" style={{ width: 18, height: 18, border: '2px solid rgba(255,255,255,0.5)', borderTopColor: '#fff', borderRadius: '50%' }} />
                       </div>
                     ) : null}
-                    <button type="button" onClick={() => removePending(p.id)} aria-label="Remove" style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', border: 'none', background: 'var(--app-foreground)', color: 'var(--app-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                    <button type="button" onClick={() => { removePending(p.id); }} aria-label="Remove" style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', border: 'none', background: 'var(--app-foreground)', color: 'var(--app-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                       <X size={12} />
                     </button>
                   </div>
@@ -1623,7 +1630,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       </div>
       {zoomImg && typeof document !== 'undefined'
         ? createPortal(
-            <ImageZoomViewer src={zoomImg.src} alt={zoomImg.alt} onClose={() => setZoomImg(null)} />,
+            <ImageZoomViewer src={zoomImg.src} alt={zoomImg.alt} onClose={() => { setZoomImg(null); }} />,
             document.body,
           )
         : null}

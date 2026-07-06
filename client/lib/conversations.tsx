@@ -39,11 +39,11 @@ export function useConversations(): { conversations: ConvRow[]; loading: boolean
 
   useEffect(() => {
     refetch();
-    const unsub = socket.trackDocs('conversationUser', { keys: { userId } }, () => refetch());
-    const onActivity = (): void => refetch();
+    const unsub = socket.trackDocs('conversationUser', { keys: { userId } }, () => { refetch(); });
+    const onActivity = (): void => { refetch(); };
     window.addEventListener('uglychat:activity', onActivity);
     return () => {
-      unsub?.();
+      unsub();
       window.removeEventListener('uglychat:activity', onActivity);
     };
   }, [socket, userId, refetch]);
@@ -81,7 +81,7 @@ export function resolveImageUrl(image: unknown): string | null {
   if (typeof image === 'string') return image;
   if (typeof image === 'object') {
     const o = image as Record<string, unknown>;
-    const uri = (o['uri'] ?? o['url'] ?? o['src']) as string | undefined;
+    const uri = (o.uri ?? o.url ?? o.src) as string | undefined;
     return typeof uri === 'string' ? uri : null;
   }
   return null;
@@ -137,7 +137,7 @@ export function Avatar(props: { image?: unknown; seed: string; label?: string; s
         userSelect: 'none',
       }}
     >
-      {initial(props.label || props.seed)}
+      {initial(props.label?.length ? props.label : props.seed)}
     </div>
   );
 }

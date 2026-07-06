@@ -11,10 +11,12 @@ export default [
       '**/*.mjs',
       'dist/**',
       'node_modules/**',
+      '.ugly-studio/**',
       'vite.config.ts',
       'vitest.config.ts',
       'playwright.config.ts',
       'tests/**',
+      'scripts/**',
     ],
   },
   {

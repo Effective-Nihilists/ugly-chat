@@ -36,7 +36,7 @@ export function openBotsPopup(
 ): void {
   const handle = router.openPopup(
     <BotsPopup
-      onClose={() => handle.hide()}
+      onClose={() => { handle.hide(); }}
       socket={socket}
       userId={userId}
       editBot={editBot}
@@ -62,18 +62,18 @@ export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPo
       void socket
         .request('botListMine', {})
         .then((res) => {
-          setBots(((res as { bots?: BotDoc[] }).bots ?? []) as BotDoc[]);
+          setBots(((res as { bots?: BotDoc[] }).bots ?? []));
           setLoading(false);
         })
-        .catch(() => setLoading(false));
+        .catch(() => { setLoading(false); });
     };
     refetch();
-    const unsub = socket.trackDocs('bot', { keys: { ownerId: userId } }, () => refetch());
-    return () => unsub?.();
+    const unsub = socket.trackDocs('bot', { keys: { ownerId: userId } }, () => { refetch(); });
+    return () => { unsub(); };
   }, [socket, userId]);
 
   const remove = (botId: string): void => {
-    void socket.request('botDelete', { botId }).catch((err: unknown) => console.error('[Bots] delete failed', err));
+    void socket.request('botDelete', { botId }).catch((err: unknown) => { console.error('[Bots] delete failed', err); });
   };
 
   return (
@@ -118,7 +118,7 @@ export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPo
                   background: 'var(--app-tertiary)',
                 }}
               >
-                {b.avatar?.image?.uri ? (
+                {b.avatar?.image.uri ? (
                   <img src={b.avatar.image.uri} alt="" style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
                 ) : (
                   <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--app-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -132,7 +132,7 @@ export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPo
                 <button
                   type="button"
                   title="Chat"
-                  onClick={() => { onClose(); void startBotChat(socket, userId, b, (cid) => navigate(cid)); }}
+                  onClick={() => { onClose(); void startBotChat(socket, userId, b, (cid) => { navigate(cid); }); }}
                   style={iconBtn}
                 >
                   <MessageSquare size={18} />
@@ -153,7 +153,7 @@ export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPo
                   <button
                     type="button"
                     title="Delete"
-                    onClick={() => setConfirmId(b._id)}
+                    onClick={() => { setConfirmId(b._id); }}
                     style={{ ...iconBtn, color: 'var(--app-error)' }}
                   >
                     <Trash2 size={18} />

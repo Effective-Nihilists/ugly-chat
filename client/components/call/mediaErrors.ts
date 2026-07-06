@@ -27,15 +27,16 @@ export interface ClassifiedMediaError {
 export function isSecureMediaContext(): boolean {
   if (typeof window === 'undefined') return false;
   // getUserMedia requires a secure context (https or localhost).
-  return window.isSecureContext === true;
+  return window.isSecureContext;
 }
 
 export function hasMediaDevices(): boolean {
-  return (
-    typeof navigator !== 'undefined' &&
-    !!navigator.mediaDevices &&
-    typeof navigator.mediaDevices.getUserMedia === 'function'
-  );
+  if (typeof navigator === 'undefined') return false;
+  // lib.dom types `mediaDevices` as always-present, but in-app webviews / old
+  // browsers can leave it undefined — read through an optional shape so the
+  // runtime guard stays honest.
+  const nav: { mediaDevices?: MediaDevices } = navigator;
+  return typeof nav.mediaDevices?.getUserMedia === 'function';
 }
 
 export function classifyMediaError(err: unknown): ClassifiedMediaError {

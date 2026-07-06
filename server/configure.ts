@@ -20,10 +20,10 @@ import {
   type ConversationDeps,
 } from 'ugly-app/conversation/engine';
 import { botUser } from './bots';
-import type { DbSurface } from './handlers';
+import type { TypedDB } from 'ugly-app/shared';
 import { collections } from '../shared/collections';
 
-export function wireEngineDeps(getDb: () => DbSurface): void {
+export function wireEngineDeps(getDb: () => TypedDB): void {
   const convDeps: ConversationDeps = {
     get db() {
       return getDb();
@@ -42,7 +42,7 @@ export function wireEngineDeps(getDb: () => DbSurface): void {
       // them as bots so their messages are flagged isBot.
       if (userId.startsWith('bot-')) {
         const b = await getDb().getDoc(collections.bot, userId);
-        if (b) return { _id: userId, name: String(b['name'] ?? 'Bot'), isBot: true };
+        if (b) return { _id: userId, name: b.name, isBot: true };
       }
       const u = await getDb().getDoc(collections.userProfileCache, userId);
       return u ?? { _id: userId, name: userId.slice(0, 8), isBot: false };

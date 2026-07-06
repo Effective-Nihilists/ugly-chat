@@ -19,7 +19,7 @@ export interface Turn {
 // replace it; otherwise append a new turn.
 export function upsertTurn(turns: Turn[], next: Turn): Turn[] {
   const last = turns[turns.length - 1];
-  if (last && last.speaker === next.speaker && !last.final && !last.typed) {
+  if (last?.speaker === next.speaker && !last.final && !last.typed) {
     const copy = turns.slice(0, -1);
     return [...copy, { ...next }];
   }

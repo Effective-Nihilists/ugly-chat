@@ -173,7 +173,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
     },
 
     conversationLoad: async (userId, input) => {
-      const loaded = await engineConversationLoad(input, userId);
+      const loaded: unknown = await engineConversationLoad(input, userId);
       // Opening a conversation marks it read (zero unread + stamp viewed) and
       // un-hides it — app-created chats (e.g. Ugly Love) start `hidden`, so
       // engagement is what surfaces them ("if I can see it, it's in my list").
@@ -187,13 +187,13 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
     },
 
     conversationMessageCreate: async (userId, input) => {
-      const msg = await engineConversationMessageCreate(
+      const msg: unknown = await engineConversationMessageCreate(
         { ...input, message: { onlyUserIds: ['global'], ...input.message } },
         userId,
       );
       // Denormalize the sidebar: refresh every member's last-message preview,
       // +1 unread for recipients (sender marked read), bump recency, un-hide.
-      const previewText = String(input.message?.text ?? input.message?.markdown ?? '');
+      const previewText = input.message.text ?? input.message.markdown ?? '';
       void bumpListForMessage(
         getDb(),
         input.conversationId,
@@ -217,10 +217,10 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         getDb(),
         'message.created',
         input.conversationId,
-        msg as unknown as Record<string, unknown>,
+        msg as Record<string, unknown>,
       ).catch((err: unknown) => { console.error('[webhook] fire failed', err); });
       // Unfurl any links into a `linkPreviews` card (best-effort, async).
-      void unfurlMessageLinks(getDb(), msg as unknown as Parameters<typeof unfurlMessageLinks>[1]).catch(
+      void unfurlMessageLinks(getDb(), msg as Parameters<typeof unfurlMessageLinks>[1]).catch(
         (err: unknown) => { console.error('[unfurl] failed', err); },
       );
       return msg;
@@ -232,7 +232,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         userId,
       ),
 
-    conversationMessageReact: async (userId, input) =>
+    conversationMessageReact: async (userId, input): Promise<unknown> =>
       engineConversationMessageReact(input, userId),
 
     conversationMessageDelete: async (userId, input) =>
@@ -257,7 +257,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       );
       if (!stored) throw new Error('Message not found');
       if (stored.userId !== userId) throw new Error('Can only edit your own messages');
-      const updated = await engineConversationMessageEdit(
+      const updated: unknown = await engineConversationMessageEdit(
         {
           conversationId: input.conversationId,
           messageId: shortId,
@@ -268,7 +268,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       // Re-unfurl links on the edited body (best-effort).
       void unfurlMessageLinks(
         getDb(),
-        updated as unknown as Parameters<typeof unfurlMessageLinks>[1],
+        updated as Parameters<typeof unfurlMessageLinks>[1],
       ).catch((err: unknown) => { console.error('[unfurl] edit failed', err); });
       return updated;
     },
@@ -288,7 +288,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         convIds = [input.conversationId];
       } else {
         const ucs = await db.getDocs(collections.userConversation, { userPrivateId: userId });
-        convIds = ucs.map((u) => String(u.conversationId ?? '')).filter(Boolean);
+        convIds = ucs.map((u) => u.conversationId).filter(Boolean);
       }
       if (convIds.length === 0) return { items: [] };
       const items = await db.searchDocs(collections.message, input.search, {
@@ -371,14 +371,14 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       });
       const rows: ConversationListRow[] = ucs
         .map((u) => ({
-          conversationId: String(u.conversationId ?? ''),
+          conversationId: u.conversationId,
           title: (u.title!) || '',
           image: (u.image) ?? null,
           type: (u.type!) || 'group',
           preview: (u.notificationText!) || '',
-          unread: (u.notificationCount!) ?? 0,
+          unread: u.notificationCount ?? 0,
           pinned: (u.visibility!) === 'pinned',
-          lastActivity: toMillis(u.updated ?? u.viewed ?? u.created),
+          lastActivity: toMillis(u.updated),
         }))
         .filter((r) => r.conversationId !== '');
 
@@ -443,7 +443,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       return { conversations: rows };
     },
 
-    conversationJoin: async (userId, input) =>
+    conversationJoin: async (userId, input): Promise<unknown> =>
       engineConversationUserAdd(
         { conversationId: input.conversationId, userId, role: 'member', visibility: 'visible' },
         userId,
@@ -466,7 +466,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       });
       const readers = rows
         .map((uc) => ({
-          userId: String(uc.userPrivateId ?? ''),
+          userId: uc.userPrivateId ?? '',
           viewed: typeof uc.viewed === 'number' ? uc.viewed : 0,
         }))
         .filter((r) => r.userId && r.userId !== userId && !isBot(r.userId) && r.viewed > 0);
@@ -586,7 +586,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       const db = getDb();
       const ucs = await db.getDocs(collections.userConversation, { userPrivateId: userId });
       const convIds = ucs
-        .map((u) => String(u.conversationId ?? ''))
+        .map((u) => u.conversationId)
         .filter(Boolean)
         .slice(0, 200);
       if (convIds.length === 0) return { users: [] };
@@ -596,7 +596,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       const ids = [
         ...new Set(
           cus
-            .map((r) => String(r.userId ?? ''))
+            .map((r) => r.userId)
             .filter((id) => id && id !== userId && !isBot(id)),
         ),
       ].slice(0, 100);
@@ -623,16 +623,16 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       });
       const profiles = await resolveProfiles(
         db,
-        rows.map((r) => String(r.userId ?? '')).filter(Boolean),
+        rows.map((r) => r.userId).filter(Boolean),
       );
       const byId = new Map(profiles.map((p) => [p.id, p]));
       const members = rows
         .map((r) => {
-          const id = String(r.userId ?? '');
+          const id = r.userId;
           const p = byId.get(id);
           return {
             userId: id,
-            role: String(r.role ?? 'member'),
+            role: r.role ?? 'member',
             name: p?.name ?? id.slice(0, 8),
             avatar: p?.avatar ?? defaultAvatar,
             isBot: p?.isBot ?? isBot(id),
@@ -643,7 +643,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
     },
 
     conversationMemberAdd: async (userId, input) => {
-      const res = await engineConversationUserAdd(
+      const res: unknown = await engineConversationUserAdd(
         {
           conversationId: input.conversationId,
           userId: input.userId,
@@ -657,7 +657,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
     },
 
     conversationMemberRemove: async (userId, input) => {
-      const res = await engineConversationUserRemove(
+      const res: unknown = await engineConversationUserRemove(
         { conversationId: input.conversationId, userId: input.userId },
         userId,
       );
@@ -670,7 +670,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       return res;
     },
 
-    conversationMemberRole: async (userId, input) =>
+    conversationMemberRole: async (userId, input): Promise<unknown> =>
       engineConversationUserUpdateRole(
         { conversationId: input.conversationId, userId: input.userId, role: input.role },
         userId,
@@ -843,7 +843,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
 
     botListMine: async (userId): Promise<{ bots: Record<string, unknown>[] }> => {
       const bots = await getDb().getDocs(collections.bot, { ownerId: userId });
-      bots.sort((a, b) => toMillis(b.updated ?? b.created) - toMillis(a.updated ?? a.created));
+      bots.sort((a, b) => toMillis(b.updated) - toMillis(a.updated));
       return { bots };
     },
 
@@ -874,7 +874,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
           { limit: 500 },
         );
         if (msgs.length === 0) break;
-        for (const m of msgs) await db.deleteDoc(collections.message, String(m._id));
+        for (const m of msgs) await db.deleteDoc(collections.message, m._id);
         if (msgs.length < 500) break;
       }
       // Re-seed the bot's greeting so a cleared bot chat starts fresh.

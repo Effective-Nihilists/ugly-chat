@@ -29,14 +29,14 @@ interface RealtimeCfg {
 function cfg(): RealtimeCfg | null {
   const env =
     (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
-  const appId = env['REALTIME_APP_ID'];
-  const appSecret = env['REALTIME_APP_SECRET'];
+  const appId = env.REALTIME_APP_ID;
+  const appSecret = env.REALTIME_APP_SECRET;
   if (!appId || !appSecret) return null;
   return {
     appId,
     appSecret,
-    turnKeyId: env['REALTIME_TURN_KEY_ID'] ?? '',
-    turnKeyToken: env['REALTIME_TURN_KEY_TOKEN'] ?? '',
+    turnKeyId: env.REALTIME_TURN_KEY_ID ?? '',
+    turnKeyToken: env.REALTIME_TURN_KEY_TOKEN ?? '',
   };
 }
 
@@ -55,7 +55,7 @@ async function sfu(
     headers: { Authorization: `Bearer ${c.appSecret}`, 'Content-Type': 'application/json' },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
-  const json = await res.json().catch(() => ({}));
+  const json: unknown = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(`SFU ${path} → ${res.status}: ${JSON.stringify(json).slice(0, 240)}`);
   }
@@ -89,7 +89,7 @@ export async function realtimeRenegotiate(sessionId: string, body: unknown): Pro
 export async function realtimeIceServers(): Promise<{ iceServers: unknown }> {
   const fallback = { iceServers: [{ urls: 'stun:stun.cloudflare.com:3478' }] };
   const c = cfg();
-  if (!c || !c.turnKeyId || !c.turnKeyToken) return fallback;
+  if (!c?.turnKeyId || !c.turnKeyToken) return fallback;
   try {
     const res = await fetch(
       `${SFU_BASE}/turn/keys/${encodeURIComponent(c.turnKeyId)}/credentials/generate-ice-servers`,

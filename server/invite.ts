@@ -45,9 +45,9 @@ function readEnv(): InviteEnv {
   const env =
     (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
   return {
-    EMAIL_SEND_URL: env['EMAIL_SEND_URL'],
-    EMAIL_SEND_TOKEN: env['EMAIL_SEND_TOKEN'],
-    APP_URL: env['APP_URL'],
+    EMAIL_SEND_URL: env.EMAIL_SEND_URL,
+    EMAIL_SEND_TOKEN: env.EMAIL_SEND_TOKEN,
+    APP_URL: env.APP_URL,
   };
 }
 

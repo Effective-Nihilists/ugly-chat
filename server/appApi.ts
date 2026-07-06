@@ -62,7 +62,7 @@ async function verifyApp(uglyBotUrl: string, token: string): Promise<AppIdentity
 
 function bearer(c: { req: { header(name: string): string | undefined } }): string | null {
   const h = c.req.header('Authorization');
-  if (!h || !h.startsWith('Bearer ')) return null;
+  if (!h?.startsWith('Bearer ')) return null;
   return h.slice(7).trim() || null;
 }
 
@@ -84,12 +84,12 @@ async function appCanAccess(
   conv: Record<string, unknown>,
   appId: string,
 ): Promise<boolean> {
-  if (conv['appId'] === appId) return true;
-  const botIds = Object.keys((conv['bots'] as Record<string, unknown> | undefined) ?? {});
+  if (conv.appId === appId) return true;
+  const botIds = Object.keys((conv.bots as Record<string, unknown> | undefined) ?? {});
   for (const botId of botIds) {
     if (!botId.startsWith('bot-')) continue;
     const bot = await getDb().getDoc(collections.bot, botId);
-    if (bot && bot['appId'] === appId) return true;
+    if (bot?.appId === appId) return true;
   }
   return false;
 }
@@ -99,7 +99,7 @@ export function registerAppApi(
   getDb: () => DbSurface,
 ): void {
   const uglyBotUrl = (c: { env: Record<string, unknown> }): string =>
-    ((c.env['UGLY_BOT_URL'] as string | undefined) ?? 'https://ugly.bot').replace(/\/$/, '');
+    ((c.env.UGLY_BOT_URL as string | undefined) ?? 'https://ugly.bot').replace(/\/$/, '');
 
   const auth = async (c: {
     req: { header(n: string): string | undefined };
@@ -115,29 +115,29 @@ export function registerAppApi(
     const id = await auth(c);
     if (!id) return c.json({ error: 'Unauthorized' }, 401);
     const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-    const key = typeof body['key'] === 'string' ? body['key'] : '';
+    const key = typeof body.key === 'string' ? body.key : '';
     if (!key) return c.json({ error: 'key is required' }, 400);
     const botId = appBotId(id.projectId, key);
     const existing = await getDb().getDoc(collections.bot, botId);
     const bot: Record<string, unknown> = {
       ...dbDefaults(),
-      ...(existing ? { created: existing['created'] } : {}),
+      ...(existing ? { created: existing.created } : {}),
       _id: botId,
       ownerId: id.ownerUserId,
       appId: id.appId,
-      name: String(body['name'] ?? 'Bot'),
-      instruction: String(body['instruction'] ?? ''),
-      model: String(body['model'] ?? 'deepseek_v4_flash'),
-      firstMessage: (body['firstMessage'] as string | null | undefined) ?? null,
-      buttons: (body['buttons'] as unknown[] | undefined) ?? [],
+      name: typeof body.name === 'string' ? body.name : 'Bot',
+      instruction: typeof body.instruction === 'string' ? body.instruction : '',
+      model: typeof body.model === 'string' ? body.model : 'deepseek_v4_flash',
+      firstMessage: (body.firstMessage) ?? null,
+      buttons: (body.buttons) ?? [],
       avatar: {
         id: botId,
         uri: null,
-        image: body['avatarUrl'] ? { uri: String(body['avatarUrl']) } : defaultAvatar.image,
-        background: body['backgroundUrl'] ? { uri: String(body['backgroundUrl']) } : null,
+        image: typeof body.avatarUrl === 'string' ? { uri: body.avatarUrl } : defaultAvatar.image,
+        background: typeof body.backgroundUrl === 'string' ? { uri: body.backgroundUrl } : null,
       },
-      webhookUrl: (body['webhookUrl'] as string | undefined) ?? null,
-      webhookSecret: (body['webhookSecret'] as string | undefined) ?? null,
+      webhookUrl: (body.webhookUrl) ?? null,
+      webhookSecret: (body.webhookSecret) ?? null,
     };
     await getDb().setDoc(collections.bot, bot);
     return c.json({ botId });
@@ -148,34 +148,33 @@ export function registerAppApi(
     const id = await auth(c);
     if (!id) return c.json({ error: 'Unauthorized' }, 401);
     const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-    const memberUserIds = Array.isArray(body['memberUserIds'])
-      ? (body['memberUserIds'] as string[])
+    const memberUserIds = Array.isArray(body.memberUserIds)
+      ? (body.memberUserIds as string[])
       : [];
-    const botIds = Array.isArray(body['botIds']) ? (body['botIds'] as string[]) : [];
+    const botIds = Array.isArray(body.botIds) ? (body.botIds as string[]) : [];
     if (memberUserIds.length === 0 && botIds.length === 0) {
       return c.json({ error: 'memberUserIds or botIds required' }, 400);
     }
-    const convId = typeof body['id'] === 'string' ? body['id'] : nanoid();
+    const convId = typeof body.id === 'string' ? body.id : nanoid();
     const creator = memberUserIds[0] ?? id.ownerUserId;
     const bots = Object.fromEntries(botIds.map((b) => [b, {}]));
 
     await engineConversationCreate(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       {
         id: convId,
-        type: (body['type'] as string) ?? 'group',
-        title: (body['title'] as string) ?? '',
-        background: body['background'] ?? null,
+        type: typeof body.type === 'string' ? body.type : 'group',
+        title: typeof body.title === 'string' ? body.title : '',
+        background: body.background ?? null,
         mode: 'private',
         ownerIds: memberUserIds.length ? memberUserIds : [creator],
         bots,
-        custom: body['custom'] ?? undefined,
+        custom: body.custom ?? undefined,
         disableJoinMessages: true,
         // Conversations are never created hidden — a hidden conversation never
         // appears in the member's list (conversationListMine filters it out),
         // which silently strands app-created chats the user is actually in.
         hidden: false,
-      } as any,
+      },
       creator,
     );
 
@@ -186,9 +185,9 @@ export function registerAppApi(
       await getDb().setDoc(collections.conversation, {
         ...conv,
         appId: id.appId,
-        ...(typeof body['webhookUrl'] === 'string' ? { webhookUrl: body['webhookUrl'] } : {}),
-        ...(typeof body['webhookSecret'] === 'string'
-          ? { webhookSecret: body['webhookSecret'] }
+        ...(typeof body.webhookUrl === 'string' ? { webhookUrl: body.webhookUrl } : {}),
+        ...(typeof body.webhookSecret === 'string'
+          ? { webhookSecret: body.webhookSecret }
           : {}),
         ...dbDefaults(),
       });
@@ -201,8 +200,8 @@ export function registerAppApi(
     const id = await auth(c);
     if (!id) return c.json({ error: 'Unauthorized' }, 401);
     const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-    const conversationId = String(body['conversationId'] ?? '');
-    const asUserId = String(body['asUserId'] ?? '');
+    const conversationId = typeof body.conversationId === 'string' ? body.conversationId : '';
+    const asUserId = typeof body.asUserId === 'string' ? body.asUserId : '';
     if (!conversationId || !asUserId) {
       return c.json({ error: 'conversationId and asUserId required' }, 400);
     }
@@ -210,10 +209,12 @@ export function registerAppApi(
     if (!conv) return c.json({ error: 'conversation not found' }, 404);
     if (!(await appCanAccess(getDb, conv, id.appId))) return c.json({ error: 'Forbidden' }, 403);
 
-    const message = (body['message'] as Record<string, unknown>) ?? {};
-    const msg = await engineConversationMessageCreate(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      { conversationId, message: { onlyUserIds: ['global'], ...message } } as any,
+    const message: Record<string, unknown> =
+      typeof body.message === 'object' && body.message !== null
+        ? (body.message as Record<string, unknown>)
+        : {};
+    const msg: unknown = await engineConversationMessageCreate(
+      { conversationId, message: { onlyUserIds: ['global'], ...message } },
       asUserId,
     );
     // Deliver webhooks AFTER the response — must use waitUntil or the Worker
@@ -222,13 +223,13 @@ export function registerAppApi(
       getDb(),
       'message.created',
       conversationId,
-      msg as unknown as Record<string, unknown>,
-    ).catch((err: unknown) => console.error('[appApi] webhook fire failed', err));
+      msg as Record<string, unknown>,
+    ).catch((err: unknown) => { console.error('[appApi] webhook fire failed', err); });
     c.executionCtx.waitUntil(fire);
     // Unfurl links (e.g. the Love challenge URL) into a preview card.
     c.executionCtx.waitUntil(
-      unfurlMessageLinks(getDb(), msg as unknown as Parameters<typeof unfurlMessageLinks>[1]).catch(
-        (err: unknown) => console.error('[appApi] unfurl failed', err),
+      unfurlMessageLinks(getDb(), msg as Parameters<typeof unfurlMessageLinks>[1]).catch(
+        (err: unknown) => { console.error('[appApi] unfurl failed', err); },
       ),
     );
     return c.json({ message: msg });
@@ -239,13 +240,13 @@ export function registerAppApi(
     const id = await auth(c);
     if (!id) return c.json({ error: 'Unauthorized' }, 401);
     const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-    const conversationId = String(body['conversationId'] ?? '');
+    const conversationId = typeof body.conversationId === 'string' ? body.conversationId : '';
     if (!conversationId) return c.json({ error: 'conversationId required' }, 400);
     const conv = await getDb().getDoc(collections.conversation, conversationId);
     if (!conv) return c.json({ error: 'conversation not found' }, 404);
     if (!(await appCanAccess(getDb, conv, id.appId))) return c.json({ error: 'Forbidden' }, 403);
 
-    const limit = Math.min(Number(body['limit'] ?? 50), 200);
+    const limit = Math.min(Number(body.limit ?? 50), 200);
     const messages = await getDb().getDocs(
       collections.message,
       { conversationId },

@@ -180,7 +180,7 @@ export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(function 
             setLobbyOpen(false);
             videoRef.current?.start(prefs);
           }}
-          onCancel={() => setLobbyOpen(false)}
+          onCancel={() => { setLobbyOpen(false); }}
         />
       ) : null}
       {incoming ? (
@@ -199,7 +199,7 @@ export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(function 
       {callError ? (
         <div
           role="alert"
-          onClick={() => setCallError(null)}
+          onClick={() => { setCallError(null); }}
           style={{
             position: 'fixed',
             left: '50%',
@@ -230,7 +230,7 @@ export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(function 
   // (b) mount/unmount the transcript chrome as a sibling.
   const showSubs = wide ? collapsed : !expanded;
   const subBottom = wide ? 96 : 124;
-  const onToggle = wide ? () => setCollapsed((v) => !v) : () => setExpanded((v) => !v);
+  const onToggle = wide ? () => { setCollapsed((v) => !v); } : () => { setExpanded((v) => !v); };
   const transcriptCollapsed = wide ? collapsed : expanded;
   const showTranscript = joined && (wide ? !collapsed : expanded);
 
@@ -273,14 +273,14 @@ export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(function 
               meId={meId}
               profiles={profiles}
               onSend={appendTyped}
-              onCollapse={() => setCollapsed(true)}
+              onCollapse={() => { setCollapsed(true); }}
             />
           ) : (
             <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
               <button
                 type="button"
                 data-id="call-collapse-chat"
-                onClick={() => setExpanded(false)}
+                onClick={() => { setExpanded(false); }}
                 aria-label="Collapse chat"
                 title="Collapse chat"
                 style={{

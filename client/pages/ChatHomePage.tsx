@@ -14,9 +14,9 @@ import { ConversationListBody } from '../components/ConversationListBody';
 function useNarrow(): boolean {
   const [narrow, setNarrow] = useState(() => (typeof window === 'undefined' ? false : window.innerWidth < 820));
   useEffect(() => {
-    const f = (): void => setNarrow(window.innerWidth < 820);
+    const f = (): void => { setNarrow(window.innerWidth < 820); };
     window.addEventListener('resize', f);
-    return () => window.removeEventListener('resize', f);
+    return () => { window.removeEventListener('resize', f); };
   }, []);
   return narrow;
 }
@@ -32,7 +32,7 @@ export default function ChatHomePage(): React.ReactElement {
   const narrow = useNarrow();
 
   const navigate = useCallback(
-    (conversationId: string) => router.push(':conversationId', { conversationId }),
+    (conversationId: string) => { router.push(':conversationId', { conversationId }); },
     [router],
   );
 
@@ -42,10 +42,10 @@ export default function ChatHomePage(): React.ReactElement {
   }, [router, socket, conversations, navigate]);
 
   const openBots = useCallback(() => {
-    openBotsPopup(router, socket, userId, (botId) => router.push('bot/:botId', { botId }), navigate);
+    openBotsPopup(router, socket, userId, (botId) => { router.push('bot/:botId', { botId }); }, navigate);
   }, [router, socket, userId, navigate]);
 
-  const openTheme = useCallback(() => openThemeMenu(router), [router]);
+  const openTheme = useCallback(() => { openThemeMenu(router); }, [router]);
 
   const iconCluster = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
@@ -219,7 +219,7 @@ function MobileHome({
           <SearchIcon />
           <input
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => { setQ(e.target.value); }}
             placeholder="Search"
             style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', outline: 'none', fontSize: 14, color: 'var(--app-foreground)' }}
           />

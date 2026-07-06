@@ -13,7 +13,7 @@ interface PopupOpener {
 
 /** Open the small theme context-menu popup. */
 export function openThemeMenu(router: PopupOpener): void {
-  const handle = router.openPopup(<ThemeMenu onClose={() => handle.hide()} />, { mode: 'transient' });
+  const handle = router.openPopup(<ThemeMenu onClose={() => { handle.hide(); }} />, { mode: 'transient' });
 }
 
 /**
@@ -31,7 +31,7 @@ export function ThemeMenu({ onClose }: { onClose: () => void }): React.ReactElem
   return (
     <div style={menu}>
       <div style={menuLabel}>
-        <span style={{ color: 'var(--app-primary)' }}>//</span> theme
+        <span style={{ color: 'var(--app-primary)' }}>{'//'}</span> theme
       </div>
       {THEMES.map((t) => {
         const on = t.id === theme;
@@ -39,7 +39,7 @@ export function ThemeMenu({ onClose }: { onClose: () => void }): React.ReactElem
           <button
             key={t.id}
             type="button"
-            onClick={() => pick(t.id)}
+            onClick={() => { pick(t.id); }}
             className="uc-row"
             style={{
               display: 'flex',

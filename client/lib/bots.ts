@@ -93,7 +93,7 @@ export async function startBotChat(
         mode: 'public',
         ownerIds: [userId],
         bots: { [bot._id]: {} },
-        image: bot.avatar?.image?.uri ?? null,
+        image: bot.avatar?.image.uri ?? null,
       });
     }
     navigate(id);

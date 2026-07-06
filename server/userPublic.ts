@@ -56,9 +56,9 @@ export async function profilesGetter(
       ...base,
       _id: p.id,
       name: p.name ?? null,
-      avatarUrl: p.avatar?.image?.uri ?? null,
-      backgroundUrl: p.avatar?.background?.uri ?? null,
-      avatarGlbUrl: p.avatar?.uri ?? null,
+      avatarUrl: p.avatar.image.uri,
+      backgroundUrl: p.avatar.background?.uri ?? null,
+      avatarGlbUrl: p.avatar.uri ?? null,
     };
   }
   return out;

@@ -42,7 +42,7 @@ export function VoiceProvider({
       const t = text.trim();
       if (!t) return;
       setSpeakingId(id);
-      void tts.play(t).catch(() => setSpeakingId(null));
+      void tts.play(t).catch(() => { setSpeakingId(null); });
     },
     [tts],
   );

@@ -17,7 +17,7 @@ import type { MsgTelemetry } from 'ugly-app/conversation/shared';
 
 export const SEARCH_BOT_ID = 'bot-search';
 
-type ChatTurn = { role: 'system' | 'user' | 'assistant'; content: string };
+interface ChatTurn { role: 'system' | 'user' | 'assistant'; content: string }
 type TextGen = (
   model: string,
   messages: ChatTurn[],

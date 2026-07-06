@@ -204,8 +204,8 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
       setSpeakingPeerId(cap.userId);
       void peerTts
         .play(cap.text)
-        .catch((err: unknown) => console.warn('[VideoCall] peer TTS failed', err))
-        .finally(() => setSpeakingPeerId((cur) => (cur === cap.userId ? null : cur)));
+        .catch((err: unknown) => { console.warn('[VideoCall] peer TTS failed', err); })
+        .finally(() => { setSpeakingPeerId((cur) => (cur === cap.userId ? null : cur)); });
     }
   }, [call.captions, joined, uglyBotSocket, userId, peerTts]);
 
@@ -223,7 +223,7 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
     const unsub = socket.trackDoc<ConversationDoc>('conversation', conversationId, (doc) => {
       setCall(doc?.call ?? { active: false, participants: {} });
     });
-    return () => unsub?.();
+    return () => { unsub(); };
   }, [socket, conversationId]);
 
   // ── Bot speech ───────────────────────────────────────────────────────────
@@ -249,7 +249,7 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
               !d.deleted &&
               !d.systemType &&
               d.userId.startsWith('bot-') &&
-              (d.text || d.markdown) &&
+              (!!d.text || !!d.markdown) &&
               toMs(d.created) >= joinedAtRef.current,
           )
           .sort((a, b) => toMs(b.created) - toMs(a.created))[0];
@@ -343,7 +343,7 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
         })
         .catch(() => undefined);
     }, 1500);
-    return () => clearInterval(t);
+    return () => { clearInterval(t); };
   }, [joined, socket, conversationId, pullPeers]);
 
   const join = useCallback(async (prefs?: DevicePrefs) => {
@@ -380,7 +380,7 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
       // inbound media (framesDecoded/bytesReceived). Harmless in production.
       if (typeof window !== 'undefined') (window as Window & { __ucpc?: RTCPeerConnection }).__ucpc = pc;
       pc.addEventListener('track', (e) => {
-        const mid = e.transceiver?.mid ?? '';
+        const mid = e.transceiver.mid ?? '';
         const uid = midToUserRef.current.get(mid);
         if (!uid) return;
         setRemoteStreams((prev) => {
@@ -391,7 +391,7 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
           return next;
         });
       });
-      pc.addEventListener('connectionstatechange', () => setStatus(pc.connectionState));
+      pc.addEventListener('connectionstatechange', () => { setStatus(pc.connectionState); });
 
       const { sessionId } = (await socket.request('realtimeNewSession', {})) as { sessionId: string };
       sessionIdRef.current = sessionId;
@@ -407,7 +407,7 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
         await pc.setLocalDescription(await pc.createOffer());
         const localTracks = transceivers
           .filter((t) => t.mid)
-          .map((t) => ({ location: 'local' as const, mid: t.mid as string, trackName: `${userId}-${t.sender.track?.kind ?? 'track'}` }));
+          .map((t) => ({ location: 'local' as const, mid: t.mid!, trackName: `${userId}-${t.sender.track?.kind ?? 'track'}` }));
         const resp = (await socket.request('realtimeTracks', {
           sessionId,
           body: { sessionDescription: { type: 'offer', sdp: pc.localDescription?.sdp }, tracks: localTracks },
@@ -426,7 +426,7 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
   }, [socket, conversationId, userId, negotiate, onCallError]);
 
   const leave = useCallback(async () => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current?.getTracks().forEach((t) => { t.stop(); });
     streamRef.current = null;
     pcRef.current?.close();
     pcRef.current = null;
@@ -445,7 +445,7 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
     (botId = 'bot-ugly') => {
       void socket
         .request('conversationVideoBotJoin', { conversationId, botId })
-        .catch((err: unknown) => console.error('[VideoCall] add bot failed', err));
+        .catch((err: unknown) => { console.error('[VideoCall] add bot failed', err); });
     },
     [socket, conversationId],
   );
@@ -495,8 +495,8 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
   useEffect(() => {
     if (!joined) return undefined;
     if (!joinedAtRef.current) joinedAtRef.current = Date.now();
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
+    const id = setInterval(() => { setNow(Date.now()); }, 1000);
+    return () => { clearInterval(id); };
   }, [joined]);
   const elapsed = joined && joinedAtRef.current ? now - joinedAtRef.current : 0;
 
@@ -515,7 +515,7 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
   // not-yet-joined case instead.
   if (!joined) return null;
 
-  const connState = status || (joined ? 'connecting' : '');
+  const connState = status || 'connecting';
   const otherName = other ? resolveName(other.userId, userId, other.isBot, profiles) : 'ugly-bot';
   const otherState = botParticipant ? (pendingBotText ? 'speaking' : 'in call') : 'in call';
 
@@ -633,11 +633,11 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
               socket={uglyBotSocket}
               botId={botParticipant.userId}
               speakText={
-                pendingBotText && pendingBotText.botId === botParticipant.userId ? pendingBotText.text : null
+                pendingBotText?.botId === botParticipant.userId ? pendingBotText.text : null
               }
               onSubtitleIndex={(i) => {
                 const full =
-                  pendingBotText && pendingBotText.botId === botParticipant.userId ? pendingBotText.text : '';
+                  pendingBotText?.botId === botParticipant.userId ? pendingBotText.text : '';
                 if (!full) return;
                 const revealed = full.slice(0, i);
                 onBotTurn?.(botParticipant.userId, revealed, i >= full.length);
@@ -808,11 +808,9 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
             <UserPlus size={21} />
           </CtrlButton>
         ) : null}
-        {joined ? (
-          <CtrlButton dataId="call-add-bot" label="Add ugly-bot" active={false} off={false} dashed onClick={() => addBot()}>
-            <BotIcon size={21} />
-          </CtrlButton>
-        ) : null}
+        <CtrlButton dataId="call-add-bot" label="Add ugly-bot" active={false} off={false} dashed onClick={() => { addBot(); }}>
+          <BotIcon size={21} />
+        </CtrlButton>
         <span style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.14)' }} />
         <button
           type="button"
@@ -944,7 +942,7 @@ function RemoteTile({ stream, speakerId }: { stream: MediaStream; speakerId?: st
   }, [stream]);
   // Route remote audio to the lobby-chosen speaker (where supported).
   useEffect(() => {
-    const el = ref.current as (HTMLVideoElement & { setSinkId?: (id: string) => Promise<void> }) | null;
+    const el = ref.current;
     if (el?.setSinkId && speakerId) void el.setSinkId(speakerId).catch(() => undefined);
   }, [speakerId]);
   return <video ref={ref} autoPlay playsInline data-id="remote-video" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />;

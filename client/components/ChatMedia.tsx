@@ -33,7 +33,7 @@ export function extractImages(md: string): { images: ExtractedImage[]; text: str
   const images: ExtractedImage[] = [];
   const text = md
     .replace(IMG_RE, (_m, alt: string, url: string) => {
-      images.push({ alt: alt ?? '', url });
+      images.push({ alt, url });
       return '';
     })
     // collapse the blank lines left where images used to be
@@ -233,11 +233,11 @@ export function ImageZoomViewer({
       zoomAt(e.deltaY < 0 ? 1.15 : 1 / 1.15, p.x, p.y);
     };
     el.addEventListener('wheel', handler, { passive: false });
-    return () => el.removeEventListener('wheel', handler);
+    return () => { el.removeEventListener('wheel', handler); };
   }, [local, zoomAt]);
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
-    (e.target as Element).setPointerCapture?.(e.pointerId);
+    (e.target as Element).setPointerCapture(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.current.size === 2) {
       const [a, b] = [...pointers.current.values()];

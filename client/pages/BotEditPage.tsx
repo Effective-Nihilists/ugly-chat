@@ -34,15 +34,15 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
       .then((doc) => {
         const b = doc as BotDoc | null;
         if (!b) return;
-        setName(b.name ?? '');
+        setName(b.name);
         setInstruction(b.instruction ?? '');
         setModel(b.model ?? BOT_MODELS[0]!.id);
         setAvatar(b.avatar ?? defaultAvatar);
         setFirstMessage(b.firstMessage ?? '');
         setButtons(b.buttons ?? []);
       })
-      .catch((err: unknown) => console.error('[BotEdit] load failed', err))
-      .finally(() => setLoaded(true));
+      .catch((err: unknown) => { console.error('[BotEdit] load failed', err); })
+      .finally(() => { setLoaded(true); });
   }, [socket, editId]);
 
   const save = useCallback(
@@ -67,7 +67,7 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
         }
         if (thenChat && id) {
           await startBotChat(socket, userId, { _id: id, ownerId: userId, ...payload }, (cid) =>
-            router.push(':conversationId', { conversationId: cid }),
+            { router.push(':conversationId', { conversationId: cid }); },
           );
         } else {
           router.push('', {});
@@ -92,7 +92,7 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
     <div style={page}>
       <div style={{ maxWidth: 640, margin: '0 auto', width: '100%', boxSizing: 'border-box', padding: '20px 18px 60px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-          <button type="button" onClick={() => router.push('', {})} aria-label="Back" style={iconBtn}>
+          <button type="button" onClick={() => { router.push('', {}); }} aria-label="Back" style={iconBtn}>
             <ArrowLeft size={20} />
           </button>
           <h1 style={{ fontFamily: 'var(--app-font-heading)', fontWeight: 800, fontSize: 24, margin: 0, color: 'var(--app-foreground)' }}>
@@ -106,7 +106,7 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
             label="Avatar"
             url={avatar.image.uri === defaultAvatar.image.uri ? null : avatar.image.uri}
             onChange={(url) =>
-              setAvatar((a) => (url ? { ...a, uri: null, image: { uri: url } } : defaultAvatar))
+              { setAvatar((a) => (url ? { ...a, uri: null, image: { uri: url } } : defaultAvatar)); }
             }
             round
             size={96}
@@ -115,11 +115,11 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
         </div>
 
         <Field label="Name">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="My Bot" maxLength={60} style={input} />
+          <input value={name} onChange={(e) => { setName(e.target.value); }} placeholder="My Bot" maxLength={60} style={input} />
         </Field>
 
         <Field label="Model">
-          <select value={model} onChange={(e) => setModel(e.target.value)} style={{ ...input, cursor: 'pointer' }}>
+          <select value={model} onChange={(e) => { setModel(e.target.value); }} style={{ ...input, cursor: 'pointer' }}>
             {BOT_MODELS.map((m) => (
               <option key={m.id} value={m.id}>{m.label}</option>
             ))}
@@ -129,7 +129,7 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
         <Field label="Instruction (system prompt)" hint="How the bot should behave, its persona, rules.">
           <textarea
             value={instruction}
-            onChange={(e) => setInstruction(e.target.value)}
+            onChange={(e) => { setInstruction(e.target.value); }}
             placeholder="You are a friendly tutor who explains things simply…"
             rows={5}
             maxLength={8000}
@@ -140,7 +140,7 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
         <Field label="First message" hint="The bot's opening greeting when a chat starts.">
           <textarea
             value={firstMessage}
-            onChange={(e) => setFirstMessage(e.target.value)}
+            onChange={(e) => { setFirstMessage(e.target.value); }}
             placeholder="Hi! What would you like to learn today?"
             rows={2}
             maxLength={2000}
@@ -154,26 +154,26 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
               <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <input
                   value={b.label}
-                  onChange={(e) => setButtons((p) => p.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
+                  onChange={(e) => { setButtons((p) => p.map((x, j) => (j === i ? { ...x, label: e.target.value } : x))); }}
                   placeholder="Label"
                   maxLength={40}
                   style={{ ...input, flex: '1 1 110px', minWidth: 0 }}
                 />
                 <input
                   value={b.prompt}
-                  onChange={(e) => setButtons((p) => p.map((x, j) => (j === i ? { ...x, prompt: e.target.value } : x)))}
+                  onChange={(e) => { setButtons((p) => p.map((x, j) => (j === i ? { ...x, prompt: e.target.value } : x))); }}
                   placeholder="Prompt it sends…"
                   maxLength={2000}
                   style={{ ...input, flex: '2 1 140px', minWidth: 0 }}
                 />
-                <button type="button" onClick={() => setButtons((p) => p.filter((_, j) => j !== i))} aria-label="Remove" style={iconBtn}>
+                <button type="button" onClick={() => { setButtons((p) => p.filter((_, j) => j !== i)); }} aria-label="Remove" style={iconBtn}>
                   <Trash2 size={16} />
                 </button>
               </div>
             ))}
             <button
               type="button"
-              onClick={() => setButtons((p) => [...p, { label: '', prompt: '' }])}
+              onClick={() => { setButtons((p) => [...p, { label: '', prompt: '' }]); }}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', padding: '7px 12px', borderRadius: 10, border: '1px solid var(--app-border)', background: 'var(--app-tertiary)', color: 'var(--app-foreground)', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}
             >
               <Plus size={16} /> Add button

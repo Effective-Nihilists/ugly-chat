@@ -56,8 +56,8 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
     if (!id) return;
     void socket
       .request('conversationMembers', { conversationId: id })
-      .then((res) => setMembers((res as { members?: Member[] }).members ?? []))
-      .catch((err: unknown) => console.error('[settings] members failed', err));
+      .then((res) => { setMembers((res as { members?: Member[] }).members ?? []); })
+      .catch((err: unknown) => { console.error('[settings] members failed', err); });
   }, [socket, id]);
 
   useEffect(() => {
@@ -114,7 +114,7 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
     if (!id) return;
     void socket
       .request('conversationClear', { conversationId: id })
-      .then(() => router.push(':conversationId', { conversationId: id }))
+      .then(() => { router.push(':conversationId', { conversationId: id }); })
       .catch((err: unknown) => { console.error('[settings] clear failed', err); setStatus('Could not clear history.'); });
   }, [id, socket, router]);
 
@@ -122,7 +122,7 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
     if (!id) return;
     void socket
       .request('conversationMemberRemove', { conversationId: id, userId })
-      .then(() => router.push('', {}))
+      .then(() => { router.push('', {}); })
       .catch((err: unknown) => { console.error('[settings] leave failed', err); setStatus('Could not leave the group.'); });
   }, [id, socket, userId, router]);
 
@@ -134,7 +134,7 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
           <button
             type="button"
             aria-label="Close"
-            onClick={() => (id ? router.push(':conversationId', { conversationId: id }) : router.push('', {}))}
+            onClick={() => { if (id) { router.push(':conversationId', { conversationId: id }); } else { router.push('', {}); } }}
             style={S.closeBtn}
           >
             <X size={16} />
@@ -160,7 +160,7 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
               <Mail size={16} style={{ color: 'var(--app-foreground-muted)', flexShrink: 0 }} />
               <input
                 value={addEmail}
-                onChange={(e) => setAddEmail(e.target.value)}
+                onChange={(e) => { setAddEmail(e.target.value); }}
                 onKeyDown={(e) => { if (e.key === 'Enter') void addByEmail(); }}
                 placeholder="invite someone — name@email.com"
                 spellCheck={false}
@@ -174,7 +174,7 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
             <div>
               {members.map((m) => (
                 <div key={m.userId} style={S.memberRow}>
-                  <Avatar image={m.avatar?.image?.uri} seed={m.userId} label={m.name} size={38} />
+                  <Avatar image={m.avatar.image.uri} seed={m.userId} label={m.name} size={38} />
                   <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                     <div style={S.memberName}>
                       {m.name}{m.userId === userId ? ' (you)' : ''}
@@ -197,28 +197,28 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
                 title="Mute notifications"
                 desc="No pings. The unread count still tells the truth."
                 on={toggles.mute}
-                onToggle={() => setToggle('mute')}
+                onToggle={() => { setToggle('mute'); }}
               />
               <SettingRow
                 icon={<AlignLeft size={18} />}
                 title="Show typing"
                 desc="Others see the three dots while you type."
                 on={toggles.showTyping}
-                onToggle={() => setToggle('showTyping')}
+                onToggle={() => { setToggle('showTyping'); }}
               />
               <SettingRow
                 icon={<Check size={18} />}
                 title="Read receipts"
                 desc='They see "seen". You see theirs.'
                 on={toggles.readReceipts}
-                onToggle={() => setToggle('readReceipts')}
+                onToggle={() => { setToggle('readReceipts'); }}
               />
               <SettingRow
                 icon={<BarChart3 size={18} />}
                 title="Response-time stats"
                 desc="The slightly rude dashboard: avg reply, left-on-read, your share %."
                 on={toggles.responseStats}
-                onToggle={() => setToggle('responseStats')}
+                onToggle={() => { setToggle('responseStats'); }}
               />
             </div>
           </div>

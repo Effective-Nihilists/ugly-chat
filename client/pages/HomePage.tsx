@@ -41,9 +41,9 @@ const FONT_MONO = "'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace";
 function useDesktop(): boolean {
   const [d, setD] = useState(() => (typeof window === 'undefined' ? true : window.innerWidth >= 900));
   useEffect(() => {
-    const f = (): void => setD(window.innerWidth >= 900);
+    const f = (): void => { setD(window.innerWidth >= 900); };
     window.addEventListener('resize', f);
-    return () => window.removeEventListener('resize', f);
+    return () => { window.removeEventListener('resize', f); };
   }, []);
   return d;
 }
@@ -132,14 +132,14 @@ function Hero({ desktop }: { desktop: boolean }): React.ReactElement {
             </a>
           </div>
         </div>
-        <ChatPreview desktop={desktop} />
+        <ChatPreview />
       </div>
     </section>
   );
 }
 
 // ── Mock chat preview card ───────────────────────────────────────────────────
-function ChatPreview({ desktop }: { desktop: boolean }): React.ReactElement {
+function ChatPreview(): React.ReactElement {
   return (
     <div style={{ border: `1px solid ${BORDER}`, background: ELEV, borderRadius: 16, overflow: 'hidden', boxShadow: '0 30px 80px rgba(0,0,0,0.5)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '12px 16px', borderBottom: `1px solid ${BORDER}` }}>

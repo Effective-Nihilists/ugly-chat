@@ -39,9 +39,9 @@ export function ConversationListBody({
       key={c.conversationId}
       row={c}
       selected={c.conversationId === activeId}
-      onClick={() => onSelect(c.conversationId)}
-      {...(onTogglePin ? { onTogglePin: () => onTogglePin(c.conversationId, !c.pinned) } : {})}
-      {...(onDelete ? { onDelete: () => onDelete(c.conversationId) } : {})}
+      onClick={() => { onSelect(c.conversationId); }}
+      {...(onTogglePin ? { onTogglePin: () => { onTogglePin(c.conversationId, !c.pinned); } } : {})}
+      {...(onDelete ? { onDelete: () => { onDelete(c.conversationId); } } : {})}
     />
   );
 
@@ -66,7 +66,7 @@ export function ConversationListBody({
 export function SectionLabel({ text }: { text: string }): React.ReactElement {
   return (
     <div className="uc-mono-label" style={{ padding: '12px 14px 4px' }}>
-      <span style={{ color: 'var(--app-primary)' }}>//</span> {text}
+      <span style={{ color: 'var(--app-primary)' }}>{'//'}</span> {text}
     </div>
   );
 }

@@ -48,7 +48,7 @@ export function parseTextGenResponse(data: unknown): { text: string; usage: MsgT
   }
   const u = (d?.usage ?? (d?.result as Record<string, unknown> | undefined)?.usage ?? {}) as Record<string, unknown>;
   const usage: MsgTelemetry = {
-    model: String(u.model ?? d?.model ?? ''),
+    model: typeof u.model === 'string' ? u.model : typeof d?.model === 'string' ? d.model : '',
     inputTokens: Number(u.inputTokens ?? u.promptTokens ?? 0),
     outputTokens: Number(u.outputTokens ?? u.completionTokens ?? 0),
     costUsd: Number(u.costUsd ?? u.cost ?? 0),
@@ -93,7 +93,7 @@ async function uglyBotTextGen(
   // surface the right message. ugly.bot returns `{ error }` on both non-2xx and
   // some 200 envelopes, so check both.
   if (!res.ok || data.error) {
-    const detail = String(data.error ?? `HTTP ${res.status}`);
+    const detail = typeof data.error === 'string' ? data.error : `HTTP ${res.status}`;
     const err = new Error(`textGen ${detail}`) as Error & { status?: number };
     err.status = res.status;
     throw err;
@@ -120,7 +120,7 @@ async function uglyBotImageGen(model: string, prompt: string, size: string): Pro
   });
   if (!res.ok) throw new Error(`imageGen HTTP ${res.status}`);
   const data = (await res.json()) as Record<string, unknown>;
-  if (data.error) throw new Error(String(data.error));
+  if (data.error) throw new Error(typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
   const url = data.url ?? data.imageUrl ?? (data.result as Record<string, unknown> | undefined)?.url;
   return typeof url === 'string' ? url : '';
 }
@@ -231,9 +231,9 @@ export async function getBotConfig(db: MinimalDb, botId: string): Promise<BotCon
   if (doc) {
     return {
       id: botId,
-      name: String(doc.name ?? 'Bot'),
-      systemPrompt: String(doc.instruction ?? ''),
-      model: String(doc.model ?? 'deepseek_v4_flash'),
+      name: doc.name,
+      systemPrompt: doc.instruction,
+      model: doc.model,
       firstMessage: (doc.firstMessage) ?? null,
       buttons: (doc.buttons as { label: string; prompt: string }[] | undefined) ?? [],
       avatar: toAvatar(doc.avatar),
@@ -243,8 +243,8 @@ export async function getBotConfig(db: MinimalDb, botId: string): Promise<BotCon
   // Migrated bot with no editable row yet — plain userId flagged isBot in userPublic.
   const up = await db.getDoc(collections.userProfileCache, botId);
   if (up && asBool(up.isBot)) {
-    const name = String(up.name ?? 'Bot');
-    const bio = String(up.bio ?? '').trim();
+    const name = up.name ?? 'Bot';
+    const bio = (typeof up.bio === 'string' ? up.bio : '').trim();
     return {
       id: botId,
       name,
@@ -326,8 +326,8 @@ export async function triggerBotReplies(
   const history = recent
     .filter((m) => m.deleted !== true)
     .map((m) => ({
-      role: botSet.has(String(m.userId)) ? ('assistant' as const) : ('user' as const),
-      content: String(m.text ?? m.markdown ?? ''),
+      role: botSet.has(m.userId) ? ('assistant' as const) : ('user' as const),
+      content: m.text ?? m.markdown ?? '',
     }))
     .filter((m) => m.content.length > 0);
 

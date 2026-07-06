@@ -34,7 +34,7 @@ export function openNewChatPopup(
   navigate: (conversationId: string) => void,
 ): void {
   const handle = router.openPopup(
-    <NewChatPopup onClose={() => handle.hide()} socket={socket} recent={recent} navigate={navigate} />,
+    <NewChatPopup onClose={() => { handle.hide(); }} socket={socket} recent={recent} navigate={navigate} />,
     { mode: 'transient' },
   );
 }
@@ -67,7 +67,7 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
       .request('userContacts', {})
       .then((res) => {
         if (cancelled) return;
-        setContacts(((res as { users?: Contact[] }).users ?? []) as Contact[]);
+        setContacts(((res as { users?: Contact[] }).users ?? []));
       })
       .catch(() => undefined)
       .finally(() => { if (!cancelled) setContactsLoading(false); });
@@ -177,7 +177,7 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
             {selected.map((uid) => (
               <span key={uid} style={{ ...chip, background: 'var(--app-primary)', color: '#fff', borderColor: 'var(--app-primary)' }}>
                 {contactById.get(uid)?.name ?? uid.slice(0, 6)}
-                <button type="button" aria-label="Remove" onClick={() => toggle(uid)} style={{ ...chipX, color: '#fff' }}>
+                <button type="button" aria-label="Remove" onClick={() => { toggle(uid); }} style={{ ...chipX, color: '#fff' }}>
                   <X size={11} />
                 </button>
               </span>
@@ -185,7 +185,7 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
             {emails.map((e) => (
               <span key={e} style={chip}>
                 {e}
-                <button type="button" aria-label={`Remove ${e}`} onClick={() => removeChip(e)} style={chipX}>
+                <button type="button" aria-label={`Remove ${e}`} onClick={() => { removeChip(e); }} style={chipX}>
                   <X size={11} />
                 </button>
               </span>
@@ -222,7 +222,7 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
               <Users size={16} style={{ opacity: 0.5, flexShrink: 0 }} />
               <input
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => { setTitle(e.target.value); }}
                 placeholder="ship-crew, prod-incidents, …"
                 spellCheck={false}
                 style={inputEl}
@@ -251,10 +251,10 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
                     key={c.userId}
                     type="button"
                     className="uc-row"
-                    onClick={() => toggle(c.userId)}
+                    onClick={() => { toggle(c.userId); }}
                     style={{ ...memberRow, background: on ? 'rgba(var(--app-primary-rgb), 0.10)' : 'transparent' }}
                   >
-                    <Avatar image={c.avatar?.image?.uri} seed={c.userId} label={c.name} size={38} />
+                    <Avatar image={c.avatar.image.uri} seed={c.userId} label={c.name} size={38} />
                     <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                       <div style={memberName}>{c.name}</div>
                     </div>

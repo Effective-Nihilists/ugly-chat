@@ -37,7 +37,7 @@ export function computeHumanStats(msgs: StatMsg[], meId: string): HumanStats {
 }
 
 // Per-message: latency of THIS message if it's a reply to the other side.
-export function replyLatencyMs(sorted: StatMsg[], index: number, meId: string): number | null {
+export function replyLatencyMs(sorted: StatMsg[], index: number, _meId: string): number | null {
   const m = sorted[index];
   if (!m || index === 0) return null;
   const prev = sorted[index - 1];

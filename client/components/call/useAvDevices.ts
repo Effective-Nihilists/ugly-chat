@@ -78,7 +78,7 @@ export function useAvDevices(): UseAvDevices {
   });
 
   const enumerate = useCallback(async () => {
-    if (!hasMediaDevices() || !navigator.mediaDevices.enumerateDevices) return;
+    if (!hasMediaDevices()) return;
     const devices = await navigator.mediaDevices.enumerateDevices();
     const toDev = (d: MediaDeviceInfo, fallback: string): AvDevice => ({
       id: d.deviceId,
@@ -108,7 +108,7 @@ export function useAvDevices(): UseAvDevices {
     try {
       // Probe to trigger the prompt + unlock device labels; release immediately.
       const probe = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      probe.getTracks().forEach((t) => t.stop());
+      probe.getTracks().forEach((t) => { t.stop(); });
       await enumerate();
       setPermission('granted');
       return true;
@@ -123,10 +123,10 @@ export function useAvDevices(): UseAvDevices {
 
   // Re-enumerate when devices are plugged/unplugged (only meaningful post-grant).
   useEffect(() => {
-    if (!hasMediaDevices() || !navigator.mediaDevices.addEventListener) return undefined;
+    if (!hasMediaDevices()) return undefined;
     const onChange = (): void => void enumerate().catch(() => undefined);
     navigator.mediaDevices.addEventListener('devicechange', onChange);
-    return () => navigator.mediaDevices.removeEventListener('devicechange', onChange);
+    return () => { navigator.mediaDevices.removeEventListener('devicechange', onChange); };
   }, [enumerate]);
 
   const setCamera = useCallback((id: string) => {

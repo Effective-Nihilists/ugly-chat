@@ -47,7 +47,7 @@ export function openMembersPopup(
 ): void {
   const handle = router.openPopup(
     <MembersPopup
-      onClose={() => handle.hide()}
+      onClose={() => { handle.hide(); }}
       socket={socket}
       userId={userId}
       conversationId={conversationId}
@@ -182,7 +182,7 @@ export function MembersPopup({
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         {adding ? (
-          <button type="button" onClick={() => setAdding(false)} aria-label="Back" style={{ border: 'none', background: 'transparent', fontSize: 22, lineHeight: 1, cursor: 'pointer', color: 'var(--app-foreground)', padding: 0 }}>
+          <button type="button" onClick={() => { setAdding(false); }} aria-label="Back" style={{ border: 'none', background: 'transparent', fontSize: 22, lineHeight: 1, cursor: 'pointer', color: 'var(--app-foreground)', padding: 0 }}>
             ‹
           </button>
         ) : null}
@@ -213,7 +213,7 @@ export function MembersPopup({
             const self = m.userId === userId;
             return (
               <div key={m.userId} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '8px 4px' }}>
-                <Avatar image={m.avatar?.image?.uri} seed={m.userId} label={m.name} size={38} />
+                <Avatar image={m.avatar.image.uri} seed={m.userId} label={m.name} size={38} />
                 <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--app-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {m.name}{self ? ' (you)' : ''}
@@ -278,7 +278,7 @@ export function MembersPopup({
             <span style={{ flex: 1, fontSize: 13, color: 'var(--app-error)' }}>Delete this conversation for everyone?</span>
             <button
               type="button"
-              onClick={() => setConfirmDelete(false)}
+              onClick={() => { setConfirmDelete(false); }}
               disabled={busy !== null}
               style={{ fontSize: 13, fontWeight: 600, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--app-border)', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }}
             >
@@ -296,7 +296,7 @@ export function MembersPopup({
         ) : (
           <button
             type="button"
-            onClick={() => setConfirmDelete(true)}
+            onClick={() => { setConfirmDelete(true); }}
             disabled={busy !== null}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 7, alignSelf: 'flex-start', height: 34, padding: '0 12px', borderRadius: 9, border: '1px solid var(--app-error)', background: 'transparent', color: 'var(--app-error)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
           >
@@ -357,7 +357,7 @@ function AddMemberList(props: {
     <>
       <input
         value={props.query}
-        onChange={(e) => props.onQuery(e.target.value)}
+        onChange={(e) => { props.onQuery(e.target.value); }}
         placeholder="Search your contacts…"
         autoFocus
         style={{ height: 40, padding: '0 12px', borderRadius: 10, border: '1px solid var(--app-border)', background: 'var(--app-main)', outline: 'none', fontSize: 14, color: 'var(--app-foreground)' }}
@@ -375,11 +375,11 @@ function AddMemberList(props: {
                 key={c.userId}
                 type="button"
                 disabled={props.busy !== null}
-                onClick={() => props.onAdd(c.userId)}
+                onClick={() => { props.onAdd(c.userId); }}
                 className="uc-row"
                 style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '8px 4px', width: '100%', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', font: 'inherit' }}
               >
-                <Avatar image={c.avatar?.image?.uri} seed={c.userId} label={c.name} size={38} />
+                <Avatar image={c.avatar.image.uri} seed={c.userId} label={c.name} size={38} />
                 <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 600, color: 'var(--app-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {c.name}
                 </span>

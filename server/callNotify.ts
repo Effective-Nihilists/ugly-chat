@@ -82,7 +82,7 @@ export async function notifyIncomingCall(
         ],
         data: { type: 'call', conversationId, callerId },
       }).catch((err: unknown) => {
-        console.warn('[callNotify] push failed', (err as Error)?.message);
+        console.warn('[callNotify] push failed', (err as Error).message);
       }),
     ),
   );
@@ -134,7 +134,7 @@ export async function notifyNewMessage(
         body: preview || 'Sent a message',
         path: url,
       }).catch((err: unknown) => {
-        console.warn('[notifyNewMessage] push failed', (err as Error)?.message);
+        console.warn('[notifyNewMessage] push failed', (err as Error).message);
       }),
     ),
   );

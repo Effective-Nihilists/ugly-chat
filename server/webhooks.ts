@@ -67,7 +67,7 @@ export async function fireMessageWebhooks(
   const conv = await db.getDoc(collections.conversation, conversationId);
   if (!conv) return;
   const appId = conv.appId;
-  const authorId = String(message.userId ?? '');
+  const authorId = typeof message.userId === 'string' ? message.userId : '';
   // Include the conversation's `custom` so the receiving app can route the event
   // (e.g. love distinguishes coach vs couple conversations) without storing
   // conversations itself.

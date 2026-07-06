@@ -73,7 +73,7 @@ export function ConversationInput({
       if (w && w > 0) setWidth(Math.round(w));
     });
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => { ro.disconnect(); };
   }, []);
 
   const handleSend = useCallback(() => {

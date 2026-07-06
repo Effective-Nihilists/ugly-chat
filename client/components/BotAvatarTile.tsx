@@ -43,7 +43,7 @@ function webglAvailable(): boolean {
   if (typeof document === 'undefined') return false;
   try {
     const c = document.createElement('canvas');
-    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+    return !!(c.getContext('webgl2') ?? c.getContext('webgl'));
   } catch {
     return false;
   }
@@ -138,7 +138,7 @@ export function BotAvatarTile({
   );
   useEffect(() => {
     if (typeof document === 'undefined') return undefined;
-    const onVis = (): void => setHidden(document.hidden);
+    const onVis = (): void => { setHidden(document.hidden); };
     document.addEventListener('visibilitychange', onVis);
     return () => {
       document.removeEventListener('visibilitychange', onVis);
@@ -215,7 +215,7 @@ export function BotAvatarTile({
       ) : (
         <AvatarErrorBoundary
           fallback={<NeutralBotTile label={label} />}
-          onError={() => setFailed(true)}
+          onError={() => { setFailed(true); }}
         >
           <Suspense fallback={<NeutralBotTile label={label} />}>
             <TalkingAvatar
@@ -225,7 +225,7 @@ export function BotAvatarTile({
               framing="head"
               background="transparent"
               style={{ width: '100%', height: '100%' }}
-              onReady={() => setReady(true)}
+              onReady={() => { setReady(true); }}
             />
           </Suspense>
         </AvatarErrorBoundary>

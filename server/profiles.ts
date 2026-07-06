@@ -65,7 +65,7 @@ export async function resolveProfiles(db: DbLike, userIds: string[]): Promise<Pr
       if (botDoc) {
         out.push({
           id,
-          name: (botDoc.name) ?? fallbackName(id),
+          name: botDoc.name,
           avatar: toAvatar(botDoc.avatar),
           isBot: true,
         });
@@ -93,7 +93,7 @@ export async function resolveProfiles(db: DbLike, userIds: string[]): Promise<Pr
     const got = new Set<string>();
     try {
       const res = await uglyBotRequest('userPublicBatch', { userIds: toFetch });
-      for (const p of res.profiles ?? []) {
+      for (const p of res.profiles) {
         const local = cacheById.get(p.id);
         const name = (local?.name as string | undefined) ?? p.name ?? fallbackName(p.id);
         const isBot = asBool(local?.isBot);

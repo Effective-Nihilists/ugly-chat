@@ -98,8 +98,7 @@ export async function videoLeave(
 ): Promise<CallState> {
   const conv = await db.getDoc(collections.conversation, conversationId);
   const call = getCall(conv);
-  const participants = { ...call.participants };
-  delete participants[userId];
+  const { [userId]: _removed, ...participants } = call.participants;
   // A call is only "active" while a HUMAN is in it. Bots never leave on their
   // own, so once the last human leaves we end the call (and drop the bots) —
   // otherwise a bot DM would show a phantom active call forever.

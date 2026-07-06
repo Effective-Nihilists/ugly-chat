@@ -43,32 +43,31 @@ export function CallLobby({ peerName, title, onJoin, onCancel }: CallLobbyProps)
   // camera/mic changes. Tears down the previous stream + audio graph first.
   useEffect(() => {
     if (av.permission !== 'granted') return undefined;
-    let cancelled = false;
+    const state = { cancelled: false };
     let audioCtx: AudioContext | null = null;
     let raf = 0;
 
     const stop = (): void => {
-      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current?.getTracks().forEach((t) => { t.stop(); });
       streamRef.current = null;
       if (raf) cancelAnimationFrame(raf);
       if (audioCtx) void audioCtx.close().catch(() => undefined);
     };
 
-    (async () => {
+    void (async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: av.selected.cameraId ? { deviceId: { exact: av.selected.cameraId } } : true,
           audio: av.selected.micId ? { deviceId: { exact: av.selected.micId } } : true,
         });
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
+        if (state.cancelled) {
+          stream.getTracks().forEach((t) => { t.stop(); });
           return;
         }
         streamRef.current = stream;
         if (videoRef.current) videoRef.current.srcObject = stream;
         // Mic level meter.
-        const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-        audioCtx = new AC();
+        audioCtx = new AudioContext();
         const src = audioCtx.createMediaStreamSource(stream);
         const analyser = audioCtx.createAnalyser();
         analyser.fftSize = 256;
@@ -88,18 +87,18 @@ export function CallLobby({ peerName, title, onJoin, onCancel }: CallLobbyProps)
     })();
 
     return () => {
-      cancelled = true;
+      state.cancelled = true;
       stop();
     };
   }, [av.permission, av.selected.cameraId, av.selected.micId]);
 
   const handleJoin = (): void => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current?.getTracks().forEach((t) => { t.stop(); });
     streamRef.current = null;
     onJoin(av.selected);
   };
   const handleCancel = (): void => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current?.getTracks().forEach((t) => { t.stop(); });
     streamRef.current = null;
     onCancel();
   };
@@ -234,7 +233,7 @@ function DevicePicker({
       </span>
       <select
         value={value ?? ''}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => { onChange(e.target.value); }}
         style={{
           flex: 1,
           minWidth: 0,

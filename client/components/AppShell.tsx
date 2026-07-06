@@ -25,9 +25,9 @@ export function AppShell({ children }: { children: React.ReactNode }): React.Rea
 
   const [wide, setWide] = useState(() => (typeof window === 'undefined' ? true : window.innerWidth >= SIDEBAR_MIN_WIDTH));
   useEffect(() => {
-    const onResize = (): void => setWide(window.innerWidth >= SIDEBAR_MIN_WIDTH);
+    const onResize = (): void => { setWide(window.innerWidth >= SIDEBAR_MIN_WIDTH); };
     window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    return () => { window.removeEventListener('resize', onResize); };
   }, []);
 
   if (!isChat) {

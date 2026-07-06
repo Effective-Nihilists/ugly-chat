@@ -43,7 +43,7 @@ export function Sidebar(): React.ReactElement {
 
   const activeId =
     router.current.routeName === ':conversationId'
-      ? (router.current.params as { conversationId: string }).conversationId
+      ? (router.current.params).conversationId
       : null;
 
   const setExpanded = useCallback((v: boolean) => {
@@ -52,7 +52,7 @@ export function Sidebar(): React.ReactElement {
   }, []);
 
   const navigate = useCallback(
-    (conversationId: string) => router.push(':conversationId', { conversationId }),
+    (conversationId: string) => { router.push(':conversationId', { conversationId }); },
     [router],
   );
 
@@ -64,10 +64,10 @@ export function Sidebar(): React.ReactElement {
   }, [router, socket, conversations, navigate]);
 
   const openBots = useCallback(() => {
-    openBotsPopup(router, socket, userId, (botId) => router.push('bot/:botId', { botId }), navigate);
+    openBotsPopup(router, socket, userId, (botId) => { router.push('bot/:botId', { botId }); }, navigate);
   }, [router, socket, userId, navigate]);
 
-  const openTheme = useCallback(() => openThemeMenu(router), [router]);
+  const openTheme = useCallback(() => { openThemeMenu(router); }, [router]);
 
   // Pin/unpin a conversation. The userConversation trackDocs subscription
   // (keyed by userId) picks up the visibility change and refetches the list,
@@ -76,7 +76,7 @@ export function Sidebar(): React.ReactElement {
     (conversationId: string, pinned: boolean) => {
       void socket
         .request('conversationSetPinned', { conversationId, pinned })
-        .catch((err: unknown) => console.error('[sidebar] pin failed', err));
+        .catch((err: unknown) => { console.error('[sidebar] pin failed', err); });
     },
     [socket],
   );
@@ -87,7 +87,7 @@ export function Sidebar(): React.ReactElement {
   const removeConversation = useCallback(
     (conversationId: string) => {
       void deleteOrLeaveConversation(socket, conversationId, userId).catch((err: unknown) =>
-        console.error('[sidebar] delete failed', err),
+        { console.error('[sidebar] delete failed', err); },
       );
     },
     [socket, userId],
@@ -122,7 +122,7 @@ export function Sidebar(): React.ReactElement {
     return (
       <aside style={{ ...railStyle, width: COLLAPSED_WIDTH }}>
         <div style={{ height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <button type="button" title="Expand" onClick={() => setExpanded(true)} className="uc-iconbtn" style={{ ...iconBtnStyle, border: 'none', background: 'transparent' }}>
+          <button type="button" title="Expand" onClick={() => { setExpanded(true); }} className="uc-iconbtn" style={{ ...iconBtnStyle, border: 'none', background: 'transparent' }}>
             <PanelLeft size={20} />
           </button>
         </div>
@@ -144,7 +144,7 @@ export function Sidebar(): React.ReactElement {
               key={c.conversationId}
               type="button"
               title={c.title || 'Conversation'}
-              onClick={() => router.push(':conversationId', { conversationId: c.conversationId })}
+              onClick={() => { router.push(':conversationId', { conversationId: c.conversationId }); }}
               className="uc-row"
               style={{ border: 'none', background: 'transparent', padding: 3, borderRadius: '50%', cursor: 'pointer', outline: c.conversationId === activeId ? '2px solid var(--app-primary)' : 'none' }}
             >
@@ -161,14 +161,14 @@ export function Sidebar(): React.ReactElement {
     <aside style={{ ...railStyle, width, position: 'relative' }}>
       {/* Header / wordmark + collapse toggle */}
       <div style={{ height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '0 10px 0 8px' }}>
-        <button type="button" title="Collapse" onClick={() => setExpanded(false)} className="uc-iconbtn" style={{ ...iconBtnStyle, border: 'none', background: 'transparent' }}>
+        <button type="button" title="Collapse" onClick={() => { setExpanded(false); }} className="uc-iconbtn" style={{ ...iconBtnStyle, border: 'none', background: 'transparent' }}>
           <PanelLeftClose size={20} />
         </button>
         {/* Wordmark doubles as a flex spacer that keeps the icon cluster
             right-aligned. Below ~300px the logo can't fit beside the icons, so
             hide its text (the empty button stays as the spacer) to avoid the
             wordmark overlapping the icon buttons in a narrow sidebar. */}
-        <button type="button" onClick={() => router.push('', {})} style={{ flex: 1, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
+        <button type="button" onClick={() => { router.push('', {}); }} style={{ flex: 1, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
           {width >= LOGO_MIN_WIDTH ? (
             <>
               <span style={{ fontFamily: 'var(--app-font-heading)', fontWeight: 800, fontSize: 19, letterSpacing: '-0.03em', color: 'var(--app-foreground)', lineHeight: 1, whiteSpace: 'nowrap' }}>
@@ -201,7 +201,7 @@ export function Sidebar(): React.ReactElement {
           <SearchIcon />
           <input
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => { setQ(e.target.value); }}
             placeholder="Search"
             style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', outline: 'none', fontSize: 14, color: 'var(--app-foreground)' }}
           />

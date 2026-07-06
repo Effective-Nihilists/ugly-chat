@@ -72,7 +72,7 @@ export default function SearchPage(): React.ReactElement {
     else url.searchParams.delete('q');
     window.history.replaceState(null, '', url.toString());
     const t = setTimeout(() => void runSearch(query), 250);
-    return () => clearTimeout(t);
+    return () => { clearTimeout(t); };
   }, [query, runSearch]);
 
   return (
@@ -110,7 +110,7 @@ export default function SearchPage(): React.ReactElement {
             <input
               autoFocus
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => { setQuery(e.target.value); }}
               placeholder="Search all messages…"
               style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 16, color: 'var(--app-foreground)' }}
             />
@@ -129,7 +129,7 @@ export default function SearchPage(): React.ReactElement {
                   key={h._id}
                   type="button"
                   className="uc-row"
-                  onClick={() => router.push(':conversationId', { conversationId: h.conversationId })}
+                  onClick={() => { router.push(':conversationId', { conversationId: h.conversationId }); }}
                   style={{
                     display: 'flex',
                     flexDirection: 'column',

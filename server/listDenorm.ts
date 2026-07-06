@@ -48,7 +48,7 @@ export async function bumpListForMessage(
   const p = preview(text);
   await Promise.all(
     rows.map(async (uc) => {
-      const memberId = String(uc.userPrivateId ?? '');
+      const memberId = uc.userPrivateId ?? '';
       if (!memberId || isBotId(memberId)) return;
       const isSender = memberId === senderId;
       const visibility = (uc.visibility!) === 'hidden' ? 'visible' : uc.visibility;
