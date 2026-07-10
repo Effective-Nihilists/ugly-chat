@@ -92,7 +92,7 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
     <div style={page}>
       <div style={{ maxWidth: 640, margin: '0 auto', width: '100%', boxSizing: 'border-box', padding: '20px 18px 60px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-          <button type="button" onClick={() => { router.push('', {}); }} aria-label="Back" style={iconBtn}>
+          <button type="button" onClick={() => { router.push('', {}); }} aria-label="Back" style={iconBtn} data-id="back">
             <ArrowLeft size={20} />
           </button>
           <h1 style={{ fontFamily: 'var(--app-font-heading)', fontWeight: 800, fontSize: 24, margin: 0, color: 'var(--app-foreground)' }}>
@@ -115,11 +115,11 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
         </div>
 
         <Field label="Name">
-          <input value={name} onChange={(e) => { setName(e.target.value); }} placeholder="My Bot" maxLength={60} style={input} />
+          <input value={name} onChange={(e) => { setName(e.target.value); }} placeholder="My Bot" maxLength={60} style={input} data-id="my-bot" />
         </Field>
 
         <Field label="Model">
-          <select value={model} onChange={(e) => { setModel(e.target.value); }} style={{ ...input, cursor: 'pointer' }}>
+          <select value={model} onChange={(e) => { setModel(e.target.value); }} style={{ ...input, cursor: 'pointer' }} data-id="select">
             {BOT_MODELS.map((m) => (
               <option key={m.id} value={m.id}>{m.label}</option>
             ))}
@@ -133,7 +133,7 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
             placeholder="You are a friendly tutor who explains things simply…"
             rows={5}
             maxLength={8000}
-            style={{ ...input, resize: 'vertical', lineHeight: 1.5 }}
+            style={{ ...input, resize: 'vertical', lineHeight: 1.5 }} data-id="you-are-a-friendly"
           />
         </Field>
 
@@ -144,7 +144,7 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
             placeholder="Hi! What would you like to learn today?"
             rows={2}
             maxLength={2000}
-            style={{ ...input, resize: 'vertical', lineHeight: 1.5 }}
+            style={{ ...input, resize: 'vertical', lineHeight: 1.5 }} data-id="hi-what-would-you"
           />
         </Field>
 
@@ -157,16 +157,16 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
                   onChange={(e) => { setButtons((p) => p.map((x, j) => (j === i ? { ...x, label: e.target.value } : x))); }}
                   placeholder="Label"
                   maxLength={40}
-                  style={{ ...input, flex: '1 1 110px', minWidth: 0 }}
+                  style={{ ...input, flex: '1 1 110px', minWidth: 0 }} data-id="label"
                 />
                 <input
                   value={b.prompt}
                   onChange={(e) => { setButtons((p) => p.map((x, j) => (j === i ? { ...x, prompt: e.target.value } : x))); }}
                   placeholder="Prompt it sends…"
                   maxLength={2000}
-                  style={{ ...input, flex: '2 1 140px', minWidth: 0 }}
+                  style={{ ...input, flex: '2 1 140px', minWidth: 0 }} data-id="prompt-it-sends"
                 />
-                <button type="button" onClick={() => { setButtons((p) => p.filter((_, j) => j !== i)); }} aria-label="Remove" style={iconBtn}>
+                <button type="button" onClick={() => { setButtons((p) => p.filter((_, j) => j !== i)); }} aria-label="Remove" style={iconBtn} data-id="remove">
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -174,7 +174,7 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
             <button
               type="button"
               onClick={() => { setButtons((p) => [...p, { label: '', prompt: '' }]); }}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', padding: '7px 12px', borderRadius: 10, border: '1px solid var(--app-border)', background: 'var(--app-tertiary)', color: 'var(--app-foreground)', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', padding: '7px 12px', borderRadius: 10, border: '1px solid var(--app-border)', background: 'var(--app-tertiary)', color: 'var(--app-foreground)', cursor: 'pointer', fontSize: 14, fontWeight: 600 }} data-id="add-button"
             >
               <Plus size={16} /> Add button
             </button>
@@ -182,11 +182,11 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
         </Field>
 
         <div style={{ display: 'flex', gap: 10, marginTop: 24, flexWrap: 'wrap' }}>
-          <button type="button" disabled={!name.trim() || saving} onClick={() => void save(true)} style={{ ...primaryBtn, opacity: !name.trim() || saving ? 0.5 : 1 }}>
+          <button type="button" disabled={!name.trim() || saving} onClick={() => void save(true)} style={{ ...primaryBtn, opacity: !name.trim() || saving ? 0.5 : 1 }} data-id="button">
             {saving ? <Loader2 className="uc-spin" size={16} /> : null}
             {editing ? 'Save & chat' : 'Create & chat'}
           </button>
-          <button type="button" disabled={!name.trim() || saving} onClick={() => void save(false)} style={{ ...ghostBtn, opacity: !name.trim() || saving ? 0.5 : 1 }}>
+          <button type="button" disabled={!name.trim() || saving} onClick={() => void save(false)} style={{ ...ghostBtn, opacity: !name.trim() || saving ? 0.5 : 1 }} data-id="button-2">
             {editing ? 'Save' : 'Create'}
           </button>
         </div>
@@ -244,7 +244,7 @@ function ImageField(props: {
           cursor: 'pointer',
           position: 'relative',
           flexShrink: 0,
-        }}
+        }} data-id="div"
       >
         {busy ? (
           <Loader2 className="uc-spin" size={22} color="var(--app-primary)" />
@@ -256,13 +256,13 @@ function ImageField(props: {
             type="button"
             onClick={(e) => { e.stopPropagation(); props.onChange(null); }}
             aria-label="Remove"
-            style={{ position: 'absolute', top: -6, right: -6, width: 22, height: 22, borderRadius: '50%', border: 'none', background: 'var(--app-foreground)', color: 'var(--app-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            style={{ position: 'absolute', top: -6, right: -6, width: 22, height: 22, borderRadius: '50%', border: 'none', background: 'var(--app-foreground)', color: 'var(--app-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} data-id="remove-2"
           >
             <X size={13} />
           </button>
         ) : null}
       </div>
-      <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ''; }} />
+      <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ''; }} data-id="input" />
     </div>
   );
 }

@@ -778,7 +778,7 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
           label={micOn ? 'Mute mic' : 'Unmute mic'}
           active={false}
           off={!micOn}
-          onClick={toggleMic}
+          onClick={toggleMic} data-id="toggle-mic"
         >
           {micOn ? <Mic size={21} /> : <MicOff size={21} />}
         </CtrlButton>
@@ -787,7 +787,7 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
           label={camOn ? 'Stop camera' : 'Start camera'}
           active={false}
           off={!camOn}
-          onClick={toggleCam}
+          onClick={toggleCam} data-id="toggle-cam"
         >
           {camOn ? <Video size={21} /> : <VideoOff size={21} />}
         </CtrlButton>
@@ -797,18 +797,18 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
             label="Toggle transcript"
             active={!transcriptCollapsed}
             off={false}
-            onClick={onToggleTranscript}
+            onClick={onToggleTranscript} data-id="toggle-transcript"
           >
             <Captions size={21} />
           </CtrlButton>
         ) : null}
         <span style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.14)' }} />
         {onAddPerson ? (
-          <CtrlButton dataId="call-add-person" label="Add person" active={false} off={false} onClick={onAddPerson}>
+          <CtrlButton dataId="call-add-person" label="Add person" active={false} off={false} onClick={onAddPerson} data-id="add-person">
             <UserPlus size={21} />
           </CtrlButton>
         ) : null}
-        <CtrlButton dataId="call-add-bot" label="Add ugly-bot" active={false} off={false} dashed onClick={() => { addBot(); }}>
+        <CtrlButton dataId="call-add-bot" label="Add ugly-bot" active={false} off={false} dashed onClick={() => { addBot(); }} data-id="add-ugly-bot">
           <BotIcon size={21} />
         </CtrlButton>
         <span style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.14)' }} />

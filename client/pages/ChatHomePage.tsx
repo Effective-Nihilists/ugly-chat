@@ -49,13 +49,13 @@ export default function ChatHomePage(): React.ReactElement {
 
   const iconCluster = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
-      <button type="button" title="User settings" onClick={openUglyBotSettings} className="uc-iconbtn" style={topIconBtn}>
+      <button type="button" title="User settings" onClick={openUglyBotSettings} className="uc-iconbtn" style={topIconBtn} data-id="button">
         <UserCog size={18} />
       </button>
-      <button type="button" title="Bots" onClick={openBots} className="uc-iconbtn" style={topIconBtn}>
+      <button type="button" title="Bots" onClick={openBots} className="uc-iconbtn" style={topIconBtn} data-id="button-2">
         <Bot size={18} />
       </button>
-      <button type="button" title="Theme" onClick={openTheme} className="uc-iconbtn" style={topIconBtn}>
+      <button type="button" title="Theme" onClick={openTheme} className="uc-iconbtn" style={topIconBtn} data-id="button-3">
         <Palette size={18} />
       </button>
     </div>
@@ -148,7 +148,7 @@ export default function ChatHomePage(): React.ReactElement {
             fontSize: 13,
             letterSpacing: '0.12em',
             textTransform: 'uppercase',
-          }}
+          }} data-id="new-conversation"
         >
           <Plus size={16} />
           New conversation
@@ -221,10 +221,10 @@ function MobileHome({
             value={q}
             onChange={(e) => { setQ(e.target.value); }}
             placeholder="Search"
-            style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', outline: 'none', fontSize: 14, color: 'var(--app-foreground)' }}
+            style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', outline: 'none', fontSize: 14, color: 'var(--app-foreground)' }} data-id="search"
           />
         </div>
-        <button type="button" title="New chat" onClick={openNew} className="uc-iconbtn" style={squareIconBtn}>
+        <button type="button" title="New chat" onClick={openNew} className="uc-iconbtn" style={squareIconBtn} data-id="button-4">
           <Plus size={20} />
         </button>
       </div>
@@ -263,7 +263,7 @@ function MobileHome({
           justifyContent: 'center',
           boxShadow: 'var(--app-shadow-button-default)',
           zIndex: 2,
-        }}
+        }} data-id="new-chat"
       >
         <Plus size={24} />
       </button>

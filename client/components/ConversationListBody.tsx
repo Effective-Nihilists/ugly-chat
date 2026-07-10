@@ -41,7 +41,7 @@ export function ConversationListBody({
       selected={c.conversationId === activeId}
       onClick={() => { onSelect(c.conversationId); }}
       {...(onTogglePin ? { onTogglePin: () => { onTogglePin(c.conversationId, !c.pinned); } } : {})}
-      {...(onDelete ? { onDelete: () => { onDelete(c.conversationId); } } : {})}
+      {...(onDelete ? { onDelete: () => { onDelete(c.conversationId); } } : {})} data-id="conversation-row"
     />
   );
 

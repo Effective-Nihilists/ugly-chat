@@ -112,7 +112,7 @@ export default function SearchPage(): React.ReactElement {
               value={query}
               onChange={(e) => { setQuery(e.target.value); }}
               placeholder="Search all messages…"
-              style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 16, color: 'var(--app-foreground)' }}
+              style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 16, color: 'var(--app-foreground)' }} data-id="search-all-messages"
             />
           </div>
 
@@ -142,7 +142,7 @@ export default function SearchPage(): React.ReactElement {
                     cursor: 'pointer',
                     textAlign: 'left',
                     font: 'inherit',
-                  }}
+                  }} data-id="button"
                 >
                   <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--app-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {titleById.get(h.conversationId) ?? 'Conversation'}

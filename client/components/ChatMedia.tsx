@@ -153,7 +153,7 @@ export function ChatImage({
             color: 'var(--app-foreground)',
             cursor: 'pointer',
             boxShadow: 'var(--app-shadow-button-default)',
-          }}
+          }} data-id="open"
         >
           <Maximize2 size={13} /> Open
         </button>
@@ -303,7 +303,7 @@ export function ImageZoomViewer({
         touchAction: 'none',
         userSelect: 'none',
         cursor: tf.s > 1 ? 'grab' : 'default',
-      }}
+      }} data-id="div"
     >
       <img
         ref={imgRef}
@@ -341,7 +341,7 @@ export function ImageZoomViewer({
           justifyContent: 'center',
           cursor: 'pointer',
           zIndex: 61,
-        }}
+        }} data-id="close"
       >
         <X size={22} />
       </button>

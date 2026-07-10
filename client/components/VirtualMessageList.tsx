@@ -182,7 +182,7 @@ export function VirtualMessageList({
         onScroll={handleScroll}
         onClick={() => { onBackgroundClick?.(); }}
         data-testid="conversation-scroll-container"
-        style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}
+        style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }} data-id="div"
       >
         <div
           ref={innerRef}

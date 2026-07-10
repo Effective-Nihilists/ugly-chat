@@ -135,7 +135,7 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
             type="button"
             aria-label="Close"
             onClick={() => { if (id) { router.push(':conversationId', { conversationId: id }); } else { router.push('', {}); } }}
-            style={S.closeBtn}
+            style={S.closeBtn} data-id="close"
           >
             <X size={16} />
           </button>
@@ -164,9 +164,9 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
                 onKeyDown={(e) => { if (e.key === 'Enter') void addByEmail(); }}
                 placeholder="invite someone — name@email.com"
                 spellCheck={false}
-                style={S.inputEl}
+                style={S.inputEl} data-id="invite-someone-name-email"
               />
-              <button type="button" aria-label="Add by email" onClick={() => void addByEmail()} style={addBtn}>
+              <button type="button" aria-label="Add by email" onClick={() => void addByEmail()} style={addBtn} data-id="add-by-email">
                 <Plus size={13} /> add
               </button>
             </div>
@@ -237,9 +237,9 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
           <div style={S.field}>
             <div style={secLabel}><span>Danger zone</span></div>
             <div>
-              <DangerRow icon={<Trash2 size={18} />} title="Clear my history" desc="Wipes it for you. Everyone else keeps theirs." onClick={clearHistory} />
+              <DangerRow icon={<Trash2 size={18} />} title="Clear my history" desc="Wipes it for you. Everyone else keeps theirs." onClick={clearHistory} data-id="clear-history" />
               {!isOwner ? (
-                <DangerRow icon={<LogOut size={18} />} title="Leave group" onClick={leaveGroup} />
+                <DangerRow icon={<LogOut size={18} />} title="Leave group" onClick={leaveGroup} data-id="leave-group" />
               ) : null}
             </div>
           </div>
@@ -263,7 +263,7 @@ function SettingRow(props: { icon: React.ReactNode; title: string; desc?: string
         aria-checked={props.on}
         aria-label={props.title}
         onClick={props.onToggle}
-        style={switchTrack(props.on)}
+        style={switchTrack(props.on)} data-id="title"
       >
         <span style={switchKnob(props.on)} />
       </button>
@@ -286,7 +286,7 @@ function LinkRow(props: { icon: React.ReactNode; title: string; desc?: string })
 
 function DangerRow(props: { icon: React.ReactNode; title: string; desc?: string; onClick: () => void }): React.ReactElement {
   return (
-    <button type="button" onClick={props.onClick} style={{ ...srow, width: '100%', textAlign: 'left', border: 'none', borderBottom: '1px solid var(--app-border)', background: 'transparent', cursor: 'pointer', color: 'var(--app-error)' }}>
+    <button type="button" onClick={props.onClick} style={{ ...srow, width: '100%', textAlign: 'left', border: 'none', borderBottom: '1px solid var(--app-border)', background: 'transparent', cursor: 'pointer', color: 'var(--app-error)' }} data-id="button">
       <span style={{ display: 'inline-flex', flexShrink: 0 }}>{props.icon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ ...srowTitle, color: 'var(--app-error)' }}>{props.title}</div>

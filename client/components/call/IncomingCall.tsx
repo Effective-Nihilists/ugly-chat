@@ -67,10 +67,10 @@ export function IncomingCall({ callerName, callerAvatarUrl, onAccept, onDecline 
           </div>
         </div>
         <div style={{ display: 'flex', gap: 40, marginTop: 6 }}>
-          <RingButton color="#ef4444" label="Decline" onClick={onDecline} dataId="incoming-call-decline">
+          <RingButton color="#ef4444" label="Decline" onClick={onDecline} dataId="incoming-call-decline" data-id="decline">
             <PhoneOff size={26} />
           </RingButton>
-          <RingButton color="#22c55e" label="Accept" onClick={onAccept} dataId="incoming-call-accept">
+          <RingButton color="#22c55e" label="Accept" onClick={onAccept} dataId="incoming-call-accept" data-id="accept">
             <Phone size={26} />
           </RingButton>
         </div>

@@ -51,7 +51,7 @@ export function ConversationRow(props: {
         textAlign: 'left',
         background: selected ? 'rgba(var(--app-primary-rgb), 0.10)' : 'transparent',
         font: 'inherit',
-      }}
+      }} data-id="button"
     >
       {selected ? (
         <span
@@ -166,7 +166,7 @@ export function ConversationRow(props: {
             onTogglePin();
           }}
           title={row.pinned ? 'Unpin' : 'Pin'}
-          aria-label={row.pinned ? 'Unpin' : 'Pin'}
+          aria-label={row.pinned ? 'Unpin' : 'Pin'} data-id="button-2"
         >
           <Pin size={13} fill={row.pinned ? 'currentColor' : 'none'} />
         </button>
@@ -182,7 +182,7 @@ export function ConversationRow(props: {
             setConfirming(true);
           }}
           title="Delete conversation"
-          aria-label="Delete conversation"
+          aria-label="Delete conversation" data-id="delete-conversation"
         >
           <Trash2 size={13} />
         </button>
@@ -198,7 +198,7 @@ export function ConversationRow(props: {
               onDelete();
             }}
             title="Confirm delete"
-            aria-label="Confirm delete"
+            aria-label="Confirm delete" data-id="confirm-delete"
           >
             <Check size={14} />
           </button>
@@ -210,7 +210,7 @@ export function ConversationRow(props: {
               setConfirming(false);
             }}
             title="Cancel"
-            aria-label="Cancel delete"
+            aria-label="Cancel delete" data-id="cancel-delete"
           >
             <X size={14} />
           </button>

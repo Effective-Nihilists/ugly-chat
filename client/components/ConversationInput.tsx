@@ -153,7 +153,7 @@ export function ConversationInput({
           onText={applyText}
         />
       ) : null}
-      <button type="button" style={sendButtonStyle} onClick={handleSend} disabled={disabled} aria-label="Send">
+      <button type="button" style={sendButtonStyle} onClick={handleSend} disabled={disabled} aria-label="Send" data-id="send">
         <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="m22 2-7 20-4-9-9-4Z" />
           <path d="M22 2 11 13" />
@@ -224,7 +224,7 @@ function DictationButton({
         background: stt.listening ? 'var(--app-error)' : 'transparent',
         color: stt.listening ? '#fff' : 'var(--app-foreground)',
         cursor: 'pointer',
-      }}
+      }} data-id="button"
     >
       {stt.listening ? <Square size={15} /> : <Mic size={18} />}
     </button>

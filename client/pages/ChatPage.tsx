@@ -227,7 +227,7 @@ function MessageBody(props: {
         <div
           className="uc-msgcol"
           onClick={(e) => { e.stopPropagation(); onSelect(msg.id); }}
-          style={{ position: 'relative' }}
+          style={{ position: 'relative' }} data-id="div"
         >
           {/* Peer sender name + timestamp, first of a run only. */}
           {!isOwn && firstOfRun ? (
@@ -269,14 +269,14 @@ function MessageBody(props: {
                 borderRadius: 6,
                 padding: '6px 8px',
                 outline: 'none',
-              }}
+              }} data-id="textarea"
             />
             <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 onClick={() => { setEditing(false); }}
                 disabled={saving}
-                style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--app-border)', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }}
+                style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--app-border)', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }} data-id="cancel"
               >
                 Cancel
               </button>
@@ -284,7 +284,7 @@ function MessageBody(props: {
                 type="button"
                 onClick={() => void saveEdit()}
                 disabled={saving || !draft.trim()}
-                style={{ fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 6, border: 'none', background: 'var(--app-primary)', color: '#fff', cursor: 'pointer', opacity: saving || !draft.trim() ? 0.6 : 1 }}
+                style={{ fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 6, border: 'none', background: 'var(--app-primary)', color: '#fff', cursor: 'pointer', opacity: saving || !draft.trim() ? 0.6 : 1 }} data-id="button"
               >
                 {saving ? 'Saving…' : 'Save'}
               </button>
@@ -334,7 +334,7 @@ function MessageBody(props: {
             background: 'var(--app-main)',
             textDecoration: 'none',
             color: 'var(--app-foreground)',
-          }}
+          }} data-id="a"
         >
           {lp.image ? (
             <img
@@ -385,7 +385,7 @@ function MessageBody(props: {
                 color: 'var(--app-primary)',
                 cursor: 'pointer',
                 textAlign: 'left',
-              }}
+              }} data-id="text"
             >
               {b.text}
             </button>
@@ -469,12 +469,12 @@ function MessageBody(props: {
             padding: '2px 4px',
             boxShadow: 'var(--app-shadow-button-default)',
             zIndex: 2,
-          }}
+          }} data-id="div-2"
         >
           {REACTIONS.map((r) => {
             const Icon = REACTION_ICON[r];
             return (
-              <button key={r} title={r} onClick={() => { onReact(msg.id, r); }} style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', color: 'var(--app-foreground)' }}>
+              <button key={r} title={r} onClick={() => { onReact(msg.id, r); }} style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', color: 'var(--app-foreground)' }} data-id="button-2">
                 {Icon ? <Icon size={15} /> : null}
               </button>
             );
@@ -485,7 +485,7 @@ function MessageBody(props: {
               onClick={() => {
                 if (voice.playingId === msg.id) { voice.stop(); } else { voice.speak(msg.id, bodyText); }
               }}
-              style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: 0.6, color: 'var(--app-foreground)' }}
+              style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: 0.6, color: 'var(--app-foreground)' }} data-id="button-3"
             >
               {voice.playingId === msg.id ? <VolumeX size={15} /> : <Volume2 size={15} />}
             </button>
@@ -502,7 +502,7 @@ function MessageBody(props: {
                   })
                   .catch(() => undefined);
               }}
-              style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: copied ? 1 : 0.6, color: copied ? 'var(--app-primary)' : 'var(--app-foreground)' }}
+              style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: copied ? 1 : 0.6, color: copied ? 'var(--app-primary)' : 'var(--app-foreground)' }} data-id="button-4"
             >
               {copied ? <Check size={14} /> : <Copy size={14} />}
             </button>
@@ -511,18 +511,18 @@ function MessageBody(props: {
             <button
               title={pinned ? 'Unpin' : 'Pin'}
               onClick={() => { onPin(msg.id); }}
-              style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: pinned ? 1 : 0.6, color: pinned ? 'var(--app-primary)' : 'var(--app-foreground)' }}
+              style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: pinned ? 1 : 0.6, color: pinned ? 'var(--app-primary)' : 'var(--app-foreground)' }} data-id="button-5"
             >
               <Pin size={14} fill={pinned ? 'currentColor' : 'none'} />
             </button>
           ) : null}
           {isOwn && hasText ? (
-            <button title="Edit" onClick={startEdit} style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: 0.6, color: 'var(--app-foreground)' }}>
+            <button title="Edit" onClick={startEdit} style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: 0.6, color: 'var(--app-foreground)' }} data-id="start-edit">
               <Pencil size={14} />
             </button>
           ) : null}
           {isOwn ? (
-            <button title="Delete" onClick={() => { onDelete(msg.id); }} style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: 0.6, color: 'var(--app-foreground)' }}>
+            <button title="Delete" onClick={() => { onDelete(msg.id); }} style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: 0.6, color: 'var(--app-foreground)' }} data-id="button-6">
               <Trash2 size={14} />
             </button>
           ) : null}
@@ -1295,7 +1295,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       type="button"
       className="uc-menuitem"
       onClick={onClick}
-      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 9, width: '100%', padding: '9px 14px', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', fontSize: 13, fontWeight: 600, textAlign: 'left' }}
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 9, width: '100%', padding: '9px 14px', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', fontSize: 13, fontWeight: 600, textAlign: 'left' }} data-id="button-7"
     >
       <span>{label}</span>
       {selected ? <Check size={15} style={{ color: 'var(--app-primary)', flexShrink: 0 }} /> : null}
@@ -1318,7 +1318,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
             type="button"
             onClick={() => { router.push('', {}); }}
             aria-label="Back"
-            style={{ border: 'none', background: 'transparent', fontSize: 22, lineHeight: 1, cursor: 'pointer', color: 'var(--app-foreground)', padding: '0 4px 0 0' }}
+            style={{ border: 'none', background: 'transparent', fontSize: 22, lineHeight: 1, cursor: 'pointer', color: 'var(--app-foreground)', padding: '0 4px 0 0' }} data-id="back"
           >
             ‹
           </button>
@@ -1341,7 +1341,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
             onClick={() => { openThemeMenu(router); }}
             aria-label="Theme"
             title="Theme"
-            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', flexShrink: 0 }}
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', flexShrink: 0 }} data-id="theme"
           >
             <Palette size={18} />
           </button>
@@ -1351,7 +1351,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           onClick={() => videoRef.current?.start()}
           aria-label="Start video call"
           title="Start video call"
-          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', flexShrink: 0 }}
+          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', flexShrink: 0 }} data-id="start-video-call"
         >
           <Video size={19} />
         </button>
@@ -1362,7 +1362,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
             onClick={() => { router.push('settings/:conversationId', { conversationId: roomId }); }}
             aria-label="Group info"
             title="Group info"
-            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', flexShrink: 0 }}
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', flexShrink: 0 }} data-id="group-info"
           >
             <Settings size={18} />
           </button>
@@ -1376,13 +1376,13 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
               onClick={() => { setMenuOpen((o) => !o); setConfirmDeleteConv(false); }}
               aria-label="More"
               title="More"
-              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }}
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }} data-id="more"
             >
               <MoreVertical size={19} />
             </button>
             {menuOpen ? (
               <>
-                <div onClick={() => { setMenuOpen(false); setConfirmDeleteConv(false); }} style={{ position: 'fixed', inset: 0, zIndex: 20 }} />
+                <div onClick={() => { setMenuOpen(false); setConfirmDeleteConv(false); }} style={{ position: 'fixed', inset: 0, zIndex: 20 }} data-id="div-3" />
                 <div style={{ position: 'absolute', top: 38, right: 0, zIndex: 21, background: 'var(--app-main)', border: '1px solid var(--app-border)', borderRadius: 10, boxShadow: 'var(--app-shadow-button-default)', minWidth: 200, overflow: 'hidden', maxHeight: 360, overflowY: 'auto' }}>
                   {botId ? (
                     <div style={{ borderBottom: '1px solid var(--app-border)' }}>
@@ -1411,7 +1411,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                         setMenuOpen(false);
                         openMembersPopup(router, socket, userId, roomId, () => { router.push('', {}); });
                       }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', fontSize: 14, fontWeight: 600, textAlign: 'left' }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', fontSize: 14, fontWeight: 600, textAlign: 'left' }} data-id="members"
                     >
                       <Users size={16} /> Members
                     </button>
@@ -1421,7 +1421,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                       type="button"
                       className="uc-menuitem"
                       onClick={handleClear}
-                      style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', color: 'var(--app-error)', cursor: 'pointer', fontSize: 14, fontWeight: 600, textAlign: 'left' }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', color: 'var(--app-error)', cursor: 'pointer', fontSize: 14, fontWeight: 600, textAlign: 'left' }} data-id="clear-chat"
                     >
                       <Eraser size={16} /> Clear chat
                     </button>
@@ -1435,14 +1435,14 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                         <button
                           type="button"
                           onClick={() => { setConfirmDeleteConv(false); }}
-                          style={{ fontSize: 13, fontWeight: 600, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--app-border)', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }}
+                          style={{ fontSize: 13, fontWeight: 600, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--app-border)', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }} data-id="cancel-2"
                         >
                           Cancel
                         </button>
                         <button
                           type="button"
                           onClick={handleDeleteConversation}
-                          style={{ fontSize: 13, fontWeight: 700, padding: '5px 12px', borderRadius: 8, border: 'none', background: 'var(--app-error)', color: '#fff', cursor: 'pointer' }}
+                          style={{ fontSize: 13, fontWeight: 700, padding: '5px 12px', borderRadius: 8, border: 'none', background: 'var(--app-error)', color: '#fff', cursor: 'pointer' }} data-id="delete"
                         >
                           Delete
                         </button>
@@ -1452,7 +1452,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                         type="button"
                         className="uc-menuitem"
                         onClick={() => { setConfirmDeleteConv(true); }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', color: 'var(--app-error)', cursor: 'pointer', fontSize: 14, fontWeight: 600, textAlign: 'left' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', color: 'var(--app-error)', cursor: 'pointer', fontSize: 14, fontWeight: 600, textAlign: 'left' }} data-id="delete-conversation"
                       >
                         <Trash2 size={16} /> Delete conversation
                       </button>
@@ -1480,7 +1480,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
             title="Unpin"
             aria-label="Unpin"
             onClick={() => { handlePin(pinnedMessage._id); }}
-            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, flexShrink: 0, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--app-foreground)', opacity: 0.6, cursor: 'pointer' }}
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, flexShrink: 0, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--app-foreground)', opacity: 0.6, cursor: 'pointer' }} data-id="unpin"
           >
             <X size={15} />
           </button>
@@ -1563,7 +1563,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                     type="button"
                     className="uc-msgbtn"
                     onClick={() => { handleSend(b.prompt); }}
-                    style={{ fontFamily: 'var(--app-font-mono)', fontSize: 11.5, fontWeight: 600, letterSpacing: '0.04em', padding: '7px 13px', borderRadius: 0, border: '1.5px solid var(--app-primary)', background: 'transparent', color: 'var(--app-primary)', cursor: 'pointer' }}
+                    style={{ fontFamily: 'var(--app-font-mono)', fontSize: 11.5, fontWeight: 600, letterSpacing: '0.04em', padding: '7px 13px', borderRadius: 0, border: '1.5px solid var(--app-primary)', background: 'transparent', color: 'var(--app-primary)', cursor: 'pointer' }} data-id="label"
                   >
                     {b.label}
                   </button>
@@ -1587,7 +1587,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                         <div className="uc-spin" style={{ width: 18, height: 18, border: '2px solid rgba(255,255,255,0.5)', borderTopColor: '#fff', borderRadius: '50%' }} />
                       </div>
                     ) : null}
-                    <button type="button" onClick={() => { removePending(p.id); }} aria-label="Remove" style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', border: 'none', background: 'var(--app-foreground)', color: 'var(--app-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                    <button type="button" onClick={() => { removePending(p.id); }} aria-label="Remove" style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', border: 'none', background: 'var(--app-foreground)', color: 'var(--app-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} data-id="remove">
                       <X size={12} />
                     </button>
                   </div>
@@ -1602,7 +1602,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
               onChange={(e) => {
                 onFiles(e.target.files);
                 e.target.value = '';
-              }}
+              }} data-id="input"
             />
             <div style={{ border: '1px solid var(--app-primary)', borderRadius: 0, background: 'var(--app-main)' }}>
               <ConversationInput
@@ -1617,7 +1617,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                     type="button"
                     title="Attach image"
                     onClick={() => fileInputRef.current?.click()}
-                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, flexShrink: 0, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, flexShrink: 0, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }} data-id="button-8"
                   >
                     <Paperclip size={18} />
                   </button>

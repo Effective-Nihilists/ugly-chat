@@ -122,20 +122,20 @@ export function Sidebar(): React.ReactElement {
     return (
       <aside style={{ ...railStyle, width: COLLAPSED_WIDTH }}>
         <div style={{ height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <button type="button" title="Expand" onClick={() => { setExpanded(true); }} className="uc-iconbtn" style={{ ...iconBtnStyle, border: 'none', background: 'transparent' }}>
+          <button type="button" title="Expand" onClick={() => { setExpanded(true); }} className="uc-iconbtn" style={{ ...iconBtnStyle, border: 'none', background: 'transparent' }} data-id="button">
             <PanelLeft size={20} />
           </button>
         </div>
-        <button type="button" title="New chat" onClick={openNew} className="uc-iconbtn" style={{ ...iconBtnStyle, alignSelf: 'center', marginBottom: 6 }}>
+        <button type="button" title="New chat" onClick={openNew} className="uc-iconbtn" style={{ ...iconBtnStyle, alignSelf: 'center', marginBottom: 6 }} data-id="button-2">
           <Plus size={20} />
         </button>
-        <button type="button" title="User settings" onClick={openUglyBotSettings} className="uc-iconbtn" style={{ ...iconBtnStyle, alignSelf: 'center', marginBottom: 6 }}>
+        <button type="button" title="User settings" onClick={openUglyBotSettings} className="uc-iconbtn" style={{ ...iconBtnStyle, alignSelf: 'center', marginBottom: 6 }} data-id="button-3">
           <UserCog size={20} />
         </button>
-        <button type="button" title="Bots" onClick={openBots} className="uc-iconbtn" style={{ ...iconBtnStyle, alignSelf: 'center', marginBottom: 6 }}>
+        <button type="button" title="Bots" onClick={openBots} className="uc-iconbtn" style={{ ...iconBtnStyle, alignSelf: 'center', marginBottom: 6 }} data-id="button-4">
           <Bot size={20} />
         </button>
-        <button type="button" title="Theme" onClick={openTheme} className="uc-iconbtn" style={{ ...iconBtnStyle, alignSelf: 'center', marginBottom: 6 }}>
+        <button type="button" title="Theme" onClick={openTheme} className="uc-iconbtn" style={{ ...iconBtnStyle, alignSelf: 'center', marginBottom: 6 }} data-id="button-5">
           <Palette size={18} />
         </button>
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '2px 0 16px' }}>
@@ -146,7 +146,7 @@ export function Sidebar(): React.ReactElement {
               title={c.title || 'Conversation'}
               onClick={() => { router.push(':conversationId', { conversationId: c.conversationId }); }}
               className="uc-row"
-              style={{ border: 'none', background: 'transparent', padding: 3, borderRadius: '50%', cursor: 'pointer', outline: c.conversationId === activeId ? '2px solid var(--app-primary)' : 'none' }}
+              style={{ border: 'none', background: 'transparent', padding: 3, borderRadius: '50%', cursor: 'pointer', outline: c.conversationId === activeId ? '2px solid var(--app-primary)' : 'none' }} data-id="button-6"
             >
               <Avatar image={c.image} seed={c.conversationId} label={c.title} size={42} />
             </button>
@@ -161,14 +161,14 @@ export function Sidebar(): React.ReactElement {
     <aside style={{ ...railStyle, width, position: 'relative' }}>
       {/* Header / wordmark + collapse toggle */}
       <div style={{ height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '0 10px 0 8px' }}>
-        <button type="button" title="Collapse" onClick={() => { setExpanded(false); }} className="uc-iconbtn" style={{ ...iconBtnStyle, border: 'none', background: 'transparent' }}>
+        <button type="button" title="Collapse" onClick={() => { setExpanded(false); }} className="uc-iconbtn" style={{ ...iconBtnStyle, border: 'none', background: 'transparent' }} data-id="button-7">
           <PanelLeftClose size={20} />
         </button>
         {/* Wordmark doubles as a flex spacer that keeps the icon cluster
             right-aligned. Below ~300px the logo can't fit beside the icons, so
             hide its text (the empty button stays as the spacer) to avoid the
             wordmark overlapping the icon buttons in a narrow sidebar. */}
-        <button type="button" onClick={() => { router.push('', {}); }} style={{ flex: 1, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
+        <button type="button" onClick={() => { router.push('', {}); }} style={{ flex: 1, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }} data-id="button-8">
           {width >= LOGO_MIN_WIDTH ? (
             <>
               <span style={{ fontFamily: 'var(--app-font-heading)', fontWeight: 800, fontSize: 19, letterSpacing: '-0.03em', color: 'var(--app-foreground)', lineHeight: 1, whiteSpace: 'nowrap' }}>
@@ -183,13 +183,13 @@ export function Sidebar(): React.ReactElement {
 
         {/* Right-aligned icon cluster: Bots · Theme */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
-          <button type="button" title="User settings" onClick={openUglyBotSettings} className="uc-iconbtn" style={smallIconBtn}>
+          <button type="button" title="User settings" onClick={openUglyBotSettings} className="uc-iconbtn" style={smallIconBtn} data-id="button-9">
             <UserCog size={18} />
           </button>
-          <button type="button" title="Bots" onClick={openBots} className="uc-iconbtn" style={smallIconBtn}>
+          <button type="button" title="Bots" onClick={openBots} className="uc-iconbtn" style={smallIconBtn} data-id="button-10">
             <Bot size={18} />
           </button>
-          <button type="button" title="Theme" onClick={openTheme} className="uc-iconbtn" style={smallIconBtn}>
+          <button type="button" title="Theme" onClick={openTheme} className="uc-iconbtn" style={smallIconBtn} data-id="button-11">
             <Palette size={18} />
           </button>
         </div>
@@ -203,10 +203,10 @@ export function Sidebar(): React.ReactElement {
             value={q}
             onChange={(e) => { setQ(e.target.value); }}
             placeholder="Search"
-            style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', outline: 'none', fontSize: 14, color: 'var(--app-foreground)' }}
+            style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', outline: 'none', fontSize: 14, color: 'var(--app-foreground)' }} data-id="search"
           />
         </div>
-        <button type="button" title="New chat" onClick={openNew} className="uc-iconbtn" style={iconBtnStyle}>
+        <button type="button" title="New chat" onClick={openNew} className="uc-iconbtn" style={iconBtnStyle} data-id="button-12">
           <Plus size={20} />
         </button>
       </div>

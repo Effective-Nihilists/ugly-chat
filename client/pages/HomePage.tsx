@@ -94,7 +94,7 @@ function Nav(): React.ReactElement {
           ugly<span style={{ color: BRAND }}>.</span>chat
         </span>
       </div>
-      <a href="/" onClick={openChat} className="lp-cta-ghost" style={ghostCta}>
+      <a href="/" onClick={openChat} className="lp-cta-ghost" style={ghostCta} data-id="open-chat">
         Open chat
       </a>
     </div>
@@ -124,10 +124,10 @@ function Hero({ desktop }: { desktop: boolean }): React.ReactElement {
             bots run cheap open models and tell you what each turn costs.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 30 }}>
-            <a href="/" onClick={openChat} className="lp-cta" style={primaryCta}>
+            <a href="/" onClick={openChat} className="lp-cta" style={primaryCta} data-id="open-chat-2">
               Open chat <ArrowRight size={18} />
             </a>
-            <a href="https://ugly.bot" className="lp-cta-ghost" style={{ ...ghostCta, padding: '13px 22px' }}>
+            <a href="https://ugly.bot" className="lp-cta-ghost" style={{ ...ghostCta, padding: '13px 22px' }} data-id="powered-by-ugly-bot">
               Powered by ugly.bot
             </a>
           </div>
@@ -244,7 +244,7 @@ function Manifesto({ desktop }: { desktop: boolean }): React.ReactElement {
             built and maintained by one engineer. Your conversations, your storage, your bill.
           </p>
         </div>
-        <a href="/" onClick={openChat} className="lp-cta" style={{ ...primaryCta, whiteSpace: 'nowrap' }}>
+        <a href="/" onClick={openChat} className="lp-cta" style={{ ...primaryCta, whiteSpace: 'nowrap' }} data-id="start-chatting">
           Start chatting <ArrowRight size={18} />
         </a>
       </div>
@@ -264,8 +264,8 @@ function Footer(): React.ReactElement {
           powered by ugly.bot · © 2026
         </span>
         <div style={{ display: 'flex', gap: 18, fontSize: 13 }}>
-          <a href="/" onClick={openChat} className="lp-link" style={footLink}>Open chat</a>
-          <a href="https://ugly.bot" className="lp-link" style={footLink}>ugly.bot</a>
+          <a href="/" onClick={openChat} className="lp-link" style={footLink} data-id="open-chat-3">Open chat</a>
+          <a href="https://ugly.bot" className="lp-link" style={footLink} data-id="ugly-bot">ugly.bot</a>
         </div>
       </div>
     </footer>

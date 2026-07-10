@@ -55,7 +55,7 @@ export function ThemeMenu({ onClose }: { onClose: () => void }): React.ReactElem
               cursor: 'pointer',
               textAlign: 'left',
               font: 'inherit',
-            }}
+            }} data-id="label"
           >
             <span style={{ width: 16, display: 'inline-flex', flexShrink: 0 }}>
               {on ? <Check size={16} /> : null}

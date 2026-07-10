@@ -213,7 +213,7 @@ export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(function 
             border: '1px solid rgba(248,113,113,0.6)',
             fontSize: 13,
             cursor: 'pointer',
-          }}
+          }} data-id="div"
         >
           {callError}
         </div>

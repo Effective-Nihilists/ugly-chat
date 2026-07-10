@@ -163,7 +163,7 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
     <div style={modal}>
       <div style={modalHead}>
         <span style={modalTitle}>New message</span>
-        <button type="button" aria-label="Close" onClick={onClose} style={closeBtn}>
+        <button type="button" aria-label="Close" onClick={onClose} style={closeBtn} data-id="close">
           <X size={16} />
         </button>
       </div>
@@ -177,7 +177,7 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
             {selected.map((uid) => (
               <span key={uid} style={{ ...chip, background: 'var(--app-primary)', color: '#fff', borderColor: 'var(--app-primary)' }}>
                 {contactById.get(uid)?.name ?? uid.slice(0, 6)}
-                <button type="button" aria-label="Remove" onClick={() => { toggle(uid); }} style={{ ...chipX, color: '#fff' }}>
+                <button type="button" aria-label="Remove" onClick={() => { toggle(uid); }} style={{ ...chipX, color: '#fff' }} data-id="remove">
                   <X size={11} />
                 </button>
               </span>
@@ -185,7 +185,7 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
             {emails.map((e) => (
               <span key={e} style={chip}>
                 {e}
-                <button type="button" aria-label={`Remove ${e}`} onClick={() => { removeChip(e); }} style={chipX}>
+                <button type="button" aria-label={`Remove ${e}`} onClick={() => { removeChip(e); }} style={chipX} data-id="button">
                   <X size={11} />
                 </button>
               </span>
@@ -204,7 +204,7 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
               placeholder={emails.length === 0 && selected.length === 0 ? 'tap a person below, or type an email…' : 'add another…'}
               spellCheck={false}
               autoFocus
-              style={{ ...inputEl, flex: '1 0 120px', minWidth: 120 }}
+              style={{ ...inputEl, flex: '1 0 120px', minWidth: 120 }} data-id="input"
             />
             {draftValid ? <Check size={16} style={{ color: 'var(--app-success)', flexShrink: 0, alignSelf: 'center' }} /> : null}
           </div>
@@ -225,7 +225,7 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
                 onChange={(e) => { setTitle(e.target.value); }}
                 placeholder="ship-crew, prod-incidents, …"
                 spellCheck={false}
-                style={inputEl}
+                style={inputEl} data-id="ship-crew-prod-incidents"
               />
             </div>
             <div style={hint}>
@@ -252,7 +252,7 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
                     type="button"
                     className="uc-row"
                     onClick={() => { toggle(c.userId); }}
-                    style={{ ...memberRow, background: on ? 'rgba(var(--app-primary-rgb), 0.10)' : 'transparent' }}
+                    style={{ ...memberRow, background: on ? 'rgba(var(--app-primary-rgb), 0.10)' : 'transparent' }} data-id="button-2"
                   >
                     <Avatar image={c.avatar.image.uri} seed={c.userId} label={c.name} size={38} />
                     <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
@@ -274,10 +274,10 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
       </div>
 
       <div style={modalFoot}>
-        <button type="button" onClick={onClose} style={ghostBtn}>
+        <button type="button" onClick={onClose} style={ghostBtn} data-id="cancel">
           Cancel
         </button>
-        <button type="button" disabled={!canSubmit} onClick={() => void submit()} style={ctaBtn(!canSubmit)}>
+        <button type="button" disabled={!canSubmit} onClick={() => void submit()} style={ctaBtn(!canSubmit)} data-id="button-3">
           {isGroup ? (
             <>Create group · {count}</>
           ) : (

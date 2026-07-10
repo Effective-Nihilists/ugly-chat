@@ -136,7 +136,7 @@ export function CallLobby({ peerName, title, onJoin, onCancel }: CallLobbyProps)
             type="button"
             onClick={handleCancel}
             aria-label="Cancel"
-            style={{ border: 'none', background: 'transparent', color: DIM, cursor: 'pointer', display: 'grid', placeItems: 'center' }}
+            style={{ border: 'none', background: 'transparent', color: DIM, cursor: 'pointer', display: 'grid', placeItems: 'center' }} data-id="cancel"
           >
             <X size={18} />
           </button>
@@ -194,11 +194,11 @@ export function CallLobby({ peerName, title, onJoin, onCancel }: CallLobbyProps)
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button type="button" onClick={handleCancel} style={btn(false)}>
+          <button type="button" onClick={handleCancel} style={btn(false)} data-id="cancel-2">
             Cancel
           </button>
           {av.permission === 'denied' ? (
-            <button type="button" onClick={() => void av.request()} style={btn(true)}>
+            <button type="button" onClick={() => void av.request()} style={btn(true)} data-id="retry">
               Retry
             </button>
           ) : (
@@ -243,7 +243,7 @@ function DevicePicker({
           borderRadius: 0,
           padding: '6px 8px',
           fontSize: 12.5,
-        }}
+        }} data-id="select"
       >
         {options.map((o) => (
           <option key={o.id} value={o.id}>

@@ -182,7 +182,7 @@ export function MembersPopup({
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         {adding ? (
-          <button type="button" onClick={() => { setAdding(false); }} aria-label="Back" style={{ border: 'none', background: 'transparent', fontSize: 22, lineHeight: 1, cursor: 'pointer', color: 'var(--app-foreground)', padding: 0 }}>
+          <button type="button" onClick={() => { setAdding(false); }} aria-label="Back" style={{ border: 'none', background: 'transparent', fontSize: 22, lineHeight: 1, cursor: 'pointer', color: 'var(--app-foreground)', padding: 0 }} data-id="back">
             ‹
           </button>
         ) : null}
@@ -237,7 +237,7 @@ export function MembersPopup({
                           `role-${m.userId}`,
                         )
                       }
-                      style={iconBtn(m.role === 'owner')}
+                      style={iconBtn(m.role === 'owner')} data-id="button"
                     >
                       <Crown size={15} />
                     </button>
@@ -248,7 +248,7 @@ export function MembersPopup({
                       onClick={() =>
                         void act('conversationMemberRemove', { conversationId, userId: m.userId }, `rm-${m.userId}`)
                       }
-                      style={iconBtn(false)}
+                      style={iconBtn(false)} data-id="button-2"
                     >
                       <UserMinus size={15} />
                     </button>
@@ -266,7 +266,7 @@ export function MembersPopup({
         type="button"
         onClick={() => void openAdd()}
         disabled={loading}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 7, alignSelf: 'flex-start', height: 34, padding: '0 12px', borderRadius: 9, border: '1px solid var(--app-primary)', background: 'transparent', color: 'var(--app-primary)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 7, alignSelf: 'flex-start', height: 34, padding: '0 12px', borderRadius: 9, border: '1px solid var(--app-primary)', background: 'transparent', color: 'var(--app-primary)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }} data-id="add-members"
       >
         <UserPlus size={15} /> Add members
       </button>
@@ -280,7 +280,7 @@ export function MembersPopup({
               type="button"
               onClick={() => { setConfirmDelete(false); }}
               disabled={busy !== null}
-              style={{ fontSize: 13, fontWeight: 600, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--app-border)', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }}
+              style={{ fontSize: 13, fontWeight: 600, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--app-border)', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }} data-id="cancel"
             >
               Cancel
             </button>
@@ -288,7 +288,7 @@ export function MembersPopup({
               type="button"
               onClick={() => void deleteConversation()}
               disabled={busy !== null}
-              style={{ fontSize: 13, fontWeight: 700, padding: '5px 12px', borderRadius: 8, border: 'none', background: 'var(--app-error)', color: '#fff', cursor: 'pointer' }}
+              style={{ fontSize: 13, fontWeight: 700, padding: '5px 12px', borderRadius: 8, border: 'none', background: 'var(--app-error)', color: '#fff', cursor: 'pointer' }} data-id="button-3"
             >
               {busy === 'delete' ? 'Deleting…' : 'Delete'}
             </button>
@@ -298,7 +298,7 @@ export function MembersPopup({
             type="button"
             onClick={() => { setConfirmDelete(true); }}
             disabled={busy !== null}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, alignSelf: 'flex-start', height: 34, padding: '0 12px', borderRadius: 9, border: '1px solid var(--app-error)', background: 'transparent', color: 'var(--app-error)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, alignSelf: 'flex-start', height: 34, padding: '0 12px', borderRadius: 9, border: '1px solid var(--app-error)', background: 'transparent', color: 'var(--app-error)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }} data-id="delete-conversation"
           >
             <Trash2 size={14} /> Delete conversation
           </button>
@@ -325,11 +325,11 @@ export function MembersPopup({
             fontSize: 14,
             fontWeight: 600,
             cursor: soleOwnerOfGroup ? 'not-allowed' : 'pointer',
-          }}
+          }} data-id="leave"
         >
           <LogOut size={15} /> Leave
         </button>
-        <button type="button" onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--app-foreground)', opacity: 0.55, fontSize: 13, cursor: 'pointer' }}>
+        <button type="button" onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--app-foreground)', opacity: 0.55, fontSize: 13, cursor: 'pointer' }} data-id="close">
           Close
         </button>
       </div>
@@ -360,7 +360,7 @@ function AddMemberList(props: {
         onChange={(e) => { props.onQuery(e.target.value); }}
         placeholder="Search your contacts…"
         autoFocus
-        style={{ height: 40, padding: '0 12px', borderRadius: 10, border: '1px solid var(--app-border)', background: 'var(--app-main)', outline: 'none', fontSize: 14, color: 'var(--app-foreground)' }}
+        style={{ height: 40, padding: '0 12px', borderRadius: 10, border: '1px solid var(--app-border)', background: 'var(--app-main)', outline: 'none', fontSize: 14, color: 'var(--app-foreground)' }} data-id="search-your-contacts"
       />
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflowY: 'auto', gap: 2 }}>
         {!props.loaded ? (
@@ -377,7 +377,7 @@ function AddMemberList(props: {
                 disabled={props.busy !== null}
                 onClick={() => { props.onAdd(c.userId); }}
                 className="uc-row"
-                style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '8px 4px', width: '100%', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', font: 'inherit' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '8px 4px', width: '100%', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', font: 'inherit' }} data-id="button-4"
               >
                 <Avatar image={c.avatar.image.uri} seed={c.userId} label={c.name} size={38} />
                 <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 600, color: 'var(--app-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
