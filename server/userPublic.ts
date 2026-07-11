@@ -20,7 +20,7 @@
  * `shared/collections.ts` — `getByIds`/`getDoc` resolve the getter by name.
  */
 import { z } from 'zod';
-import { dbDefaults, defineCollections } from 'ugly-app/shared';
+import { dbDefaults, defineCollections, d1 } from 'ugly-app/shared';
 import { uglyBotRequest } from './uglybot';
 import type { UserPublicDoc } from '../shared/collections';
 
@@ -74,6 +74,9 @@ export const userPublicCollections = defineCollections({
       cache: { ttlMs: TTL_MS },
       getter: profilesGetter,
       cascadeFrom: null,
+      // Getter-backed (no table) — carry the d1 handle so /_init treats it as
+      // D1 and never touches Neon (matches the placeholder def in collections.ts).
+      db: d1,
     },
   },
 });

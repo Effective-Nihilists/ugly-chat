@@ -1,44 +1,7 @@
 {
-  "generatedAt": "2026-07-06T01:40:22.863Z",
+  "generatedAt": "2026-07-11T21:47:47.724Z",
   "source": "shared/collections.ts",
   "collections": {
-    "perfLog": {
-      "name": "perfLog",
-      "schema": {
-        "fields": {
-          "durationMs": {
-            "type": "number",
-            "required": true
-          },
-          "operation": {
-            "type": "string",
-            "required": true
-          },
-          "userId": {
-            "type": "string",
-            "required": true
-          }
-        },
-        "indexes": [
-          {
-            "fields": {
-              "operation": 1
-            }
-          },
-          {
-            "fields": {
-              "userId": 1
-            }
-          }
-        ]
-      },
-      "meta": {
-        "cache": false,
-        "trackable": false,
-        "public": false,
-        "cascadeFrom": null
-      }
-    },
     "authMagicLink": {
       "name": "authMagicLink",
       "schema": {
@@ -88,7 +51,10 @@
         "cache": false,
         "trackable": false,
         "public": false,
-        "cascadeFrom": null
+        "cascadeFrom": null,
+        "db": {
+          "kind": "d1"
+        }
       }
     },
     "authIdentity": {
@@ -148,7 +114,10 @@
         "cache": false,
         "trackable": false,
         "public": false,
-        "cascadeFrom": null
+        "cascadeFrom": null,
+        "db": {
+          "kind": "d1"
+        }
       }
     },
     "debugLogSession": {
@@ -240,7 +209,10 @@
         "cascadeFrom": null,
         "trackKeys": [
           "userId"
-        ]
+        ],
+        "db": {
+          "kind": "d1"
+        }
       }
     },
     "debugLogStream": {
@@ -267,7 +239,10 @@
         "cascadeFrom": null,
         "trackKeys": [
           "userId"
-        ]
+        ],
+        "db": {
+          "kind": "d1"
+        }
       }
     },
     "todo": {
@@ -286,7 +261,14 @@
             "type": "string",
             "required": true
           }
-        }
+        },
+        "indexes": [
+          {
+            "fields": {
+              "userId": 1
+            }
+          }
+        ]
       },
       "meta": {
         "cache": false,
@@ -295,7 +277,10 @@
         "cascadeFrom": null,
         "trackKeys": [
           "userId"
-        ]
+        ],
+        "db": {
+          "kind": "d1"
+        }
       }
     },
     "conversation": {
@@ -375,13 +360,24 @@
             "type": "string",
             "required": false
           }
-        }
+        },
+        "indexes": [
+          {
+            "fields": {
+              "ttlAt": 1,
+              "cronEnd": 1
+            }
+          }
+        ]
       },
       "meta": {
         "cache": false,
         "trackable": true,
         "public": false,
-        "cascadeFrom": null
+        "cascadeFrom": null,
+        "db": {
+          "kind": "d1"
+        }
       }
     },
     "message": {
@@ -560,7 +556,23 @@
             ],
             "required": false
           }
-        }
+        },
+        "indexes": [
+          {
+            "fields": {
+              "conversationId": 1,
+              "created": -1
+            }
+          },
+          {
+            "fields": {
+              "onlyUserIds": 1,
+              "visibility": 1,
+              "parentMessageId": 1,
+              "threadId": 1
+            }
+          }
+        ]
       },
       "meta": {
         "cache": false,
@@ -570,11 +582,8 @@
         "trackKeys": [
           "conversationId"
         ],
-        "search": {
-          "fields": [
-            "text",
-            "markdown"
-          ]
+        "db": {
+          "kind": "d1"
         }
       }
     },
@@ -598,7 +607,14 @@
             "type": "string",
             "required": true
           }
-        }
+        },
+        "indexes": [
+          {
+            "fields": {
+              "messageId": 1
+            }
+          }
+        ]
       },
       "meta": {
         "cache": false,
@@ -608,7 +624,10 @@
         "trackKeys": [
           "conversationId",
           "messageId"
-        ]
+        ],
+        "db": {
+          "kind": "d1"
+        }
       }
     },
     "conversationUser": {
@@ -639,7 +658,14 @@
             "type": "string",
             "required": true
           }
-        }
+        },
+        "indexes": [
+          {
+            "fields": {
+              "conversationId": 1
+            }
+          }
+        ]
       },
       "meta": {
         "cache": false,
@@ -649,7 +675,10 @@
         "trackKeys": [
           "conversationId",
           "userId"
-        ]
+        ],
+        "db": {
+          "kind": "d1"
+        }
       }
     },
     "userConversation": {
@@ -705,7 +734,21 @@
             "type": "string",
             "required": false
           }
-        }
+        },
+        "indexes": [
+          {
+            "fields": {
+              "userPrivateId": 1,
+              "visibility": 1,
+              "hidden": 1
+            }
+          },
+          {
+            "fields": {
+              "conversationId": 1
+            }
+          }
+        ]
       },
       "meta": {
         "cache": false,
@@ -714,7 +757,10 @@
         "cascadeFrom": "conversation",
         "trackKeys": [
           "userId"
-        ]
+        ],
+        "db": {
+          "kind": "d1"
+        }
       }
     },
     "userPublic": {
@@ -749,38 +795,10 @@
         },
         "trackable": false,
         "public": true,
-        "cascadeFrom": null
-      }
-    },
-    "userProfileCache": {
-      "name": "userProfileCache",
-      "schema": {
-        "fields": {
-          "avatar": {
-            "type": "unknown",
-            "required": false,
-            "nullable": true
-          },
-          "fetchedAt": {
-            "type": "number",
-            "required": false
-          },
-          "isBot": {
-            "type": "boolean",
-            "required": false
-          },
-          "name": {
-            "type": "string",
-            "required": false,
-            "nullable": true
-          }
+        "cascadeFrom": null,
+        "db": {
+          "kind": "d1"
         }
-      },
-      "meta": {
-        "cache": true,
-        "trackable": false,
-        "public": true,
-        "cascadeFrom": null
       }
     },
     "collabDoc": {
@@ -806,7 +824,10 @@
         "cache": false,
         "trackable": false,
         "public": false,
-        "cascadeFrom": null
+        "cascadeFrom": null,
+        "db": {
+          "kind": "d1"
+        }
       }
     },
     "bot": {
@@ -1005,7 +1026,14 @@
             "type": "string",
             "required": false
           }
-        }
+        },
+        "indexes": [
+          {
+            "fields": {
+              "ownerId": 1
+            }
+          }
+        ]
       },
       "meta": {
         "cache": true,
@@ -1014,7 +1042,10 @@
         "cascadeFrom": null,
         "trackKeys": [
           "ownerId"
-        ]
+        ],
+        "db": {
+          "kind": "d1"
+        }
       }
     }
   }
