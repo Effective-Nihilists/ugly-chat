@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { InferDocType } from 'ugly-app/shared';
-import { defineCollections, AvatarSchema, ProfileFieldsSchema, defaultAvatar } from 'ugly-app/shared';
+import { defineCollections, d1, AvatarSchema, ProfileFieldsSchema, defaultAvatar } from 'ugly-app/shared';
 
 // ─── Schemas & Types ─────────────────────────────────────────────────────────
 // Chat schemas are aligned with `ugly-app/conversation` (the conversation engine
@@ -150,21 +150,6 @@ export const UserPublicSchema = z
   .catchall(z.unknown());
 export type UserPublicDoc = InferDocType<typeof UserPublicSchema>;
 
-// Local profile cache — migrated ugly.bot profiles + bot personas (`isBot`/`bio`
-// for migrated bots, resolved avatars). This is the original local `userPublic`
-// table, renamed so the getter-backed `userPublic` above can own that name. Bot
-// resolution (`getBotConfig`, `botParticipants`) and the slower `resolveProfiles`
-// federated path read it; it keeps a real Postgres table.
-export const UserProfileCacheSchema = z
-  .object({
-    name: z.string().nullable().optional(),
-    avatar: z.unknown().nullable().optional(),
-    isBot: z.boolean().optional(),
-    fetchedAt: z.number().optional(),
-  })
-  .catchall(z.unknown());
-export type UserProfileCache = InferDocType<typeof UserProfileCacheSchema>;
-
 export const CollabDocSchema = z.object({
   yjsState: z.string(),
   serialized: z.string().nullable(),
@@ -227,33 +212,79 @@ const userPublicPlaceholderGetter = async (
   return {};
 };
 
+// D1-migration index lists. D1 (SQLite) THROWS on any filter/sort over an
+// unindexed field (getDoc-by-_id and sorts over the top-level created/updated
+// columns are exempt); trackKeys are NOT auto-indexed for query coverage, so
+// every field queried below is declared here explicitly. A composite index
+// credits ALL its fields. Kept as widened module consts (NOT inline `indexes:`
+// tuples) per the INFERENCE-BUDGET NOTE: inline tuples across every collection
+// tip TypeScript's mapped-type budget and collapse `collections.X` to
+// `... | undefined`, breaking `tsc` app-wide.
+const todoIndexes: { fields: Record<string, 1 | -1> }[] = [
+  { fields: { userId: 1 } }, // trackKeys ['userId']
+];
+const conversationIndexes: { fields: Record<string, 1 | -1> }[] = [
+  // Engine TTL sweep (`ttlAt`) + hourly cron scan (`cronEnd`). Not currently
+  // wired to a cron here, but indexed so the engine paths never throw.
+  { fields: { ttlAt: 1, cronEnd: 1 } },
+];
+const messageIndexes: { fields: Record<string, 1 | -1> }[] = [
+  // Conversation message list + non-FTS search + bot history (getDocs by
+  // conversationId, sort created). `created` is a top-level column (sort-exempt)
+  // but included so the composite backs the hot ORDER BY.
+  { fields: { conversationId: 1, created: -1 } },
+  // Engine conversation-load filters (onlyUserIds $in, visibility $ne,
+  // parentMessageId, threadId) run on every load — a composite credits them all.
+  { fields: { onlyUserIds: 1, visibility: 1, parentMessageId: 1, threadId: 1 } },
+];
+const messageReactionIndexes: { fields: Record<string, 1 | -1> }[] = [
+  { fields: { messageId: 1 } }, // engine reaction recount getDocs({messageId})
+];
+const conversationUserIndexes: { fields: Record<string, 1 | -1> }[] = [
+  { fields: { conversationId: 1 } }, // members/contacts getDocs({conversationId})
+];
+const userConversationIndexes: { fields: Record<string, 1 | -1> }[] = [
+  // Sidebar/list + engine: getDocs({userPrivateId}) with visibility $ne / hidden.
+  { fields: { userPrivateId: 1, visibility: 1, hidden: 1 } },
+  { fields: { conversationId: 1 } }, // readers/list denorm getDocs({conversationId})
+];
+const botIndexes: { fields: Record<string, 1 | -1> }[] = [
+  { fields: { ownerId: 1 } }, // botListMine getDocs({ownerId})
+];
+
 export const collections = defineCollections({
   todo: {
     schema: TodoSchema,
-    meta: { cache: false, trackable: true, public: false, cascadeFrom: null, trackKeys: ['userId'] },
+    meta: { cache: false, trackable: true, public: false, cascadeFrom: null, trackKeys: ['userId'], db: d1 },
+    indexes: todoIndexes,
   },
   conversation: {
     schema: ConversationSchema,
-    meta: { cache: false, trackable: true, public: false, cascadeFrom: null },
+    meta: { cache: false, trackable: true, public: false, cascadeFrom: null, db: d1 },
+    indexes: conversationIndexes,
   },
   message: {
     schema: MessageSchema,
-    // Declarative FTS: the framework maintains a generated `search` tsvector
-    // column (+ GIN) from text+markdown — replaces the bespoke trigger in
-    // migration 006. Queried via db.searchDocs → getDocs({search}).
-    meta: { cache: false, trackable: true, public: false, cascadeFrom: 'conversation', trackKeys: ['conversationId'], search: { fields: ['text', 'markdown'] } },
+    // Plain CRUD collection on D1 — Postgres FTS dropped. Search is a bounded,
+    // indexed getDocs(by conversationId) + in-JS substring filter (see
+    // conversationMessageSearch in server/handlers.ts).
+    meta: { cache: false, trackable: true, public: false, cascadeFrom: 'conversation', trackKeys: ['conversationId'], db: d1 },
+    indexes: messageIndexes,
   },
   messageReaction: {
     schema: MessageReactionSchema,
-    meta: { cache: false, trackable: true, public: false, cascadeFrom: 'conversation', trackKeys: ['conversationId', 'messageId'] },
+    meta: { cache: false, trackable: true, public: false, cascadeFrom: 'conversation', trackKeys: ['conversationId', 'messageId'], db: d1 },
+    indexes: messageReactionIndexes,
   },
   conversationUser: {
     schema: ConversationUserSchema,
-    meta: { cache: false, trackable: true, public: false, cascadeFrom: 'conversation', trackKeys: ['conversationId', 'userId'] },
+    meta: { cache: false, trackable: true, public: false, cascadeFrom: 'conversation', trackKeys: ['conversationId', 'userId'], db: d1 },
+    indexes: conversationUserIndexes,
   },
   userConversation: {
     schema: UserConversationSchema,
-    meta: { cache: false, trackable: true, public: false, cascadeFrom: 'conversation', trackKeys: ['userId'] },
+    meta: { cache: false, trackable: true, public: false, cascadeFrom: 'conversation', trackKeys: ['userId'], db: d1 },
+    indexes: userConversationIndexes,
   },
   userPublic: {
     schema: UserPublicSchema,
@@ -265,22 +296,17 @@ export const collections = defineCollections({
       // Marks this collection as getter-backed (no local table). Overridden with
       // the real ugly.bot resolver at server runtime via `withUserPublic()`.
       getter: userPublicPlaceholderGetter,
+      db: d1,
     },
-  },
-  // Renamed from the old local `userPublic` table (see migration). Holds the
-  // migrated ugly.bot profile cache + bot personas (`isBot`/`bio`) that the
-  // getter-backed `userPublic` above can't serve.
-  userProfileCache: {
-    schema: UserProfileCacheSchema,
-    meta: { cache: true, trackable: false, public: true, cascadeFrom: null },
   },
   collabDoc: {
     schema: CollabDocSchema,
-    meta: { cache: false, trackable: false, public: false, cascadeFrom: null },
+    meta: { cache: false, trackable: false, public: false, cascadeFrom: null, db: d1 },
   },
   bot: {
     schema: BotSchema,
-    meta: { cache: true, trackable: true, public: true, cascadeFrom: null, trackKeys: ['ownerId'] },
+    meta: { cache: true, trackable: true, public: true, cascadeFrom: null, trackKeys: ['ownerId'], db: d1 },
+    indexes: botIndexes,
   },
 });
 

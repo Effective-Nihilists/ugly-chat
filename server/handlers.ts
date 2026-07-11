@@ -40,7 +40,7 @@ import {
   realtimeRenegotiate,
 } from './realtime';
 import { requests } from '../shared/api';
-import type { Todo, UserPublicDoc, UserProfileCache } from '../shared/collections';
+import type { Todo, UserPublicDoc } from '../shared/collections';
 import { collections } from '../shared/collections';
 import { cronTasks } from '../shared/cron';
 import { resolveEmailToUser, type ResolveEnv } from './resolveEmail';
@@ -71,13 +71,6 @@ export interface DbSurface {
   // resolver call — the conversation-list profile fast path.
   getByIds<T>(collection: CollectionDef<T>, ids: string[]): Promise<(T | null)[]>;
   deleteDoc(collection: CollectionDef, id: string): Promise<void>;
-  // Postgres full-text search (→ pgSearchDocs, `search @@ plainto_tsquery`).
-  // Present on the Pg adapter; optional so the interface stays minimal.
-  searchDocs?<T>(
-    collection: CollectionDef<T>,
-    searchQuery: string,
-    opts?: { filter?: Record<string, unknown>; limit?: number },
-  ): Promise<T[]>;
 }
 
 export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<typeof requests> {
@@ -275,9 +268,12 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
 
     conversationMessageSearch: async (userId, input) => {
       const db = getDb();
-      if (!db.searchDocs || !input.search.trim()) return { items: [] };
-      // Scope to conversations the user belongs to (access control). A specific
-      // conversationId is honoured only after confirming membership.
+      const query = input.search.trim().toLowerCase();
+      if (!query) return { items: [] };
+      // Non-FTS search (Postgres full-text dropped in the D1 migration): resolve
+      // the access-controlled set of conversations, fetch a bounded, INDEXED
+      // page of recent messages per conversation (getDocs by conversationId,
+      // sort created), then substring-filter in JS.
       let convIds: string[];
       if (input.conversationId) {
         const member = await db.getDoc(
@@ -288,17 +284,29 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         convIds = [input.conversationId];
       } else {
         const ucs = await db.getDocs(collections.userConversation, { userPrivateId: userId });
-        convIds = ucs.map((u) => u.conversationId).filter(Boolean);
+        // Bound the fan-out: search the user's most-recent conversations only.
+        convIds = ucs.map((u) => u.conversationId).filter(Boolean).slice(0, 20);
       }
       if (convIds.length === 0) return { items: [] };
-      const items = await db.searchDocs(collections.message, input.search, {
-        filter: {
-          conversationId: { $in: convIds },
-          onlyUserIds: { $in: ['global', userId] },
-          deleted: { $ne: true },
-        },
-        limit: input.limit ?? 50,
-      });
+      const limit = input.limit ?? 50;
+      const items: unknown[] = [];
+      for (const conversationId of convIds) {
+        const msgs = await db.getDocs(
+          collections.message,
+          { conversationId },
+          { sort: { created: -1 }, limit: 200 },
+        );
+        for (const m of msgs) {
+          if (m.deleted === true) continue;
+          // Respect per-message visibility scoping (global or addressed to me).
+          const only = m.onlyUserIds;
+          if (Array.isArray(only) && !only.includes('global') && !only.includes(userId)) continue;
+          const hay = `${m.text ?? ''}\n${m.markdown ?? ''}`.toLowerCase();
+          if (hay.includes(query)) items.push(m);
+          if (items.length >= limit) break;
+        }
+        if (items.length >= limit) break;
+      }
       return { items };
     },
 
@@ -538,13 +546,12 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
     },
 
     // Update the caller's name/avatar: write through to ugly.bot's federated
-    // profile (userUpdate, authed as the end user) AND refresh the local
-    // userProfileCache so the change shows in this session without re-login.
+    // profile (userUpdate, authed as the end user). ugly.bot is the source of
+    // truth — no local cache; the client re-reads the profile after updating.
     userProfileUpdate: async (
       userId,
       input,
     ): Promise<{ ok: boolean; name: string | null; avatarUrl: string | null }> => {
-      const db = getDb();
       const base = getEnv().UGLY_BOT_URL ?? 'https://ugly.bot';
       const token = getUserToken();
       if (token) {
@@ -560,24 +567,11 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
           if (!res.ok) throw new Error(`userUpdate HTTP ${res.status}`);
         }
       }
-      // Refresh the local cache (resolved fresh now) so the new name/avatar is
-      // used immediately by every conversation render this session.
-      const existing: Partial<UserProfileCache> =
-        (await db.getDoc(collections.userProfileCache, userId)) ?? {};
-      const name = input.name ?? (existing.name as string | undefined) ?? null;
-      const avatarUrl =
-        input.avatarUrl !== undefined
-          ? input.avatarUrl
-          : ((existing.avatarResolved as string | null | undefined) ?? null);
-      await db.setDoc(collections.userProfileCache, {
-        ...existing,
-        _id: userId,
-        name,
-        avatarResolved: avatarUrl,
-        avatarFetchedAt: Date.now(),
-        ...dbDefaults(),
-      });
-      return { ok: true, name, avatarUrl };
+      return {
+        ok: true,
+        name: input.name ?? null,
+        avatarUrl: input.avatarUrl ?? null,
+      };
     },
 
     // Distinct humans the caller shares conversations with (their "contacts") —

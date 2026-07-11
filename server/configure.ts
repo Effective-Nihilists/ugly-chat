@@ -20,6 +20,7 @@ import {
   type ConversationDeps,
 } from 'ugly-app/conversation/engine';
 import { botUser } from './bots';
+import { resolveProfiles } from './profiles';
 import type { TypedDB } from 'ugly-app/shared';
 import { collections } from '../shared/collections';
 
@@ -44,8 +45,11 @@ export function wireEngineDeps(getDb: () => TypedDB): void {
         const b = await getDb().getDoc(collections.bot, userId);
         if (b) return { _id: userId, name: b.name, isBot: true };
       }
-      const u = await getDb().getDoc(collections.userProfileCache, userId);
-      return u ?? { _id: userId, name: userId.slice(0, 8), isBot: false };
+      // Humans resolve fresh from ugly.bot (no server-side profile cache).
+      const [p] = await resolveProfiles(getDb(), [userId]);
+      return p
+        ? { _id: userId, name: p.name, isBot: p.isBot, avatar: p.avatar }
+        : { _id: userId, name: userId.slice(0, 8), isBot: false };
     },
     // eslint-disable-next-line @typescript-eslint/require-await
     async userPrivateGet(userId: string) {

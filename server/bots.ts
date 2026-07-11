@@ -208,8 +208,6 @@ interface MinimalDb {
   setDoc<T>(collection: CollectionDef<T>, doc: T, options?: { skipIfExists?: boolean }): Promise<boolean>;
 }
 
-const asBool = (v: unknown): boolean => v === true || v === 'true';
-
 /**
  * Resolve a bot's full config from any of the three kinds:
  *   - built-in (static BOTS map),
@@ -239,24 +237,9 @@ export async function getBotConfig(db: MinimalDb, botId: string): Promise<BotCon
       avatar: toAvatar(doc.avatar),
     };
   }
-  if (botId.startsWith('bot-')) return null;
-  // Migrated bot with no editable row yet — plain userId flagged isBot in userPublic.
-  const up = await db.getDoc(collections.userProfileCache, botId);
-  if (up && asBool(up.isBot)) {
-    const name = up.name ?? 'Bot';
-    const bio = (typeof up.bio === 'string' ? up.bio : '').trim();
-    return {
-      id: botId,
-      name,
-      systemPrompt: bio
-        ? `You are ${name}. Stay fully in character. ${bio}`
-        : `You are ${name}, a chat bot. Keep replies fairly short and in character.`,
-      model: 'deepseek_v4_flash',
-      firstMessage: null,
-      buttons: [],
-      avatar: toAvatar(up.avatar),
-    };
-  }
+  // A migrated bot with no editable `bot` row is no longer resolvable as a bot
+  // persona (the old `userProfileCache.isBot` signal was dropped) — treat as a
+  // plain user. Upgrading it in "My Bots" (which writes a `bot` row) restores it.
   return null;
 }
 
@@ -279,8 +262,9 @@ async function botParticipants(
     for (const p of conversationId.split('+').filter(Boolean)) {
       if (p === exclude || ids.has(p)) continue;
       if (isBot(p)) { ids.add(p); continue; }
-      const up = await db.getDoc(collections.userProfileCache, p);
-      if (up && asBool(up.isBot)) ids.add(p);
+      // A migrated-upgraded bot has an editable `bot` row → treat as a bot participant.
+      const botDoc = await db.getDoc(collections.bot, p);
+      if (botDoc) ids.add(p);
     }
   }
   // App-registered bots that declare a `webhookUrl` are driven by their owning

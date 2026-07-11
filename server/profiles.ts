@@ -1,14 +1,14 @@
 /**
- * Resolve userId → display profile (name + avatar) for chat participants, with
- * bot resolution (built-in / custom `bot-` / migrated-bot personas).
+ * Resolve userId → display profile (name + avatar) for chat participants.
  *
- * The avatar is the canonical `Avatar` object everywhere (never split into
- * separate url fields). Humans resolve via ugly.bot's `userPublicBatch` op
- * (whose profile already returns an `Avatar`) and are cached in the local
- * `userProfileCache` collection; bots resolve locally. Anything unresolved
+ * Profiles are NOT cached server-side: humans resolve fresh from ugly.bot's
+ * `userPublicBatch` op (whose profile already returns a canonical `Avatar`) —
+ * ugly.bot is the single source of truth, and any caching belongs on the
+ * client. Bots resolve locally: built-in personas via `botUser`, and custom /
+ * migrated-upgraded bots via the local `bot` collection. Anything unresolved
  * falls back to the shared `defaultAvatar`.
  */
-import { dbDefaults, defaultAvatar, type Avatar } from 'ugly-app/shared';
+import { defaultAvatar, type Avatar } from 'ugly-app/shared';
 import type { CollectionDef } from 'ugly-app/shared';
 import { botUser } from './bots';
 import { toAvatar } from './avatar';
@@ -24,21 +24,14 @@ export interface Profile {
 
 interface DbLike {
   getDoc<T>(collection: CollectionDef<T>, id: string): Promise<T | null>;
-  setDoc<T>(collection: CollectionDef<T>, doc: T, options?: { skipIfExists?: boolean }): Promise<boolean>;
 }
 
 const fallbackName = (id: string): string => id.slice(0, 8);
-const asBool = (v: unknown): boolean => v === true || v === 'true';
-
-// How long a resolved ugly.bot profile is trusted before re-fetching, so avatar
-// changes in ugly.bot propagate into chat.
-const AVATAR_CACHE_TTL_MS = 60 * 60 * 1000;
 
 export async function resolveProfiles(db: DbLike, userIds: string[]): Promise<Profile[]> {
   const ids = [...new Set(userIds)].filter(Boolean).slice(0, 100);
   const out: Profile[] = [];
-  const toFetch: string[] = [];
-  const cacheById = new Map<string, Record<string, unknown>>();
+  const humans: string[] = [];
 
   for (const id of ids) {
     const bot = botUser(id);
@@ -46,81 +39,35 @@ export async function resolveProfiles(db: DbLike, userIds: string[]): Promise<Pr
       out.push({ id, name: bot.name, avatar: defaultAvatar, isBot: true });
       continue;
     }
-    // Custom (`bot-`) bots resolve from the local `bot` collection.
-    if (id.startsWith('bot-')) {
-      const botDoc = await db.getDoc(collections.bot, id);
-      out.push({
-        id,
-        name: (botDoc?.name) ?? 'Bot',
-        avatar: toAvatar(botDoc?.avatar),
-        isBot: true,
-      });
+    // Custom (`bot-`) and migrated-upgraded bots live in the local `bot`
+    // collection (authoritative for their name/avatar).
+    const botDoc = await db.getDoc(collections.bot, id);
+    if (botDoc) {
+      out.push({ id, name: botDoc.name, avatar: toAvatar(botDoc.avatar), isBot: true });
       continue;
     }
-    const cached = await db.getDoc(collections.userProfileCache, id);
-    // A migrated bot upgraded to an editable config bot has a `bot` row keyed by
-    // its plain userId — authoritative for its name/avatar.
-    if (cached && asBool(cached.isBot)) {
-      const botDoc = await db.getDoc(collections.bot, id);
-      if (botDoc) {
-        out.push({
-          id,
-          name: botDoc.name,
-          avatar: toAvatar(botDoc.avatar),
-          isBot: true,
-        });
-        continue;
-      }
+    // A `bot-` id with no editable row yet is still a bot (minimal persona).
+    if (id.startsWith('bot-')) {
+      out.push({ id, name: 'Bot', avatar: defaultAvatar, isBot: true });
+      continue;
     }
-    if (
-      cached &&
-      typeof cached.avatarFetchedAt === 'number' &&
-      Date.now() - (cached.avatarFetchedAt) < AVATAR_CACHE_TTL_MS
-    ) {
-      out.push({
-        id,
-        name: (cached.name as string | undefined) ?? fallbackName(id),
-        avatar: toAvatar(cached.avatar),
-        isBot: asBool(cached.isBot),
-      });
-    } else {
-      toFetch.push(id);
-      if (cached) cacheById.set(id, cached);
-    }
+    humans.push(id);
   }
 
-  if (toFetch.length > 0) {
+  if (humans.length > 0) {
     const got = new Set<string>();
     try {
-      const res = await uglyBotRequest('userPublicBatch', { userIds: toFetch });
+      const res = await uglyBotRequest('userPublicBatch', { userIds: humans });
       for (const p of res.profiles) {
-        const local = cacheById.get(p.id);
-        const name = (local?.name as string | undefined) ?? p.name ?? fallbackName(p.id);
-        const isBot = asBool(local?.isBot);
-        out.push({ id: p.id, name, avatar: p.avatar, isBot });
+        out.push({ id: p.id, name: p.name ?? fallbackName(p.id), avatar: p.avatar, isBot: false });
         got.add(p.id);
-        await db.setDoc(collections.userProfileCache, {
-          ...(local ?? {}),
-          _id: p.id,
-          name,
-          isBot,
-          avatar: p.avatar,
-          avatarFetchedAt: Date.now(),
-          ...dbDefaults(),
-        });
       }
     } catch (err) {
       console.warn('[profiles] userPublicBatch failed:', (err as Error).message);
     }
-    for (const id of toFetch) {
+    for (const id of humans) {
       if (got.has(id)) continue;
-      const local = cacheById.get(id);
-      out.push({
-        id,
-        name: (local?.name as string | undefined) ?? fallbackName(id),
-        avatar: toAvatar(local?.avatar),
-        isBot: asBool(local?.isBot),
-      });
+      out.push({ id, name: fallbackName(id), avatar: defaultAvatar, isBot: false });
     }
   }
 
