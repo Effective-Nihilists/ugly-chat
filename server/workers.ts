@@ -26,7 +26,7 @@ const getFullDb = () => {
   if (!ctx.typedDb) throw new Error('[workers] typedDb not initialized');
   return ctx.typedDb;
 };
-const getDb = (): DbSurface => getFullDb() as unknown as DbSurface;
+const getDb = (): DbSurface => getFullDb();
 
 const app = createWorkersApp(
   { requests, messages },

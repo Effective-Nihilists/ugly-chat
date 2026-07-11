@@ -18,7 +18,7 @@ import { wireEngineDeps } from './configure';
 import { withUserPublic } from './userPublic';
 
 // Lazy db resolver (arrow is only invoked at request time, after `app` is set).
-const getDb = (): DbSurface => app.db as unknown as DbSurface;
+const getDb = (): DbSurface => app.db;
 
 const app = createApp(
   { requests, messages },
