@@ -242,6 +242,7 @@ const messageReactionIndexes: { fields: Record<string, 1 | -1> }[] = [
 ];
 const conversationUserIndexes: { fields: Record<string, 1 | -1> }[] = [
   { fields: { conversationId: 1 } }, // members/contacts getDocs({conversationId})
+  { fields: { userId: 1 } }, // trackDocs subscribes by userId (trackKey) — D1 requires the index
 ];
 const userConversationIndexes: { fields: Record<string, 1 | -1> }[] = [
   // Sidebar/list + engine: getDocs({userPrivateId}) with visibility $ne / hidden.
