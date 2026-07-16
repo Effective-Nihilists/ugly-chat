@@ -3,6 +3,7 @@
   "version": "0.1.25",
   "type": "module",
   "scripts": {
+    "preinstall": "npx only-allow pnpm",
     "dev": "ugly-app dev --watch",
     "typecheck": "tsc --noEmit",
     "build": "ugly-app build",
