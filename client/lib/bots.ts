@@ -42,6 +42,9 @@ export const BOT_MODES: { id: string; label: string; persona: boolean }[] = [
   { id: 'honest', label: 'Honest', persona: true },
   { id: 'lie', label: 'Lie', persona: true },
   { id: 'image', label: 'Image', persona: false },
+  // Web search (cited answers) — runs the AnswerEngine via runBotSearch. Requires
+  // ugly-app ≥ 0.1.863 (fixed web-search proxy op); before that it 400'd silently.
+  { id: 'search', label: 'Search', persona: false },
 ];
 
 // Image-gen models ugly.bot serves (via /v1/ai/user-billed/image).

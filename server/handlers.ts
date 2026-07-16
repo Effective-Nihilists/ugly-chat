@@ -29,7 +29,7 @@ import { triggerBotReplies, getBotConfig, isBot } from './bots';
 import { fireMessageWebhooks } from './webhooks';
 import { unfurlMessageLinks } from './linkPreview';
 import { bumpListForMessage, markRead } from './listDenorm';
-import { UGLY_BOT_ID } from '../shared/bots';
+import { UGLY_BOT_ID, FEATURED_BOT_IDS } from '../shared/bots';
 import { resolveProfiles, type Profile } from './profiles';
 import { videoJoin, videoLeave, videoEnd, videoBotJoin, videoPublish, videoState, videoCaption, type CallState } from './video';
 import { notifyIncomingCall, notifyNewMessage } from './callNotify';
@@ -839,6 +839,17 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       const bots = await getDb().getDocs(collections.bot, { ownerId: userId });
       bots.sort((a, b) => toMillis(b.updated) - toMillis(a.updated));
       return { bots };
+    },
+
+    // Curated built-in bots surfaced to every user (fresh accounts own no custom
+    // bots, so `botListMine` is empty and the flagship Ugly Bot was unreachable
+    // from the UI). Returns only the featured bots whose config rows actually
+    // exist, so a missing/renamed built-in silently drops out instead of erroring.
+    botListFeatured: async (): Promise<{ bots: Record<string, unknown>[] }> => {
+      const docs = await Promise.all(
+        FEATURED_BOT_IDS.map((id) => getDb().getDoc(collections.bot, id).catch(() => null)),
+      );
+      return { bots: docs.filter((d) => d != null) };
     },
 
     botDelete: async (userId, input): Promise<{ ok: boolean }> => {

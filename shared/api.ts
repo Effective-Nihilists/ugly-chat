@@ -431,6 +431,12 @@ export const requests = defineRequests({
     input: z.object({}).catchall(z.unknown()),
     output: z.object({ bots: z.array(z.any()) }),
   }),
+  // Curated built-in bots (e.g. Ugly Bot) so a brand-new user with no custom
+  // bots still has a discoverable entry point to start chatting.
+  botListFeatured: authReq({
+    input: z.object({}).catchall(z.unknown()),
+    output: z.object({ bots: z.array(z.any()) }),
+  }),
   botDelete: authReq({
     input: z.object({ botId: z.string() }),
     output: z.object({ ok: z.boolean() }),

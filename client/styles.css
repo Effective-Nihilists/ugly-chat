@@ -550,6 +550,17 @@ hr {
 .uc-bubble.media .uc-cap {
   padding: 8px 13px;
 }
+/* Arabic / RTL message content: larger text + generous line-height so tashkeel
+   (vowel diacritics) is legible — at default body size the marks are too small
+   to read, which defeats a translation/vocalization use case. */
+.uc-arabic {
+  font-size: 1.2em;
+  line-height: 2;
+}
+.uc-arabic .ProseMirror,
+.uc-arabic p {
+  line-height: 2;
+}
 /* Vertical stack when a single message carries several images. */
 .uc-media {
   display: flex;

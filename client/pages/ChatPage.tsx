@@ -183,6 +183,10 @@ function MessageBody(props: {
   // Split image attachments out of the markdown so we can size/place them with
   // the edge-to-edge / centered rules (the leftover text renders as usual).
   const { images, text: bodyText } = extractImages(text);
+  // Arabic (and other RTL) content: render larger + RTL-aware so vocalization
+  // marks (tashkeel) are legible — at body size the diacritics are too small to
+  // verify, which defeats a translation/vocalization use case.
+  const hasArabic = /\p{Script=Arabic}/u.test(bodyText);
   const hasImages = images.length > 0;
   const hasBody = bodyText.trim().length > 0;
   // Image-dominant (no text, or just a short caption) → edge-to-edge; a message
@@ -300,7 +304,7 @@ function MessageBody(props: {
               </div>
             ) : null}
             {hasBody ? (
-              <div className={mediaBubble ? 'uc-cap' : undefined}>
+              <div className={`${mediaBubble ? 'uc-cap' : ''}${hasArabic ? ' uc-arabic' : ''}`.trim() || undefined} {...(hasArabic ? { dir: 'auto' as const } : {})}>
                 <MdastViewer markdown={bodyText} width={520} openUri={openLink} />
                 {(msg as { edited?: unknown }).edited ? (
                   <span style={{ fontSize: 11, opacity: 0.5, marginLeft: 6 }}>(edited)</span>
@@ -897,7 +901,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       .catch(() => undefined);
   };
   const pickBotModel = (model: string): void => { setBotModel(model); setMenuOpen(false); setBotConfig({ model }); };
-  const pickBotMode = (mode: string): void => { setBotMode(mode); setBotConfig({ mode }); };
+  const pickBotMode = (mode: string): void => { setBotMode(mode); setMenuOpen(false); setBotConfig({ mode }); };
   const pickImageModel = (imageModel: string): void => { setBotImageModel(imageModel); setBotConfig({ imageModel }); };
   const pickImageSize = (imageSize: string): void => { setBotImageSize(imageSize); setBotConfig({ imageSize }); };
   // Modes available for this bot: the built-in Ugly Bot gets the personas

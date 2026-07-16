@@ -104,8 +104,32 @@ async function uglyBotTextGen(
   return parsed;
 }
 
+/**
+ * Pure parser for ugly.bot image-endpoint responses. Exported for unit-testing.
+ * The user-billed image endpoint returns the generated image inline as
+ * `{ type:'base64', base64, mime }` (NOT a hosted url) — the earlier code only
+ * looked for a `url` field, so every generation fell through to '' and surfaced
+ * the "couldn't generate an image" fallback even though the proxy succeeded.
+ * Mirror the framework's AiImage contract: prefer a url, else a data: URL from
+ * the base64 payload (which renders directly in the message markdown).
+ */
+export function parseImageGenResponse(data: unknown): string {
+  const d = (data ?? {}) as Record<string, unknown>;
+  const result = d.result as Record<string, unknown> | undefined;
+  const url = d.url ?? d.imageUrl ?? result?.url ?? result?.imageUrl;
+  if (typeof url === 'string' && url) return url;
+  const b64 = (typeof d.base64 === 'string' ? d.base64 : undefined) ??
+    (typeof result?.base64 === 'string' ? result.base64 : undefined);
+  if (b64) {
+    const mime = (typeof d.mime === 'string' && d.mime) || (typeof result?.mime === 'string' && result.mime) || 'image/png';
+    return `data:${mime};base64,${b64}`;
+  }
+  return '';
+}
+
 // Image generation via ugly.bot's user-billed image endpoint (same auth model as
-// uglyBotTextGen). Returns the generated image URL, or '' on failure.
+// uglyBotTextGen). Returns the generated image URL (or an inline data: URL), or
+// '' on failure.
 async function uglyBotImageGen(model: string, prompt: string, size: string): Promise<string> {
   const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
   const base = env.UGLY_BOT_LOCAL === '1' ? 'http://localhost:3000' : env.UGLY_BOT_URL ?? 'https://ugly.bot';
@@ -121,8 +145,7 @@ async function uglyBotImageGen(model: string, prompt: string, size: string): Pro
   if (!res.ok) throw new Error(`imageGen HTTP ${res.status}`);
   const data = (await res.json()) as Record<string, unknown>;
   if (data.error) throw new Error(typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
-  const url = data.url ?? data.imageUrl ?? (data.result as Record<string, unknown> | undefined)?.url;
-  return typeof url === 'string' ? url : '';
+  return parseImageGenResponse(data);
 }
 
 // Ugly Bot persona overrides for the non-default text modes (mirrors the old
@@ -148,6 +171,23 @@ const PAYMENT_REPLY =
   `[Add credits or subscribe](${BILLING_URL}) to keep chatting.`;
 const isPaymentError = (err: unknown): boolean =>
   (err as { status?: number } | null)?.status === 402;
+
+// A conversation can still list a bot member whose config row is gone — e.g. a
+// migrated bot that never got an editable `bot` row, or one that was deleted.
+// Such a bot can't generate a reply, but it must NOT go silent (the user just
+// sees an unresponsive chat and reports "the bot isn't responding"). Post a
+// clear, actionable message so they can rebuild it.
+const ORPHAN_REPLY =
+  `**This bot needs to be re-created.** Its configuration was lost, so it can't ` +
+  `reply here anymore. Open **My Bots** to set it up again (name, instructions, ` +
+  `model) and it'll start responding in this chat.`;
+
+// Web search runs through ugly.bot's search proxy; when that's unavailable the
+// retriever throws and the engine has nothing to ground on. Surface a clear
+// message rather than dead air (or a confusing "no sources" refusal).
+const SEARCH_UNAVAILABLE_REPLY =
+  `**Search is unavailable right now.** I couldn't reach the web to answer that. ` +
+  `Please try again in a bit, or switch this chat to Chat mode from the ⋯ menu.`;
 
 export interface BotDef {
   id: string;
@@ -256,26 +296,34 @@ async function botParticipants(
   exclude: string,
 ): Promise<string[]> {
   const ids = new Set<string>();
+  // The `bots` map is the authoritative list of bot members. Every key is a bot,
+  // regardless of id shape — migrated bots are keyed by a plain (non-`bot-`)
+  // userId, so filtering by the `bot-` prefix here silently dropped them and they
+  // never replied. Include all keys; unresolvable ones surface a clear message
+  // downstream instead of dying in silence.
   const bots = (conv?.bots) ?? {};
-  for (const k of Object.keys(bots)) if (isBot(k) && k !== exclude) ids.add(k);
+  for (const k of Object.keys(bots)) if (k !== exclude) ids.add(k);
+  const convUsers = (conv?.users as Record<string, { isBot?: boolean }> | undefined) ?? {};
   if (conversationId.includes('+')) {
     for (const p of conversationId.split('+').filter(Boolean)) {
       if (p === exclude || ids.has(p)) continue;
       if (isBot(p)) { ids.add(p); continue; }
-      // A migrated-upgraded bot has an editable `bot` row → treat as a bot participant.
+      // A DM participant the conversation flags as a bot (migrated bots carry
+      // `isBot: true` in the participant map even when their config row is gone),
+      // or a migrated-upgraded bot with an editable `bot` row.
+      if (convUsers[p]?.isBot === true) { ids.add(p); continue; }
       const botDoc = await db.getDoc(collections.bot, p);
       if (botDoc) ids.add(p);
     }
   }
   // App-registered bots that declare a `webhookUrl` are driven by their owning
   // app (which posts the reply via the cross-app API) — Ugly Chat must NOT also
-  // generate a textGen reply for them.
+  // generate a textGen reply for them. Check every id (app bots may be keyed by a
+  // plain id too), not only `bot-` prefixed ones.
   const out: string[] = [];
   for (const id of ids) {
-    if (id.startsWith('bot-')) {
-      const doc = await db.getDoc(collections.bot, id);
-      if (doc && typeof doc.webhookUrl === 'string' && doc.webhookUrl) continue;
-    }
+    const doc = await db.getDoc(collections.bot, id);
+    if (doc && typeof doc.webhookUrl === 'string' && doc.webhookUrl) continue;
     out.push(id);
   }
   return out;
@@ -319,7 +367,18 @@ export async function triggerBotReplies(
   const convBots = (conv?.bots as Record<string, BotCfg> | undefined) ?? {};
   for (const botId of botIds) {
     const bot = await getBotConfig(db, botId);
-    if (!bot) continue;
+    if (!bot) {
+      // Declared bot member with no resolvable config (lost/migrated). Don't die
+      // silently — tell the user how to restore it.
+      await conversationMessageCreate(
+        { conversationId, message: { text: ORPHAN_REPLY, markdown: ORPHAN_REPLY, onlyUserIds: ['global'], color: 'error' } },
+        botId,
+      );
+      await bumpListForMessage(db, conversationId, ORPHAN_REPLY, botId).catch((err: unknown) => {
+        console.error('[bots] list denorm failed', err);
+      });
+      continue;
+    }
     // Per-conversation bot config (the bot DM's ⋯ menu): mode + models + size.
     const cfg = convBots[botId] ?? {};
     const mode = cfg.mode ?? 'chat';
@@ -329,6 +388,7 @@ export async function triggerBotReplies(
     // AnswerEngine and stream a cited reply via the conversation hub. It
     // persists its own message on commit, so skip the normal reply path.
     if (botId === SEARCH_BOT_ID || mode === 'search') {
+      const searchUserToken = getUserToken();
       try {
         await runBotSearch({
           conversationId,
@@ -337,9 +397,20 @@ export async function triggerBotReplies(
           model,
           textGen: uglyBotTextGen,
           mode: cfg.mode === 'deep' ? 'deep' : 'quick',
+          // Bill web retrieval to the chatting user, same as textGen.
+          ...(searchUserToken ? { userToken: searchUserToken } : {}),
+          userId: senderUserId,
         });
       } catch (err) {
+        // Don't leave the user staring at dead air when search fails (proxy down,
+        // op unavailable, timeout). Post a clear, actionable message like the
+        // text path does — a missing reply reads as "the bot is broken".
         console.warn(`[bots] search failed for ${botId}:`, (err as Error).message);
+        await conversationMessageCreate(
+          { conversationId, message: { text: SEARCH_UNAVAILABLE_REPLY, markdown: SEARCH_UNAVAILABLE_REPLY, onlyUserIds: ['global'], color: 'error' } },
+          botId,
+        ).catch((e: unknown) => { console.error('[bots] search fallback post failed', e); });
+        await bumpListForMessage(db, conversationId, SEARCH_UNAVAILABLE_REPLY, botId).catch((e: unknown) => { console.error('[bots] list denorm failed', e); });
       }
       continue;
     }

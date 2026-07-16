@@ -32,6 +32,14 @@ export interface RunBotSearchOptions {
   model: string;
   textGen: TextGen;
   mode?: 'quick' | 'deep';
+  /**
+   * The chatting user's session JWT + id. Web retrieval runs through the same
+   * ugly.bot proxy as textGen and must be billed to the user; without these the
+   * retriever calls the proxy unauthenticated (owner token only) and, when no
+   * app token is set, every retrieval throws → the engine answers "no sources".
+   */
+  userToken?: string;
+  userId?: string;
 }
 
 export async function runBotSearch(opts: RunBotSearchOptions): Promise<void> {
@@ -52,7 +60,12 @@ export async function runBotSearch(opts: RunBotSearchOptions): Promise<void> {
 
   const engine = new AnswerEngine({
     model,
-    retrievers: [new WebRetriever()],
+    retrievers: [
+      new WebRetriever(undefined, {
+        ...(opts.userToken !== undefined ? { userToken: opts.userToken } : {}),
+        ...(opts.userId !== undefined ? { userId: opts.userId } : {}),
+      }),
+    ],
     defaultModel: opts.model,
   });
 

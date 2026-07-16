@@ -6,6 +6,12 @@
 // `bot-ugly+<userId>`) and server (recognize it + generate replies).
 export const UGLY_BOT_ID = 'bot-ugly';
 
+// Curated built-in bots surfaced to every user in "My bots" (the Featured
+// section) so a brand-new account — which owns no custom bots — still has a
+// discoverable way to start chatting. Only Ugly Bot for now: Sage is a bare
+// stub and the Search bot's backend web-search op isn't live yet.
+export const FEATURED_BOT_IDS: readonly string[] = [UGLY_BOT_ID];
+
 // The mascot avatar, re-hosted in ugly.chat's R2 public bucket and served from
 // the ugly.chat origin (blob.ugly.bot has no CORS; same-origin avoids it). The
 // GLB drives the 3D TalkingAvatar; the webp is the 2D list/header/thread image;

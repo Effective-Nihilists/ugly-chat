@@ -53,6 +53,7 @@ export function openBotsPopup(
  */
 export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPopupProps): React.ReactElement {
   const [bots, setBots] = useState<BotDoc[]>([]);
+  const [featured, setFeatured] = useState<BotDoc[]>([]);
   const [loading, setLoading] = useState(true);
   // Two-step delete: first click arms (shows "Confirm?"), second click deletes.
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -71,6 +72,15 @@ export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPo
     const unsub = socket.trackDocs('bot', { keys: { ownerId: userId } }, () => { refetch(); });
     return () => { unsub(); };
   }, [socket, userId]);
+
+  // Curated built-in bots (Ugly Bot). A fresh account owns no custom bots, so
+  // without this the flagship bot has no UI entry point at all.
+  useEffect(() => {
+    void socket
+      .request('botListFeatured', {})
+      .then((res) => { setFeatured((res as { bots?: BotDoc[] }).bots ?? []); })
+      .catch(() => { /* non-fatal: featured section just stays empty */ });
+  }, [socket]);
 
   const remove = (botId: string): void => {
     void socket.request('botDelete', { botId }).catch((err: unknown) => { console.error('[Bots] delete failed', err); });
@@ -91,6 +101,35 @@ export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPo
       </div>
 
       <div style={modalBody}>
+        {featured.length > 0 ? (
+          <div style={{ marginBottom: 18 }}>
+            <div style={sectionLabel}>Featured</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {featured.map((b) => (
+                <div key={b._id} style={botRow} data-id={`featured-${b._id}`}>
+                  {botAvatarUri(b) ? (
+                    <img src={botAvatarUri(b)} alt="" style={avatarImg} />
+                  ) : (
+                    <div style={avatarFallback}><BotIcon size={22} style={{ opacity: 0.6 }} /></div>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={botName}>{b.name}</div>
+                    <div style={botSub}>Built-in{b.model ? ` · ${b.model}` : ''}</div>
+                  </div>
+                  <button
+                    type="button"
+                    title="Chat"
+                    onClick={() => { onClose(); void startBotChat(socket, userId, b, (cid) => { navigate(cid); }); }}
+                    style={iconBtn} data-id="featured-chat"
+                  >
+                    <MessageSquare size={18} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {featured.length > 0 ? <div style={sectionLabel}>Your bots</div> : null}
         {loading ? (
           <Hint text="Loading…" />
         ) : bots.length === 0 ? (
@@ -171,6 +210,34 @@ export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPo
 function Hint({ text }: { text: string }): React.ReactElement {
   return <div style={{ padding: '40px 8px', textAlign: 'center', fontSize: 14, color: 'var(--app-foreground)', opacity: 0.45 }}>{text}</div>;
 }
+
+// Built-in bots carry `avatarUrl` (string); custom bots carry an `avatar` object.
+// Resolve whichever is present for display.
+function botAvatarUri(b: BotDoc): string | undefined {
+  return b.avatar?.image.uri ?? (b as { avatarUrl?: string | null }).avatarUrl ?? undefined;
+}
+
+const sectionLabel: React.CSSProperties = {
+  fontSize: 12, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase',
+  color: 'var(--app-foreground)', opacity: 0.5, margin: '0 0 8px 2px',
+};
+const botRow: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 12, padding: 12, borderRadius: 14,
+  border: '1px solid var(--app-border)', background: 'var(--app-tertiary)',
+};
+const avatarImg: React.CSSProperties = {
+  width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', flexShrink: 0,
+};
+const avatarFallback: React.CSSProperties = {
+  width: 48, height: 48, borderRadius: '50%', background: 'var(--app-secondary)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+};
+const botName: React.CSSProperties = {
+  fontWeight: 700, fontSize: 16, color: 'var(--app-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+};
+const botSub: React.CSSProperties = {
+  fontSize: 13, color: 'var(--app-foreground)', opacity: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+};
 
 const modal: React.CSSProperties = {
   width: 'min(560px, 92vw)',
