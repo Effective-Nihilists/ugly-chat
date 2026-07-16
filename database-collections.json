@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-11T21:47:47.724Z",
+  "generatedAt": "2026-07-12T18:05:38.824Z",
   "source": "shared/collections.ts",
   "collections": {
     "authMagicLink": {
@@ -663,6 +663,11 @@
           {
             "fields": {
               "conversationId": 1
+            }
+          },
+          {
+            "fields": {
+              "userId": 1
             }
           }
         ]

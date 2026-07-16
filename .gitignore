@@ -21,3 +21,5 @@ screenshots/compare.html
 # ugly-studio state — throwaway local dev/IDE state (dev-server log, session &
 # codebase index, sandbox, bundled minio/postgres). None of it is committed.
 .ugly-studio/
+
+.ugly-sqlite/
