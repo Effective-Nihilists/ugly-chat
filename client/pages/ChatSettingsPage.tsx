@@ -6,7 +6,7 @@ import {
 import { useApp } from 'ugly-app/client';
 import type { Avatar as AvatarT } from 'ugly-app/shared';
 import { useRouter } from '../router';
-import { Avatar } from '../lib/conversations';
+import { Avatar, deleteOrLeaveConversation } from '../lib/conversations';
 import { isValidEmail, normalizeEmail } from '../../shared/email';
 import { isDirectRoom } from '../../shared/conversationId';
 import { modalStyles as S } from '../lib/modalStyles';
@@ -147,6 +147,16 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
       .request('conversationMemberRemove', { conversationId: id, userId })
       .then(() => { router.push('', {}); })
       .catch((err: unknown) => { console.error('[settings] leave failed', err); setStatus('Could not leave the group.'); });
+  }, [id, socket, userId, router]);
+
+  // Delete (owner → for everyone) — relocated here from the old header ⋯ menu.
+  // Two-step confirm so an irreversible action never fires on one tap.
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const deleteConversation = useCallback(() => {
+    if (!id) return;
+    void deleteOrLeaveConversation(socket, id, userId)
+      .then(() => { router.push('', {}); })
+      .catch((err: unknown) => { console.error('[settings] delete failed', err); setStatus('Could not delete the conversation.'); });
   }, [id, socket, userId, router]);
 
   return (
@@ -298,7 +308,17 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
               <DangerRow icon={<Trash2 size={18} />} title="Clear my history" desc={isDirect ? 'Wipes this conversation for you.' : 'Wipes it for you. Everyone else keeps theirs.'} onClick={clearHistory} data-id="clear-history" />
               {!isOwner ? (
                 <DangerRow icon={<LogOut size={18} />} title="Leave group" onClick={leaveGroup} data-id="leave-group" />
-              ) : null}
+              ) : confirmDelete ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 2px' }}>
+                  <span style={{ flex: 1, fontSize: 13, color: 'var(--app-error)', fontWeight: 600 }}>
+                    {isDirect ? 'Delete this conversation?' : 'Delete for everyone?'}
+                  </span>
+                  <button type="button" onClick={() => { setConfirmDelete(false); }} style={{ fontSize: 13, fontWeight: 600, padding: '6px 12px', border: '1px solid var(--app-border)', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }} data-id="delete-cancel">Cancel</button>
+                  <button type="button" onClick={deleteConversation} style={{ fontSize: 13, fontWeight: 700, padding: '6px 14px', border: 'none', background: 'var(--app-error)', color: '#fff', cursor: 'pointer' }} data-id="delete-confirm">Delete</button>
+                </div>
+              ) : (
+                <DangerRow icon={<Trash2 size={18} />} title={isDirect ? 'Delete conversation' : 'Delete group'} desc="Removes it for everyone. Can't be undone." onClick={() => { setConfirmDelete(true); }} data-id="delete-conversation" />
+              )}
             </div>
           </div>
         </div>

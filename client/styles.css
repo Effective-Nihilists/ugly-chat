@@ -1270,3 +1270,26 @@ a.uc-src:hover {
   background: rgba(0, 0, 0, 0.72);
   backdrop-filter: blur(8px);
 }
+
+/* Composer mode/model control (bot chats) — the mode switch, moved from the
+   header ⋯ menu to where it's actually used. Mono uppercase + orange, square,
+   to read as a deliberate control rather than a text field. */
+.uc-composer-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--app-primary);
+  background: transparent;
+  color: var(--app-primary);
+  font-family: var(--app-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.uc-composer-mode:hover { background: var(--app-primary-20); }

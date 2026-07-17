@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ThumbsUp, ThumbsDown, Heart, Laugh, HelpCircle, AlertTriangle, Trash2, Video, Paperclip, X, FileText, MoreVertical, Eraser, Pencil, Users, Volume2, VolumeX, Pin, Settings, Check, Palette, Copy } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Heart, Laugh, HelpCircle, AlertTriangle, Trash2, Video, Paperclip, X, FileText, Pencil, Volume2, VolumeX, Pin, Settings, Check, Palette, Copy, ChevronDown } from 'lucide-react';
 import { useApp, uploadBlob, promoteBlob, downscaleImage, useSafeAreaInsets } from 'ugly-app/client';
 import { MdastViewer } from 'ugly-app/markdown/client';
 import { ConversationInput } from '../components/ConversationInput';
@@ -13,10 +13,9 @@ import type { DBObject } from 'ugly-app/shared';
 import type { UserConversation } from '../../shared/collections';
 import { type VideoCallHandle } from '../components/VideoCall';
 import { CallLayout } from '../components/CallLayout';
-import { openMembersPopup } from '../components/MembersPopup';
 import { VoiceProvider, useVoice } from '../components/VoiceProvider';
 import { useRouter } from '../router';
-import { Avatar, pingConversationActivity, deleteOrLeaveConversation } from '../lib/conversations';
+import { Avatar, pingConversationActivity } from '../lib/conversations';
 import { modelLabel, BOT_MODELS, BOT_MODES, IMAGE_MODELS, IMAGE_SIZES } from '../lib/bots';
 import { UGLY_BOT_ID } from '../../shared/bots';
 import type { MsgTelemetry } from '../../shared/telemetry';
@@ -738,7 +737,6 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const [botId, setBotId] = useState<string | null>(null);
   const [botButtons, setBotButtons] = useState<{ label: string; prompt: string }[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [confirmDeleteConv, setConfirmDeleteConv] = useState(false);
   // Tap-to-select: the single message whose metadata + action menu are revealed.
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const selectMessage = useCallback((id: string) => {
@@ -753,7 +751,6 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const [botImageModel, setBotImageModel] = useState<string>('flux_1_dev');
   const [botImageSize, setBotImageSize] = useState<string>('square');
   const [typing, setTyping] = useState<ChatTypingEntry[]>([]);
-  const [convType, setConvType] = useState<string>('group');
   const [pinnedMessageId, setPinnedMessageId] = useState<string | null>(null);
   const [pinnedMessage, setPinnedMessage] = useState<MessageDoc | null>(null);
   const [readers, setReaders] = useState<{ userId: string; viewed: number }[]>([]);
@@ -837,7 +834,6 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           const firstBot = ids.find((b) => b.startsWith('bot-')) ?? null;
           setBotId((cur) => cur ?? firstBot);
           setTyping(((doc as { typing?: ChatTypingEntry[] }).typing ?? []));
-          if (typeof doc.type === 'string') setConvType(doc.type);
           setPinnedMessageId((doc.pinnedMessageId) ?? null);
         }
       });
@@ -864,12 +860,11 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   // Message subscription — isolated from the conversation setup above so that
   // "Load more" (which grows msgLimit) re-subscribes ONLY the message window.
   // We fetch the newest `msgLimit` (created: -1) and re-sort ascending for
-  // Escape closes the ⋯ menu. Without this the only way out was clicking the
-  // invisible overlay, which also sat on top of the composer eating clicks.
+  // Escape closes the composer mode popover.
   useEffect(() => {
     if (!menuOpen) return;
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') { setMenuOpen(false); setConfirmDeleteConv(false); }
+      if (e.key === 'Escape') setMenuOpen(false);
     };
     window.addEventListener('keydown', onKey);
     return () => { window.removeEventListener('keydown', onKey); };
@@ -1238,23 +1233,6 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     [socket, roomId, pinnedMessageId],
   );
 
-  const handleClear = useCallback(() => {
-    setMenuOpen(false);
-    void socket
-      .request('conversationClear', { conversationId: roomId })
-      .then(() => { pingConversationActivity(); })
-      .catch((err: unknown) => { console.error('[ChatPage] clear failed', err); });
-  }, [socket, roomId]);
-
-  // Delete (owner) or leave (non-owner) the conversation, then return home.
-  const handleDeleteConversation = useCallback(() => {
-    setConfirmDeleteConv(false);
-    setMenuOpen(false);
-    void deleteOrLeaveConversation(socket, roomId, userId)
-      .then(() => { router.push('', {}); })
-      .catch((err: unknown) => { console.error('[ChatPage] delete failed', err); });
-  }, [socket, roomId, userId, router]);
-
   // Typing indicator. The composer fires `onType` on every edit; we throttle
   // "start" pings to one / 3s, and after 4s of silence send a "stop" so the
   // bubble clears even if the user never sends. (A sent message clears it
@@ -1305,14 +1283,6 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
 
   // DM ids are `{a}+{b}` / `{a}:{b}` containing self; everything else that's a
   // group gets the member-management UI (the ⋯ → Members panel).
-  const isDm = (() => {
-    const sep = roomId.includes(':') ? ':' : roomId.includes('+') ? '+' : '';
-    if (!sep) return false;
-    const parts = roomId.split(sep).filter(Boolean);
-    return parts.length === 2 && parts.includes(userId);
-  })();
-  const canManageMembers = convType === 'group' && !isDm && roomId !== 'demo-room';
-
   // Human DM telemetry: derive StatMsg array (sorted by created, bot messages excluded)
   // and related flags once, shared between the strip and per-message receipts.
   const hasBot = botId !== null;
@@ -1481,6 +1451,48 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     </button>
   );
 
+  // Mode + model control — lives in the composer's left rail (a bot chat only),
+  // where the switch is used. It replaces the old header ⋯ "Mode" section, which
+  // buried this frequent action in an unlabeled overflow next to Delete. The
+  // popover opens UPWARD (the composer sits at the bottom). Reuses `menuOpen`.
+  const modeControl = botId ? (
+    <div style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={() => { setMenuOpen((o) => !o); }}
+        className="uc-composer-mode"
+        aria-label="Bot mode and model"
+        title="Mode & model"
+        data-id="composer-mode"
+      >
+        <span>{BOT_MODES.find((m) => m.id === botMode)?.label ?? 'Chat'}</span>
+        <ChevronDown size={13} style={{ flexShrink: 0, opacity: 0.8 }} />
+      </button>
+      {menuOpen ? (
+        <>
+          <div onClick={() => { setMenuOpen(false); }} style={{ position: 'fixed', inset: 0, zIndex: 20 }} data-id="mode-scrim" />
+          <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, zIndex: 21, background: 'var(--app-main)', border: '1px solid var(--app-border)', borderRadius: 10, boxShadow: 'var(--app-shadow-button-default)', minWidth: 210, overflow: 'hidden', maxHeight: 'min(60vh, 460px)', overflowY: 'auto' }} data-id="mode-popover">
+            <div style={menuLabelStyle}>Mode</div>
+            {availableModes.map((m) => pickRow(`mode-${m.id}`, m.label, botMode === m.id, () => { pickBotMode(m.id); }))}
+            {botMode === 'image' ? (
+              <>
+                <div style={menuLabelStyle}>Image model</div>
+                {IMAGE_MODELS.map((m) => pickRow(`im-${m.id}`, m.label, botImageModel === m.id, () => { pickImageModel(m.id); }))}
+                <div style={menuLabelStyle}>Image size</div>
+                {IMAGE_SIZES.map((m) => pickRow(`is-${m.id}`, m.label, botImageSize === m.id, () => { pickImageSize(m.id); }))}
+              </>
+            ) : (
+              <>
+                <div style={menuLabelStyle}>Model</div>
+                {BOT_MODELS.map((m) => pickRow(`tm-${m.id}`, (m.label.split('—')[0] ?? m.id).trim(), (botModel ?? BOT_MODELS[0]?.id) === m.id, () => { pickBotModel(m.id); }))}
+              </>
+            )}
+          </div>
+        </>
+      ) : null}
+    </div>
+  ) : null;
+
   const body = (
     <div
       style={{
@@ -1549,8 +1561,10 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         >
           <Video size={19} />
         </button>
-        {/* Group info / settings */}
-        {canManageMembers ? (
+        {/* Info / settings — the single admin home for EVERY real conversation
+            (bot, group, human DM). Broadened from group-only now that the ⋯
+            menu is gone: members, clear, and delete all live in here. */}
+        {roomId !== 'demo-room' ? (
           <button
             type="button"
             onClick={() => { router.push('settings/:conversationId', { conversationId: roomId }); }}
@@ -1561,105 +1575,10 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
             <Settings size={18} />
           </button>
         ) : null}
-        {/* Overflow menu — group chats manage members; bot chats can be wiped;
-            every real conversation can be deleted (DMs included). */}
-        {botId || canManageMembers || roomId !== 'demo-room' ? (
-          <div style={{ position: 'relative', flexShrink: 0 }}>
-            <button
-              type="button"
-              onClick={() => { setMenuOpen((o) => !o); setConfirmDeleteConv(false); }}
-              aria-label="More"
-              title="More"
-              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }} data-id="more"
-            >
-              <MoreVertical size={19} />
-            </button>
-            {menuOpen ? (
-              <>
-                <div onClick={() => { setMenuOpen(false); setConfirmDeleteConv(false); }} style={{ position: 'fixed', inset: 0, zIndex: 20 }} data-id="div-3" />
-                {/* maxHeight was a flat 360px against ~530px of content, so 4 of
-                    the 9 models were silently unreachable behind an invisible
-                    overlay scrollbar. Size to the viewport instead. */}
-                <div style={{ position: 'absolute', top: 38, right: 0, zIndex: 21, background: 'var(--app-main)', border: '1px solid var(--app-border)', borderRadius: 10, boxShadow: 'var(--app-shadow-button-default)', minWidth: 200, overflow: 'hidden', maxHeight: 'min(70vh, 560px)', overflowY: 'auto' }}>
-                  {botId ? (
-                    <div style={{ borderBottom: '1px solid var(--app-border)' }}>
-                      <div style={menuLabelStyle}>Mode</div>
-                      {availableModes.map((m) => pickRow(`mode-${m.id}`, m.label, botMode === m.id, () => { pickBotMode(m.id); }))}
-                      {botMode === 'image' ? (
-                        <>
-                          <div style={menuLabelStyle}>Image model</div>
-                          {IMAGE_MODELS.map((m) => pickRow(`im-${m.id}`, m.label, botImageModel === m.id, () => { pickImageModel(m.id); }))}
-                          <div style={menuLabelStyle}>Image size</div>
-                          {IMAGE_SIZES.map((m) => pickRow(`is-${m.id}`, m.label, botImageSize === m.id, () => { pickImageSize(m.id); }))}
-                        </>
-                      ) : (
-                        <>
-                          <div style={menuLabelStyle}>Model</div>
-                          {BOT_MODELS.map((m) => pickRow(`tm-${m.id}`, (m.label.split('—')[0] ?? m.id).trim(), (botModel ?? BOT_MODELS[0]?.id) === m.id, () => { pickBotModel(m.id); }))}
-                        </>
-                      )}
-                    </div>
-                  ) : null}
-                  {canManageMembers ? (
-                    <button
-                      type="button"
-                      className="uc-menuitem"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        openMembersPopup(router, socket, userId, roomId, () => { router.push('', {}); });
-                      }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', fontSize: 14, fontWeight: 600, textAlign: 'left' }} data-id="members"
-                    >
-                      <Users size={16} /> Members
-                    </button>
-                  ) : null}
-                  {botId ? (
-                    <button
-                      type="button"
-                      className="uc-menuitem"
-                      onClick={handleClear}
-                      style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', color: 'var(--app-error)', cursor: 'pointer', fontSize: 14, fontWeight: 600, textAlign: 'left' }} data-id="clear-chat"
-                    >
-                      <Eraser size={16} /> Clear chat
-                    </button>
-                  ) : null}
-                  {/* Delete conversation — owner deletes for everyone, non-owners
-                      leave. Two-step inline confirm (no modal). */}
-                  {roomId !== 'demo-room' ? (
-                    confirmDeleteConv ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderTop: '1px solid var(--app-border)', background: 'rgba(var(--app-error-rgb, 220,38,38), 0.08)' }}>
-                        <span style={{ flex: 1, fontSize: 13, color: 'var(--app-error)' }}>Delete this conversation?</span>
-                        <button
-                          type="button"
-                          onClick={() => { setConfirmDeleteConv(false); }}
-                          style={{ fontSize: 13, fontWeight: 600, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--app-border)', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }} data-id="cancel-2"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleDeleteConversation}
-                          style={{ fontSize: 13, fontWeight: 700, padding: '5px 12px', borderRadius: 8, border: 'none', background: 'var(--app-error)', color: '#fff', cursor: 'pointer' }} data-id="delete"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        className="uc-menuitem"
-                        onClick={() => { setConfirmDeleteConv(true); }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', color: 'var(--app-error)', cursor: 'pointer', fontSize: 14, fontWeight: 600, textAlign: 'left' }} data-id="delete-conversation"
-                      >
-                        <Trash2 size={16} /> Delete conversation
-                      </button>
-                    )
-                  ) : null}
-                </div>
-              </>
-            ) : null}
-          </div>
-        ) : null}
+        {/* The header ⋯ overflow menu is gone: mode/model moved to the composer
+            (where it's used), and members/clear/delete moved into the settings
+            gear above (a coherent admin home, no longer mixing the frequent
+            mode switch with irreversible Delete). */}
       </div>
 
       {/* Pinned message banner */}
@@ -1826,12 +1745,13 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
             />
             <div style={{ border: '1px solid var(--app-primary)', borderRadius: 0, background: 'var(--app-main)' }}>
               <ConversationInput
-                placeholder="/ slash · @ mention · ↩ send · ⇧↩ new line"
+                placeholder={botId ? 'Ask anything · ↩ send · ⇧↩ new line' : 'Message · ↩ send · ⇧↩ new line'}
                 autoFocus
                 onSend={handleSendWithAttachments}
                 onType={signalTyping}
                 allowEmpty={pending.some((p) => p.key)}
                 mentionSearch={mentionSearch}
+                {...(modeControl ? { leftActions: modeControl } : {})}
                 rightActions={
                   <button
                     type="button"
