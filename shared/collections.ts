@@ -51,7 +51,6 @@ export const MessageSchema = z
     deleted: z.boolean().optional(),
     parentMessageId: z.string().nullable().optional(),
     visibility: z.enum(['normal', 'silent', 'hidden']).optional(),
-    onlyUserIds: z.array(z.string()).optional(),
     systemType: z.string().optional(),
     // Target userId for membership system messages (memberAdd/Remove/Leave).
     systemParam: z.string().optional(),
@@ -233,9 +232,10 @@ const messageIndexes: { fields: Record<string, 1 | -1> }[] = [
   // conversationId, sort created). `created` is a top-level column (sort-exempt)
   // but included so the composite backs the hot ORDER BY.
   { fields: { conversationId: 1, created: -1 } },
-  // Engine conversation-load filters (onlyUserIds $in, visibility $ne,
-  // parentMessageId, threadId) run on every load — a composite credits them all.
-  { fields: { onlyUserIds: 1, visibility: 1, parentMessageId: 1, threadId: 1 } },
+  // Engine conversation-load filters (visibility $ne, parentMessageId, threadId)
+  // run on every load — a composite credits them all. (`onlyUserIds` was dropped:
+  // every message is visible to every member, so there's nothing to filter on.)
+  { fields: { visibility: 1, parentMessageId: 1, threadId: 1 } },
 ];
 const messageReactionIndexes: { fields: Record<string, 1 | -1> }[] = [
   { fields: { messageId: 1 } }, // engine reaction recount getDocs({messageId})

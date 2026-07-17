@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-12T18:05:38.824Z",
+  "generatedAt": "2026-07-17T04:01:27.814Z",
   "source": "shared/collections.ts",
   "collections": {
     "authMagicLink": {
@@ -471,14 +471,6 @@
             "type": "string",
             "required": false
           },
-          "onlyUserIds": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "required": true
-            },
-            "required": false
-          },
           "parentMessageId": {
             "type": "string",
             "required": false,
@@ -566,7 +558,6 @@
           },
           {
             "fields": {
-              "onlyUserIds": 1,
               "visibility": 1,
               "parentMessageId": 1,
               "threadId": 1

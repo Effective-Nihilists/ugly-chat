@@ -176,7 +176,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         await engineConversationMessageCreate(
           {
             conversationId: id,
-            message: { text: bot.firstMessage, markdown: bot.firstMessage, onlyUserIds: ['global'] },
+            message: { text: bot.firstMessage, markdown: bot.firstMessage },
           },
           botId,
         ).catch((err: unknown) => { console.error('[bots] first message failed', err); });
@@ -200,7 +200,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
 
     conversationMessageCreate: async (userId, input) => {
       const msg: unknown = await engineConversationMessageCreate(
-        { ...input, message: { onlyUserIds: ['global'], ...input.message } },
+        { ...input, message: { ...input.message } },
         userId,
       );
       // Denormalize the sidebar: refresh every member's last-message preview,
@@ -317,9 +317,6 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         );
         for (const m of msgs) {
           if (m.deleted === true) continue;
-          // Respect per-message visibility scoping (global or addressed to me).
-          const only = m.onlyUserIds;
-          if (Array.isArray(only) && !only.includes('global') && !only.includes(userId)) continue;
           const hay = `${m.text ?? ''}\n${m.markdown ?? ''}`.toLowerCase();
           if (hay.includes(query)) items.push(m);
           if (items.length >= limit) break;
@@ -347,8 +344,10 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       videoEnd(getDb(), { conversation: collections.conversation }, input.conversationId),
     conversationVideoBotJoin: async (_userId, input): Promise<CallState> =>
       videoBotJoin(getDb(), { conversation: collections.conversation }, input.conversationId, input.botId),
-    conversationVideoState: async (_userId, input): Promise<CallState> =>
-      videoState(getDb(), { conversation: collections.conversation }, input.conversationId),
+    // Passing userId lets this double as the in-call heartbeat (only joined
+    // clients poll it), which is what ages out abandoned/crashed participants.
+    conversationVideoState: async (userId, input): Promise<CallState> =>
+      videoState(getDb(), { conversation: collections.conversation }, input.conversationId, userId),
     conversationVideoPublish: async (userId, input): Promise<CallState> =>
       videoPublish(
         getDb(),
@@ -923,7 +922,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         const bot = await getBotConfig(db, botId).catch(() => null);
         if (!bot?.firstMessage) continue;
         await engineConversationMessageCreate(
-          { conversationId: input.conversationId, message: { text: bot.firstMessage, markdown: bot.firstMessage, onlyUserIds: ['global'] } },
+          { conversationId: input.conversationId, message: { text: bot.firstMessage, markdown: bot.firstMessage } },
           botId,
         ).catch(() => undefined);
       }
@@ -968,7 +967,7 @@ async function postSystemMessage(
   await engineConversationMessageCreate(
     {
       conversationId,
-      message: { systemType, systemParam, text: '', markdown: '', onlyUserIds: ['global'] },
+      message: { systemType, systemParam, text: '', markdown: '' },
     },
     'global',
   ).catch((err: unknown) => { console.error('[system-message] failed', err); });

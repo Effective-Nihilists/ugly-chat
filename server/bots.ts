@@ -388,7 +388,7 @@ export async function triggerBotReplies(
       // Declared bot member with no resolvable config (lost/migrated). Don't die
       // silently — tell the user how to restore it.
       await conversationMessageCreate(
-        { conversationId, message: { text: ORPHAN_REPLY, markdown: ORPHAN_REPLY, onlyUserIds: ['global'], color: 'error' } },
+        { conversationId, message: { text: ORPHAN_REPLY, markdown: ORPHAN_REPLY, color: 'error' } },
         botId,
       );
       await bumpListForMessage(db, conversationId, ORPHAN_REPLY, botId).catch((err: unknown) => {
@@ -424,7 +424,7 @@ export async function triggerBotReplies(
         // text path does — a missing reply reads as "the bot is broken".
         console.warn(`[bots] search failed for ${botId}:`, (err as Error).message);
         await conversationMessageCreate(
-          { conversationId, message: { text: SEARCH_UNAVAILABLE_REPLY, markdown: SEARCH_UNAVAILABLE_REPLY, onlyUserIds: ['global'], color: 'error' } },
+          { conversationId, message: { text: SEARCH_UNAVAILABLE_REPLY, markdown: SEARCH_UNAVAILABLE_REPLY, color: 'error' } },
           botId,
         ).catch((e: unknown) => { console.error('[bots] search fallback post failed', e); });
         await bumpListForMessage(db, conversationId, SEARCH_UNAVAILABLE_REPLY, botId).catch((e: unknown) => { console.error('[bots] list denorm failed', e); });
@@ -491,7 +491,6 @@ export async function triggerBotReplies(
         message: {
           text: reply,
           markdown: reply,
-          onlyUserIds: ['global'],
           ...(replyColor ? { color: replyColor } : {}),
           ...(usage ? { telemetry: usage } : {}),
           // Stamp the mode on satirical (Lie) replies so the transcript can flag

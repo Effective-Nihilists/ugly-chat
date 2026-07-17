@@ -16,12 +16,20 @@ export interface CallParticipant {
   userId: string;
   isBot: boolean;
   joinedAt: number;
+  /** Last heartbeat. A tab that's closed/crashed never calls videoLeave, so
+   *  without this its participant lived on the roster forever — the call stayed
+   *  `active` and re-rang the conversation on a fresh page load, with no way to
+   *  dismiss it. Stale entries are pruned on read. */
+  seenAt?: number;
   /** Cloudflare Realtime SFU session id, once the client has created one. */
   sessionId?: string;
   /** Names of the local tracks this participant published to the SFU (the
    *  things peers pull). Empty/absent until they've pushed media. */
   tracks?: string[];
 }
+
+/** A participant older than this with no heartbeat is treated as gone. */
+const STALE_MS = 45_000;
 /** A transient live caption (most recent partial/final per speaker). Overwritten
  *  in place on the call subtree so peers receive it via trackDoc without growing
  *  the doc — it is signaling, not history. */
@@ -70,24 +78,76 @@ export async function videoJoin(
   // Dot-path writes touch ONLY this participant's subtree — no read-modify-write
   // of the whole `call`, so concurrent joiners don't clobber each other. The
   // `$set` operator creates the missing `call`/`call.participants` parents.
-  const participant: CallParticipant = { userId, isBot, joinedAt: Date.now() };
+  const participant: CallParticipant = { userId, isBot, joinedAt: Date.now(), seenAt: Date.now() };
+  // Stamp startedAt on the first join of a call. It was never written — only
+  // ever preserved — so every call instance looked identical (`undefined`) and
+  // clients had no id to say "I declined THIS call": declining one ring would
+  // have suppressed every future one.
+  const existing = getCall(conv);
+  const startedAt = existing.active && existing.startedAt ? existing.startedAt : Date.now();
   await db.setDocFields(collections.conversation, conversationId, {
     'call.active': true,
+    'call.startedAt': startedAt,
     [`call.participants.${userId}`]: participant,
   });
   const updated = await db.getDoc(collections.conversation, conversationId);
   return getCall(updated);
 }
 
-/** Fresh, server-side read of the call roster (clients poll this — `getDoc` on
- *  the client only returns the stale trackDoc-cached copy). */
+/**
+ * Drop participants whose heartbeat has gone silent (closed tab / crash / lost
+ * network) and end the call if no live human is left. Returns the pruned state
+ * plus whether anything changed, so callers only write when needed.
+ */
+function pruneStale(call: CallState, now = Date.now()): { call: CallState; changed: boolean } {
+  if (!call.active) return { call, changed: false };
+  const live: Record<string, CallParticipant> = {};
+  let dropped = false;
+  for (const [id, p] of Object.entries(call.participants)) {
+    // Bots have no heartbeat; they're kept while a human is present and dropped
+    // with the call below.
+    if (p.isBot || now - (p.seenAt ?? p.joinedAt) < STALE_MS) live[id] = p;
+    else dropped = true;
+  }
+  const humans = Object.values(live).filter((p) => !p.isBot);
+  if (humans.length === 0) {
+    return { call: { active: false, participants: {} }, changed: true };
+  }
+  if (!dropped) return { call, changed: false };
+  return {
+    call: { active: true, ...(call.startedAt ? { startedAt: call.startedAt } : {}), participants: live },
+    changed: true,
+  };
+}
+
+/**
+ * Fresh, server-side read of the call roster (clients poll this — `getDoc` on
+ * the client only returns the stale trackDoc-cached copy). Prunes dead
+ * participants so an abandoned call can't ring forever.
+ *
+ * Doubles as the heartbeat: only a JOINED client polls this (every ~1.5s), so
+ * when the caller is already on the roster we refresh their `seenAt` here. No
+ * extra endpoint, and a closed tab simply stops polling and ages out.
+ */
 export async function videoState(
   db: DbLike,
   collections: Collections,
   conversationId: string,
+  userId?: string,
 ): Promise<CallState> {
   const conv = await db.getDoc(collections.conversation, conversationId);
-  return getCall(conv);
+  const { call, changed } = pruneStale(getCall(conv));
+  if (changed) {
+    await db.setDocFields(collections.conversation, conversationId, { call });
+  }
+  if (userId && call.active && call.participants[userId]) {
+    const now = Date.now();
+    await db.setDocFields(collections.conversation, conversationId, {
+      [`call.participants.${userId}.seenAt`]: now,
+    });
+    call.participants[userId] = { ...call.participants[userId], seenAt: now };
+  }
+  return call;
 }
 
 export async function videoLeave(
@@ -99,11 +159,14 @@ export async function videoLeave(
   const conv = await db.getDoc(collections.conversation, conversationId);
   const call = getCall(conv);
   const { [userId]: _removed, ...participants } = call.participants;
-  // A call is only "active" while a HUMAN is in it. Bots never leave on their
-  // own, so once the last human leaves we end the call (and drop the bots) —
-  // otherwise a bot DM would show a phantom active call forever.
-  const humansLeft = Object.values(participants).some((p) => !p.isBot);
-  const next: CallState = humansLeft
+  // A call needs TWO humans to still be a call. Keeping it alive while a single
+  // human remained left the other side of a 1:1 staring at "connected" for as
+  // long as they cared to wait after the peer hung up — hangup never reached
+  // them. Bots don't count (they never leave on their own) and a lone human has
+  // nobody to talk to, so drop to <2 humans and the call is over for everyone.
+  // A 3-way losing one participant still has 2 humans and correctly continues.
+  const humans = Object.values(participants).filter((p) => !p.isBot);
+  const next: CallState = humans.length >= 2
     ? {
         active: true,
         ...(call.startedAt ? { startedAt: call.startedAt } : {}),

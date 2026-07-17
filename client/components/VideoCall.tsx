@@ -520,9 +520,15 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
   const otherState = botParticipant ? (pendingBotText ? 'speaking' : 'in call') : 'in call';
 
   // HUD stat line — REAL values only. Bot call → model · live; else → roster.
+  // `status` is OUR connection to the SFU, so sitting alone in a call read
+  // "1 in call · connected" — the app claiming a connection to nobody. Until a
+  // second human is actually on the roster, say we're ringing.
+  const otherHumans = participants.filter((p) => p.userId !== userId && !p.isBot);
   const statLine = botParticipant
     ? `${botModel ? `${botModel} · ` : ''}live`
-    : `${participants.length} in call${connState ? ` · ${connState}` : ''}`;
+    : otherHumans.length === 0
+      ? 'ringing · nobody has joined yet'
+      : `${participants.length} in call${connState ? ` · ${connState}` : ''}`;
 
   return (
     <div

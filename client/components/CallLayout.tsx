@@ -70,7 +70,11 @@ export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(function 
   const [lobbyOpen, setLobbyOpen] = useState(false);
   const [callError, setCallError] = useState<string | null>(null);
   // call.startedAt we've actively declined, so the ring doesn't re-appear for it.
-  const declinedRef = useRef<number>(-1);
+  // MUST be state, not a ref: nothing else re-renders while a ring is showing
+  // (the roster poll only runs once joined), so mutating a ref left the overlay
+  // on screen forever — Decline did nothing and its full-screen overlay swallowed
+  // every click, bricking the conversation.
+  const [declinedAt, setDeclinedAt] = useState<number>(-1);
 
   const [wide, setWide] = useState(() =>
     typeof window === 'undefined' ? true : window.innerWidth >= SIDEBAR_MIN_WIDTH,
@@ -121,7 +125,7 @@ export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(function 
   // Someone is calling us: call active, we're not in it, not joined, not in the
   // lobby, and we haven't declined this exact call instance.
   const incoming =
-    !!call.active && !meParticipant && !joined && !lobbyOpen && (call.startedAt ?? 0) !== declinedRef.current;
+    !!call.active && !meParticipant && !joined && !lobbyOpen && (call.startedAt ?? 0) !== declinedAt;
 
   // Caller = the (first, human) participant that isn't us — for the ring/lobby.
   const callerId = Object.values(participants)
@@ -192,7 +196,7 @@ export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(function 
             setLobbyOpen(true);
           }}
           onDecline={() => {
-            declinedRef.current = call.startedAt ?? 0;
+            setDeclinedAt(call.startedAt ?? 0);
           }}
         />
       ) : null}

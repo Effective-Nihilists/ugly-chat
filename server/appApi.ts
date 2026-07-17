@@ -214,7 +214,7 @@ export function registerAppApi(
         ? (body.message as Record<string, unknown>)
         : {};
     const msg: unknown = await engineConversationMessageCreate(
-      { conversationId, message: { onlyUserIds: ['global'], ...message } },
+      { conversationId, message: { ...message } },
       asUserId,
     );
     // Deliver webhooks AFTER the response — must use waitUntil or the Worker

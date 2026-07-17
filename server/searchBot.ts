@@ -85,7 +85,6 @@ export async function runBotSearch(opts: RunBotSearchOptions): Promise<void> {
                 id: messageId,
                 text: m.text,
                 markdown: m.text,
-                onlyUserIds: ['global'],
                 ...(m.sources ? { custom: { sources: m.sources } } : {}),
                 ...(m.telemetry ? { telemetry: m.telemetry } : {}),
               },

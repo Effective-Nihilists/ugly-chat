@@ -112,6 +112,8 @@ interface ConversationDoc extends DBObject {
   type?: string;
   typing?: ChatTypingEntry[];
   bots?: Record<string, unknown>;
+  users?: Record<string, unknown>;
+  call?: { participants?: Record<string, unknown> };
   pinnedMessageId?: string | null;
 }
 
@@ -700,6 +702,9 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const [title, setTitle] = useState('Conversation');
   const [convImage, setConvImage] = useState<unknown>(null);
   const [profiles, setProfiles] = useState<Record<string, ChatUser>>({});
+  // Conversation members + live call participants — people we must be able to
+  // NAME even if they've never sent a message (e.g. they just joined your call).
+  const [rosterIds, setRosterIds] = useState<string[]>([]);
   const videoRef = useRef<VideoCallHandle>(null);
   // When a call is active the immersive stage takes over the conversation area
   // and the chat thread + composer are hidden behind it (mock parity).
@@ -812,6 +817,8 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         if (doc) {
           if (doc.title) setTitle(doc.title);
           setConvImage((img: unknown) => doc.image ?? img);
+          // Everyone we may need to name: members + anyone on the call roster.
+          setRosterIds([...Object.keys(doc.users ?? {}), ...Object.keys(doc.call?.participants ?? {})]);
           // First custom bot member → drives the "⋯ Clear chat" menu + the
           // persistent starter buttons above the composer.
           const ids = Object.keys((doc.bots) ?? {});
@@ -908,11 +915,16 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
 
   // Resolve participant profiles (real names + avatars). Also resolve membership
   // system-message targets (`systemParam`) so we can name them.
+  //
+  // `rosterIds` matters: resolving only from MESSAGE SENDERS meant anyone who
+  // hadn't spoken yet had no profile — so a peer who joined your video call
+  // before ever sending a message was labelled with a raw database id
+  // ("yG1edFUS") on every tile, badge and transcript line.
   useEffect(() => {
-    const ids = messages.flatMap((m) => [
-      m.userId,
-      (m as { systemParam?: string }).systemParam ?? '',
-    ]);
+    const ids = [
+      ...messages.flatMap((m) => [m.userId, (m as { systemParam?: string }).systemParam ?? '']),
+      ...rosterIds,
+    ];
     const unknown = [...new Set(ids)].filter((id) => id && id !== 'global' && !profiles[id]);
     if (unknown.length === 0) return;
     void socket
@@ -942,7 +954,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         });
       })
       .catch((err: unknown) => { console.error('[ChatPage] profilesGet failed', err); });
-  }, [messages, profiles, socket, userId]);
+  }, [messages, rosterIds, profiles, socket, userId]);
 
   // Derive the conversation's bot id (drives the ⋯ menu + starter buttons).
   // Covered cases: a `bc-<botId>-<userId>` custom-bot room, the canonical Ugly
