@@ -1,11 +1,12 @@
 import React from 'react';
 import type { ConvRow } from '../lib/conversations';
 import { ConversationRow } from './ConversationRow';
+import { isDirectRoom } from '../../shared/conversationId';
 
 // The grouped conversation list shared by the desktop Sidebar and the mobile
-// ChatHomePage: a `// PINNED` section (rows where `pinned`) followed by a
-// `// DIRECT` section (the rest), with loading / empty hints. The caller does
-// the filtering (search) and supplies navigation + pin handlers.
+// ChatHomePage: `// PINNED` (rows where `pinned`), then `// DIRECT` (1:1s with
+// a person or a bot), then `// GROUPS`, with loading / empty hints. The caller
+// does the filtering (search) and supplies navigation + pin handlers.
 export function ConversationListBody({
   conversations,
   filtered,
@@ -30,6 +31,11 @@ export function ConversationListBody({
 }): React.ReactElement {
   const pinned = filtered.filter((c) => c.pinned);
   const rest = filtered.filter((c) => !c.pinned);
+  // Everything unpinned used to land under one `// DIRECT` heading, so a group
+  // was filed as a direct message. Bot chats count as direct — they're a 1:1
+  // with a bot, stored as a group.
+  const direct = rest.filter((c) => isDirectRoom(c.conversationId, c.type));
+  const groups = rest.filter((c) => !isDirectRoom(c.conversationId, c.type));
 
   if (loading && conversations.length === 0) return <EmptyHint text="Loading…" />;
   if (filtered.length === 0) return <EmptyHint text={searching ? 'No matches' : 'No conversations yet'} />;
@@ -53,10 +59,16 @@ export function ConversationListBody({
           {pinned.map(renderRow)}
         </>
       ) : null}
-      {rest.length > 0 ? (
+      {direct.length > 0 ? (
         <>
           <SectionLabel text="direct" />
-          {rest.map(renderRow)}
+          {direct.map(renderRow)}
+        </>
+      ) : null}
+      {groups.length > 0 ? (
+        <>
+          <SectionLabel text="groups" />
+          {groups.map(renderRow)}
         </>
       ) : null}
     </>

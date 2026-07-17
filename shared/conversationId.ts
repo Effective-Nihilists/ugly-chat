@@ -22,6 +22,24 @@ export function directConversationId(a: string, b: string): string {
  * Encoding the format in one place is the only thing that keeps a parser and a
  * minter honest with each other.
  */
+/** A 1:1 room with a bot: `bc-<botId>-<userId>`. */
+const BOT_CHAT_PREFIX = 'bc-';
+
+/**
+ * Is this room a one-to-one conversation (with a person OR a bot)?
+ *
+ * Not the same question as `type === 'direct'`: bot chats are *stored* as
+ * groups (`bc-<botId>-<userId>`, type `group`) even though they are plainly a
+ * 1:1. The sidebar used to skip the question entirely and label every unpinned
+ * row `// DIRECT`, so a three-person group sat under a heading calling it a
+ * direct message.
+ */
+export function isDirectRoom(conversationId: string, type?: string): boolean {
+  if (conversationId.startsWith(BOT_CHAT_PREFIX)) return true;
+  if (conversationId.startsWith(DM_PREFIX)) return true;
+  return type === 'direct';
+}
+
 export function directConversationPeer(roomId: string, meId: string): string | null {
   const body = roomId.startsWith(DM_PREFIX) ? roomId.slice(DM_PREFIX.length) : roomId;
   const sep = body.includes('+') ? '+' : body.includes(':') ? ':' : '';

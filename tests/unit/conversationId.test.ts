@@ -1,5 +1,32 @@
 import { describe, expect, it } from 'vitest';
-import { directConversationId, directConversationPeer } from '../../shared/conversationId';
+import {
+  directConversationId,
+  directConversationPeer,
+  isDirectRoom,
+} from '../../shared/conversationId';
+
+describe('isDirectRoom', () => {
+  it('treats a bot chat as direct even though it is stored as a group', () => {
+    // The trap: `bc-` rooms carry type 'group', so splitting the sidebar on
+    // type alone would file "Ugly Bot" — a 1:1 — under GROUPS.
+    expect(isDirectRoom('bc-bot-ugly-me', 'group')).toBe(true);
+  });
+
+  it('treats a real group as a group', () => {
+    // The bug: every unpinned row was labelled DIRECT, including this one.
+    expect(isDirectRoom('grp-me-abc', 'group')).toBe(false);
+  });
+
+  it('recognises DMs by id and by type', () => {
+    expect(isDirectRoom(directConversationId('me', 'you'), 'direct')).toBe(true);
+    expect(isDirectRoom(directConversationId('me', 'you'), 'group')).toBe(true);
+    expect(isDirectRoom('legacy+ids', 'direct')).toBe(true);
+  });
+
+  it('does not guess when it has neither signal', () => {
+    expect(isDirectRoom('something-else')).toBe(false);
+  });
+});
 
 describe('directConversationPeer', () => {
   // The regression: the header showed a raw `dm-G7QvP…` id instead of a name.
