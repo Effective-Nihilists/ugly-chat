@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ImagePlus, X, Plus, Trash2, ArrowLeft, Loader2 } from 'lucide-react';
+import { ImagePlus, X, Plus, Trash2, ArrowLeft, Loader2, ChevronDown } from 'lucide-react';
 import { useApp, uploadBlob, promoteBlob, downscaleImage } from 'ugly-app/client';
 import { defaultAvatar, type Avatar } from 'ugly-app/shared';
 import { useRouter } from '../router';
@@ -119,32 +119,46 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
         </Field>
 
         <Field label="Model">
-          <select value={model} onChange={(e) => { setModel(e.target.value); }} style={{ ...input, cursor: 'pointer' }} data-id="select">
-            {BOT_MODELS.map((m) => (
-              <option key={m.id} value={m.id}>{m.label}</option>
-            ))}
-          </select>
+          {/* `appearance: none` + our own chevron: the raw native control shipped
+              OS chrome into a page where everything else is custom-styled. */}
+          <div style={{ position: 'relative' }}>
+            <select
+              value={model}
+              onChange={(e) => { setModel(e.target.value); }}
+              style={{ ...input, cursor: 'pointer', appearance: 'none', paddingRight: 36 }}
+              data-id="select"
+            >
+              {BOT_MODELS.map((m) => (
+                <option key={m.id} value={m.id}>{m.label}</option>
+              ))}
+            </select>
+            <ChevronDown
+              size={16}
+              aria-hidden
+              style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--app-foreground-muted)' }}
+            />
+          </div>
         </Field>
 
         <Field label="Instruction (system prompt)" hint="How the bot should behave, its persona, rules.">
-          <textarea
+          <AutoTextarea
             value={instruction}
-            onChange={(e) => { setInstruction(e.target.value); }}
+            onChange={setInstruction}
             placeholder="You are a friendly tutor who explains things simply…"
-            rows={5}
+            minRows={5}
             maxLength={8000}
-            style={{ ...input, resize: 'vertical', lineHeight: 1.5 }} data-id="you-are-a-friendly"
+            dataId="you-are-a-friendly"
           />
         </Field>
 
         <Field label="First message" hint="The bot's opening greeting when a chat starts.">
-          <textarea
+          <AutoTextarea
             value={firstMessage}
-            onChange={(e) => { setFirstMessage(e.target.value); }}
+            onChange={setFirstMessage}
             placeholder="Hi! What would you like to learn today?"
-            rows={2}
+            minRows={2}
             maxLength={2000}
-            style={{ ...input, resize: 'vertical', lineHeight: 1.5 }} data-id="hi-what-would-you"
+            dataId="hi-what-would-you"
           />
         </Field>
 
@@ -174,7 +188,7 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
             <button
               type="button"
               onClick={() => { setButtons((p) => [...p, { label: '', prompt: '' }]); }}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', padding: '7px 12px', borderRadius: 10, border: '1px solid var(--app-border)', background: 'var(--app-tertiary)', color: 'var(--app-foreground)', cursor: 'pointer', fontSize: 14, fontWeight: 600 }} data-id="add-button"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', padding: '7px 12px', borderRadius: 0, border: '1px solid var(--app-border)', background: 'var(--app-tertiary)', color: 'var(--app-foreground)', cursor: 'pointer', fontSize: 14, fontWeight: 600 }} data-id="add-button"
             >
               <Plus size={16} /> Add button
             </button>
@@ -235,7 +249,9 @@ function ImageField(props: {
         style={{
           width: w,
           height: props.size,
-          borderRadius: props.round ? '50%' : 12,
+          // Square, like every avatar the app actually renders. The picker showed
+          // a circle, so the form taught a shape the product doesn't use.
+          borderRadius: 0,
           border: '1.5px dashed var(--app-border)',
           background: props.url ? `center / cover no-repeat url(${JSON.stringify(props.url)})` : 'var(--app-tertiary)',
           display: 'flex',
@@ -278,23 +294,66 @@ function Field(props: { label: string; hint?: string; children: React.ReactNode 
   );
 }
 
+/**
+ * A textarea that grows with its content. The fixed-height boxes shipped native
+ * resize grips (the only ones in an otherwise custom-styled app) and showed ~5
+ * lines of a 450-character system prompt, so you edited a persona through a
+ * letterbox.
+ */
+function AutoTextarea({
+  value,
+  onChange,
+  placeholder,
+  minRows,
+  maxLength,
+  dataId,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  minRows: number;
+  maxLength: number;
+  dataId: string;
+}): React.ReactElement {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const fit = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 420)}px`;
+  }, []);
+  useEffect(() => { fit(); }, [value, fit]);
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={(e) => { onChange(e.target.value); }}
+      placeholder={placeholder}
+      rows={minRows}
+      maxLength={maxLength}
+      style={{ ...input, resize: 'none', overflowY: 'auto', lineHeight: 1.5 }}
+      data-id={dataId}
+    />
+  );
+}
+
 const page: React.CSSProperties = { display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', background: 'var(--app-main)' };
 const fieldLabel: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: 'var(--app-foreground)' };
 const input: React.CSSProperties = {
-  width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10,
+  width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 0,
   border: '1.5px solid var(--app-border)', background: 'var(--app-input, var(--app-main))',
   color: 'var(--app-foreground)', fontSize: 15, outline: 'none', fontFamily: 'var(--app-font-body)',
 };
 const iconBtn: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36,
-  borderRadius: 10, border: '1px solid var(--app-border)', background: 'transparent',
+  borderRadius: 0, border: '1px solid var(--app-border)', background: 'transparent',
   color: 'var(--app-foreground)', cursor: 'pointer', flexShrink: 0,
 };
 const primaryBtn: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 22px', borderRadius: 12,
+  display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 22px', borderRadius: 0,
   border: 'none', background: 'var(--app-primary)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer',
 };
 const ghostBtn: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', padding: '12px 22px', borderRadius: 12,
+  display: 'inline-flex', alignItems: 'center', padding: '12px 22px', borderRadius: 0,
   border: '1px solid var(--app-border)', background: 'transparent', color: 'var(--app-foreground)', fontSize: 15, fontWeight: 600, cursor: 'pointer',
 };

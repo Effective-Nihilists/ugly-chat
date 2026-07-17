@@ -152,15 +152,15 @@ export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPo
                   alignItems: 'center',
                   gap: 12,
                   padding: 12,
-                  borderRadius: 14,
+                  borderRadius: 0,
                   border: '1px solid var(--app-border)',
                   background: 'var(--app-tertiary)',
                 }}
               >
                 {b.avatar?.image.uri ? (
-                  <img src={b.avatar.image.uri} alt="" style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                  <img src={b.avatar.image.uri} alt="" style={{ width: 48, height: 48, borderRadius: 0, border: '1px solid var(--app-border)', objectFit: 'cover', flexShrink: 0 }} />
                 ) : (
-                  <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--app-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ width: 48, height: 48, borderRadius: 0, border: '1px solid var(--app-border)', background: 'var(--app-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <BotIcon size={22} style={{ opacity: 0.6 }} />
                   </div>
                 )}
@@ -228,14 +228,14 @@ const sectionLabel: React.CSSProperties = {
   color: 'var(--app-foreground)', opacity: 0.5, margin: '0 0 8px 2px',
 };
 const botRow: React.CSSProperties = {
-  display: 'flex', alignItems: 'center', gap: 12, padding: 12, borderRadius: 14,
+  display: 'flex', alignItems: 'center', gap: 12, padding: 12, borderRadius: 0,
   border: '1px solid var(--app-border)', background: 'var(--app-tertiary)',
 };
 const avatarImg: React.CSSProperties = {
-  width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', flexShrink: 0,
+  width: 48, height: 48, borderRadius: 0, border: '1px solid var(--app-border)', objectFit: 'cover', flexShrink: 0,
 };
 const avatarFallback: React.CSSProperties = {
-  width: 48, height: 48, borderRadius: '50%', background: 'var(--app-secondary)',
+  width: 48, height: 48, borderRadius: 0, border: '1px solid var(--app-border)', background: 'var(--app-secondary)',
   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
 };
 const botName: React.CSSProperties = {

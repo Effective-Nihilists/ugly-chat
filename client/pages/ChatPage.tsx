@@ -729,6 +729,9 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   // User-facing attachment problem (too large / upload failed). Previously these
   // were console-only, so files vanished silently.
   const [attachError, setAttachError] = useState<string | null>(null);
+  // True between sending to a bot and its reply landing — drives the "thinking /
+  // searching / generating" row (there was no loading state at all).
+  const [awaitingBot, setAwaitingBot] = useState(false);
   // Bot-chat extras: the conversation's bot id (if any), its starter buttons
   // (shown persistently above the composer), and the header "⋯" menu state.
   const [botId, setBotId] = useState<string | null>(null);
@@ -904,6 +907,8 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           .map(toChatMessage)
           .sort((a, b) => a.created - b.created);
         setMessages(list);
+        // The bot answered (or an orphan/error reply landed) — stop waiting.
+        if (list.length > 0 && list[list.length - 1]!.userId !== userId) setAwaitingBot(false);
         setHasMoreMessages(list.length >= msgLimit);
         pingConversationActivity();
         // Viewing the conversation clears its unread (on open + as messages
@@ -1063,15 +1068,22 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
 
   const handleSend = useCallback(
     (text: string, parentMessageId?: string | null) => {
+      // A bot reply can take 10s+ (a live web search, an image render) and the
+      // screen showed NOTHING in the meantime — no dots, no skeleton, no word.
+      // Flag that we're waiting so the thread can say so.
+      if (botId) setAwaitingBot(true);
       void socket
         .request('conversationMessageCreate', {
           conversationId: roomId,
           message: { markdown: text, text, ...(parentMessageId ? { parentMessageId } : {}) },
         })
         .then(() => { pingConversationActivity(); })
-        .catch((err: unknown) => { console.error('[ChatPage] send failed', err); });
+        .catch((err: unknown) => {
+          console.error('[ChatPage] send failed', err);
+          setAwaitingBot(false);
+        });
     },
-    [socket, roomId],
+    [socket, roomId, botId],
   );
 
   // Stage picked files: instant local preview + temp-bucket upload in the
@@ -1711,6 +1723,17 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         {typingEntries.length > 0 ? (
           <div className="uc-typing-overlay">
             {typingEntries.map((e) => getUser(e.userId).name).join(', ')} typing…
+          </div>
+        ) : awaitingBot ? (
+          // Bots never set the typing flag, so a 10s web search or image render
+          // showed nothing at all. Name the work being done.
+          <div className="uc-typing-overlay" data-id="bot-thinking">
+            <span className="uc-dots" aria-hidden><i /><i /><i /></span>
+            {botMode === 'search'
+              ? 'Searching the web…'
+              : botMode === 'image'
+                ? 'Generating an image…'
+                : 'Thinking…'}
           </div>
         ) : null}
         <VirtualMessageList
