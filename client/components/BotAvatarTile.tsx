@@ -56,10 +56,21 @@ interface BotAvatarTileProps {
   speakText: string | null;
   /** Char offset of the spoken word's end — reveal the caption up to here. */
   onSubtitleIndex?: (charIndex: number) => void;
+  /** The bot's display name. Without it the fallback said "ugly-bot" — a slug,
+   *  in a call whose header already knew the bot was called "Ugly Bot". */
+  name?: string;
 }
 
-// Neutral fallback tile — the gray avatar used everywhere else in the app. Shown
-// while the 3D chunk loads, and permanently if the avatar can't render.
+/**
+ * Fallback tile — shown while the 3D chunk loads, and permanently if the avatar
+ * can't render (no WebGL, GLB timeout).
+ *
+ * Deliberately does NOT use the page's theme tokens. It used to paint
+ * `--app-tertiary` on `--app-foreground-muted`, which in LIGHT mode is near-white
+ * text-grey on near-white — so the moment the 3D head failed, the call stage (a
+ * fixed dark surface, whatever the page theme) became a white void with a tiny
+ * clip-art robot floating in it. The stage is always dark; so is this.
+ */
 function NeutralBotTile({ label }: { label: string }): React.ReactElement {
   return (
     <div
@@ -71,24 +82,36 @@ function NeutralBotTile({ label }: { label: string }): React.ReactElement {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
-        background: 'var(--app-tertiary, #20232b)',
-        color: 'var(--app-foreground-muted, rgba(255,255,255,0.6))',
+        gap: 14,
+        background: 'radial-gradient(circle at 50% 42%, rgba(255,85,0,0.16), transparent 55%), #0b0d12',
+        color: 'rgba(255,255,255,0.62)',
       }}
     >
       <div
         style={{
-          width: 56,
-          height: 56,
-          borderRadius: 999,
+          width: 96,
+          height: 96,
           display: 'grid',
           placeItems: 'center',
-          background: 'rgba(255,255,255,0.08)',
+          border: '1px solid rgba(255,85,0,0.5)',
+          background: 'rgba(255,85,0,0.10)',
+          color: '#ff5500',
         }}
       >
-        <Bot size={28} />
+        <Bot size={44} />
       </div>
-      <span style={{ fontSize: 11, fontFamily: 'var(--app-font-mono)', opacity: 0.7 }}>{label}</span>
+      <span
+        style={{
+          fontFamily: 'var(--app-font-mono)',
+          fontSize: 12,
+          fontWeight: 600,
+          letterSpacing: '0.14em',
+          textTransform: 'uppercase',
+          color: '#fff',
+        }}
+      >
+        {label}
+      </span>
     </div>
   );
 }
@@ -126,6 +149,7 @@ export function BotAvatarTile({
   botId,
   speakText,
   onSubtitleIndex,
+  name,
 }: BotAvatarTileProps): React.ReactElement {
   const tts = useTTS(socket);
   const [ready, setReady] = useState(false);
@@ -194,7 +218,7 @@ export function BotAvatarTile({
     };
   }, [ready, failed, hidden]);
 
-  const label = 'ugly-bot';
+  const label = name ?? 'ugly-bot';
 
   return (
     <div

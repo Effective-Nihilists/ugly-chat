@@ -1058,6 +1058,7 @@ function CallTile({
         <BotAvatarTile
           socket={botSocket}
           botId={participant.userId}
+          name={name}
           speakText={botSpeakText ?? null}
           {...(onBotSubtitle ? { onSubtitleIndex: onBotSubtitle } : {})}
         />
