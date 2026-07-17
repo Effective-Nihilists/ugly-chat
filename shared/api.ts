@@ -168,6 +168,26 @@ export const requests = defineRequests({
     }),
   }),
 
+  /**
+   * Who is behind this email address — BEFORE you commit to messaging them.
+   *
+   * There is no user directory to search (ugly.bot exposes id→profile and
+   * email→user, never a name search), so email is the only way to reach someone
+   * new. That's fine, but the dialog used to validate the address for SYNTAX
+   * only: a colleague and a total stranger both got the same green tick, so you
+   * couldn't tell whether you were opening a thread or firing a cold invite
+   * until after you'd committed. This answers that question up front.
+   */
+  emailLookup: authReq({
+    input: z.object({ email: z.string() }),
+    output: z.object({
+      status: z.enum(['found', 'invite', 'invalid']),
+      userId: z.string().optional(),
+      name: z.string().optional(),
+      avatarUrl: z.string().nullable().optional(),
+    }),
+  }),
+
   // ── Group membership admin ───────────────────────────────────────────────
   // List a conversation's members with resolved profiles + roles.
   conversationMembers: authReq({

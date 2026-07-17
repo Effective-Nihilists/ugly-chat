@@ -13,7 +13,8 @@
  */
 import { conversationMessageCreate } from 'ugly-app/conversation/engine';
 import { runBotSearch, SEARCH_BOT_ID } from './searchBot';
-import { getUserToken } from 'ugly-app/server/adapter/workers';
+import { getUserToken, getAppContext } from 'ugly-app/server/adapter/workers';
+import { nanoid } from 'nanoid';
 import { defaultAvatar, type Avatar } from 'ugly-app/shared';
 import type { CollectionDef, GetDocsOptions } from 'ugly-app/shared';
 import { botAvatar } from './avatar';
@@ -125,6 +126,72 @@ export function parseImageGenResponse(data: unknown): string {
     return `data:${mime};base64,${b64}`;
   }
   return '';
+}
+
+/** `data:image/jpeg;base64,…` → the bytes + mime, or null if it isn't one. */
+export function parseDataUrl(src: string): { bytes: Uint8Array; mime: string } | null {
+  const m = /^data:([^;,]+);base64,(.*)$/s.exec(src);
+  if (!m) return null;
+  const mime = m[1] ?? 'image/png';
+  const b64 = m[2] ?? '';
+  try {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return { bytes, mime };
+  } catch {
+    return null;
+  }
+}
+
+const MIME_EXT: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+};
+
+/**
+ * Storage key for a generated image: `user/<userId>/<imageId>.<ext>`.
+ *
+ * Keyed by the USER who asked for it (not the bot that drew it) — it's their
+ * image and their storage, and it means everything one person generated can be
+ * listed or deleted under one prefix. Exported for tests.
+ */
+export function imageKey(userId: string, mime: string, id = nanoid()): string {
+  const ext = MIME_EXT[mime] ?? 'png';
+  return `user/${userId}/${id}.${ext}`;
+}
+
+/**
+ * Persist a generated image to R2 and return its public URL.
+ *
+ * The image endpoint hands back the picture inline as base64, and we used to
+ * embed that data: URL straight into the message markdown — so a ~570KB blob
+ * lived in the message ROW, was re-sent on every conversation load, and rode
+ * along in every trackDocs update for the thread. Blob storage was already
+ * right there (avatars serve from it with 46-char URLs).
+ *
+ * Best-effort: if R2 isn't wired, fall back to the data URL rather than lose the
+ * image the user already paid for.
+ *
+ * NOT re-encoded to WEBP. The Workers runtime has no canvas/sharp, and the WASM
+ * route (@jsquash) needs the framework's `build:workers` esbuild to carry a
+ * `.wasm` loader + a wrangler module rule — without them the codec's wasm never
+ * ships, `init()` throws, and we'd silently store the JPEG while claiming WEBP.
+ * That's a deliberate framework change, not a per-app hack. See MEMORY.
+ */
+async function persistGeneratedImage(src: string, userId: string): Promise<string> {
+  const parsed = parseDataUrl(src);
+  if (!parsed) return src; // already a hosted url
+  try {
+    const storage = getAppContext().adapter?.storage;
+    if (!storage) return src;
+    return await storage.put('public', imageKey(userId, parsed.mime), parsed.bytes, parsed.mime);
+  } catch (err) {
+    console.error('[bots] image upload to R2 failed; keeping inline data url', err);
+    return src;
+  }
 }
 
 // Image generation via ugly.bot's user-billed image endpoint (same auth model as
@@ -443,7 +510,12 @@ export async function triggerBotReplies(
         if (prompt) {
           const out = await uglyBotImageGen(cfg.imageModel ?? 'flux_1_dev', prompt, cfg.imageSize ?? 'square');
           if (out.url) {
-            reply = `![${prompt.slice(0, 80).replace(/[\[\]]/g, '')}](${out.url})`;
+            // Store the bytes in R2 and reference the URL. Embedding the raw
+            // data: URL put ~570KB of base64 in the message row itself.
+            // Keyed by the person who asked for it, not the bot: it's their
+            // image, their storage, and it makes per-user cleanup possible.
+            const src = await persistGeneratedImage(out.url, senderUserId);
+            reply = `![${prompt.slice(0, 80).replace(/[\[\]]/g, '')}](${src})`;
             // Report the image turn on the meter (model + real cost), like text.
             usage = out.usage;
           }

@@ -6,6 +6,14 @@ import { isValidEmail, normalizeEmail } from '../../shared/email';
 
 interface Contact { userId: string; name: string; avatar: AvatarT }
 
+/** Result of resolving a typed address to a person (see the `emailLookup` op). */
+interface EmailLookup {
+  status: 'checking' | 'found' | 'invite' | 'invalid' | 'unknown';
+  userId?: string;
+  name?: string;
+  avatarUrl?: string | null;
+}
+
 // Popups render in the router's portal, OUTSIDE <AppProvider>, so they can't
 // use useApp()/useRouter() — deps are passed in by the opener instead.
 interface PopupSocket {
@@ -80,6 +88,39 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
 
   const draftValid = isValidEmail(normalizeEmail(draft));
 
+  // Who is behind each typed address. There is no directory to search, so email
+  // is the only way to reach someone new — which is fine, but the tick used to
+  // mean "this parses as an email" and NOTHING more, so a colleague and a
+  // stranger looked identical and you learned which you'd typed only after
+  // committing. Resolve it up front and say the person's name.
+  const [lookups, setLookups] = useState<Record<string, EmailLookup>>({});
+  const lookupEmail = useCallback(
+    (e: string) => {
+      if (!e || lookups[e]) return;
+      setLookups((prev) => ({ ...prev, [e]: { status: 'checking' } }));
+      void socket
+        .request('emailLookup', { email: e })
+        .then((res) => {
+          setLookups((prev) => ({ ...prev, [e]: res as EmailLookup }));
+        })
+        .catch(() => {
+          // Never block sending on a failed lookup — it's an aid, not a gate.
+          setLookups((prev) => ({ ...prev, [e]: { status: 'unknown' } }));
+        });
+    },
+    [socket, lookups],
+  );
+
+  // Debounce the draft so we don't fire a lookup per keystroke.
+  useEffect(() => {
+    const e = normalizeEmail(draft);
+    if (!isValidEmail(e)) return undefined;
+    const t = setTimeout(() => { lookupEmail(e); }, 450);
+    return () => { clearTimeout(t); };
+  }, [draft, lookupEmail]);
+
+  const draftLookup = lookups[normalizeEmail(draft)];
+
   const addChip = useCallback((raw: string) => {
     const e = normalizeEmail(raw);
     if (!e) return false;
@@ -139,8 +180,16 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
         title: selected.length + ems.length >= 2 ? title.trim() || undefined : undefined,
       })) as { conversationId: string; invited: string[] };
       if (!res.conversationId && res.invited.length > 0) {
-        setStatus(`Invite sent to ${res.invited[0]}`);
+        // "Invite sent" alone read as success for a chat that doesn't exist:
+        // the dialog stayed open with the chip still in the field and no thread
+        // anywhere, so you couldn't tell whether to click again. Say what
+        // happened, say what happens next, and clear the field.
+        setStatus(
+          `Invite emailed to ${res.invited[0]}. No chat opens until they join — you'll see it here then.`,
+        );
         setStatusError(false);
+        setEmails([]);
+        setDraft('');
         setBusy(false);
       } else {
         go(res.conversationId);
@@ -185,14 +234,30 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
                 </button>
               </span>
             ))}
-            {emails.map((e) => (
-              <span key={e} style={chip}>
-                {e}
-                <button type="button" aria-label={`Remove ${e}`} onClick={() => { removeChip(e); }} style={chipX} data-id="button">
-                  <X size={11} />
-                </button>
-              </span>
-            ))}
+            {emails.map((e) => {
+              // A resolved chip shows the PERSON; an unresolved one stays an
+              // address and is visibly marked as an invite, so the two are never
+              // the same shape on screen.
+              const l = lookups[e];
+              const found = l?.status === 'found';
+              return (
+                <span
+                  key={e}
+                  style={
+                    found
+                      ? { ...chip, background: 'var(--app-primary)', color: '#fff', borderColor: 'var(--app-primary)' }
+                      : chip
+                  }
+                  title={found ? `${l.name ?? e} · already on ugly.chat` : e}
+                >
+                  {found ? l.name ?? e : e}
+                  {l?.status === 'invite' ? <span style={inviteTag}>invite</span> : null}
+                  <button type="button" aria-label={`Remove ${e}`} onClick={() => { removeChip(e); }} style={found ? { ...chipX, color: '#fff' } : chipX} data-id="button">
+                    <X size={11} />
+                  </button>
+                </span>
+              );
+            })}
             <input
               value={draft}
               onChange={(ev) => {
@@ -209,11 +274,29 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
               autoFocus
               style={{ ...inputEl, flex: '1 0 120px', minWidth: 120 }} data-id="input"
             />
-            {draftValid ? <Check size={16} style={{ color: 'var(--app-success)', flexShrink: 0, alignSelf: 'center' }} /> : null}
+            {/* The tick used to appear on valid SYNTAX alone — the same green
+                for a colleague and for a stranger. It now means "resolved". */}
+            {draftValid && draftLookup?.status === 'found' ? (
+              <Check size={16} style={{ color: 'var(--app-success)', flexShrink: 0, alignSelf: 'center' }} />
+            ) : null}
           </div>
+          {draftValid && draftLookup ? (
+            <div style={hint} data-id="email-lookup">
+              {draftLookup.status === 'checking' ? (
+                'Checking…'
+              ) : draftLookup.status === 'found' ? (
+                <>
+                  <b>{draftLookup.name}</b> is on ugly.chat — this opens a chat with them.
+                </>
+              ) : draftLookup.status === 'invite' ? (
+                <>Not on ugly.chat — we&rsquo;ll <b>email them an invite</b>. No chat opens until they join.</>
+              ) : (
+                "Couldn't check this address right now — you can still send."
+              )}
+            </div>
+          ) : null}
           <div style={hint}>
-            Tap people below to add them, or type an email to invite someone not on ugly.chat yet. One
-            person starts a 1:1; two or more makes a group.
+            Tap someone below, or type an email. One person starts a 1:1; two or more makes a group.
           </div>
         </div>
 
@@ -240,7 +323,11 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
         {/* People you've chatted with — tap to add as a recipient. Fixed height
             reserves space so the modal doesn't jump while contacts load. */}
         <div style={field}>
-          <label style={fieldLabel}>People</label>
+          {/* NOT a directory — ugly.bot exposes no user search, so this can only
+              ever be people you already share a thread with. Labelling it
+              "People" made it read as a roster of everyone: a real colleague was
+              missing from it and the user concluded he wasn't on the app. */}
+          <label style={fieldLabel}>Recent — people you&rsquo;ve chatted with</label>
           <div style={contactsBox}>
             {contactsLoading ? (
               <div style={contactsMsg}>Loading…</div>
@@ -385,6 +472,17 @@ const chip: React.CSSProperties = {
   fontSize: 13,
   color: 'var(--app-foreground)',
 };
+// Marks a chip that will send an invite rather than open a chat.
+const inviteTag: React.CSSProperties = {
+  fontFamily: 'var(--app-font-mono)',
+  fontSize: 8.5,
+  letterSpacing: '0.1em',
+  textTransform: 'uppercase',
+  padding: '2px 4px',
+  background: 'var(--app-foreground-10)',
+  color: 'var(--app-foreground-muted)',
+};
+
 const chipX: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',

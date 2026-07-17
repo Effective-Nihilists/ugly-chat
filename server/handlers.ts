@@ -626,6 +626,27 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
 
     // Distinct humans the caller shares conversations with (their "contacts") —
     // the candidate pool for adding members, no global directory required.
+    // Resolve an address to a person BEFORE the user commits to messaging them.
+    // Same resolver the start/group flows already use, just answered up front so
+    // "who am I about to talk to?" isn't answered only after the fact.
+    emailLookup: async (_userId, input) => {
+      let r: ResolveResult | null;
+      try {
+        r = await resolveEmailToUser(input.email, getEnv());
+      } catch (err) {
+        if (/invalid email/i.test((err as Error).message)) return { status: 'invalid' as const };
+        throw new Error("Couldn't look up that email address right now. Please try again.");
+      }
+      if (r.status !== 'found') return { status: 'invite' as const };
+      const [p] = await resolveProfiles(getDb(), [r.userId]);
+      return {
+        status: 'found' as const,
+        userId: r.userId,
+        name: p?.name ?? r.userId.slice(0, 8),
+        avatarUrl: p?.avatar.image.uri ?? null,
+      };
+    },
+
     userContacts: async (userId) => {
       const db = getDb();
       const ucs = await db.getDocs(collections.userConversation, { userPrivateId: userId });

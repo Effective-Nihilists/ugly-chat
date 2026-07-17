@@ -1,6 +1,6 @@
 {
   "name": "ugly-chat",
-  "version": "0.1.54",
+  "version": "0.1.56",
   "type": "module",
   "scripts": {
     "preinstall": "npx only-allow pnpm",
