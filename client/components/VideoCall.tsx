@@ -129,9 +129,35 @@ const C = {
 /** Tiles that share the stage grid before the rest are demoted to a filmstrip. */
 export const GRID_MAX = 4;
 
-/** Normalised RMS above which a peer counts as talking (empirical: room tone
- *  sits well under this, speech runs 0.15+). */
-const SPEAK_THRESHOLD = 0.075;
+/** Noise floor. Below this nobody is talking — this was set at 0.075, low enough
+ *  that steady room tone (and a test pattern's carrier) cleared it, so every
+ *  tile lit at once. An indicator that's on for everyone is not an indicator. */
+const SPEAK_FLOOR = 0.18;
+/** The winner must also beat the runner-up by this much. Two people on open mics
+ *  in the same room both clear any floor; only a clear margin means "that one". */
+const SPEAK_MARGIN = 1.35;
+/** Consecutive polls before promoting / releasing a speaker (~200ms each), so
+ *  the ring doesn't strobe between people mid-sentence. */
+const SPEAK_HOLD = 2;
+const SPEAK_RELEASE = 5;
+
+/**
+ * Pick the one peer who is talking from a poll of audio levels, or null.
+ *
+ * Exported for tests. The first cut of this just took the loudest peer above a
+ * low floor, which on a real call meant every open mic cleared it and EVERY
+ * tile lit at once — the indicator was on for everyone, which is the same as
+ * having no indicator. A winner must clear the noise floor and beat the
+ * runner-up by a margin.
+ */
+export function pickSpeaker(levels: { id: string; rms: number }[]): string | null {
+  const sorted = [...levels].sort((a, b) => b.rms - a.rms);
+  const top = sorted[0];
+  if (!top || top.rms < SPEAK_FLOOR) return null;
+  const next = sorted[1];
+  if (next && top.rms < next.rms * SPEAK_MARGIN) return null;
+  return top.id;
+}
 
 /**
  * Who is actually talking, measured off the peers' live audio.
@@ -174,20 +200,37 @@ function useActiveSpeaker(streams: Map<string, MediaStream>, enabled: boolean): 
     }
     if (nodes.length === 0) return undefined;
 
+    // Single winner, with hysteresis. `pending` is the candidate we've seen win
+    // the last few polls; it only takes the ring once it's held long enough.
+    let pending: string | null = null;
+    let pendingFor = 0;
+    let quietFor = 0;
+
     const timer = setInterval(() => {
-      let bestId: string | null = null;
-      let best = 0;
-      for (const n of nodes) {
+      const levels = nodes.map((n) => {
         n.an.getByteFrequencyData(n.buf);
         let sum = 0;
         for (const v of n.buf) sum += v * v;
-        const rms = Math.sqrt(sum / n.buf.length) / 255;
-        if (rms > best) {
-          best = rms;
-          bestId = n.id;
+        return { id: n.id, rms: Math.sqrt(sum / n.buf.length) / 255 };
+      });
+      const winner = pickSpeaker(levels);
+
+      if (winner) {
+        quietFor = 0;
+        if (pending === winner) pendingFor += 1;
+        else {
+          pending = winner;
+          pendingFor = 1;
+        }
+        if (pendingFor >= SPEAK_HOLD) setActiveId(winner);
+      } else {
+        pendingFor = 0;
+        quietFor += 1;
+        if (quietFor >= SPEAK_RELEASE) {
+          pending = null;
+          setActiveId(null);
         }
       }
-      setActiveId(best >= SPEAK_THRESHOLD ? bestId : null);
     }, 200);
 
     return () => {
@@ -946,7 +989,12 @@ function CtrlButton({
         // Muted/camera-off is FILLED red: the one state worth reading from
         // across the room, and the only thing on the bar wearing red besides
         // End call (which is red AND wider AND set apart).
-        background: off ? '#ef4444' : active ? 'rgba(255,85,0,0.30)' : 'rgba(255,255,255,0.08)',
+        //
+        // An enabled toggle (captions) gets a quiet tint, NOT a saturated
+        // orange fill — as a solid accent block it was the loudest control on
+        // the stage, ranking "captions are on" above "you are muted". Orange
+        // means someone is talking; it shouldn't carry a second meaning here.
+        background: off ? '#ef4444' : active ? 'rgba(255,85,0,0.14)' : 'rgba(255,255,255,0.08)',
         color: off ? '#fff' : active || dashed ? C.brand : '#fff',
         cursor: 'pointer',
       }}
@@ -1001,7 +1049,9 @@ function CallTile({
   return (
     <div
       data-id="call-tile-peer"
-      className={`uc-tile${speaking ? ' speaking' : ''}`}
+      // The ring answers "which one of them is talking" — a question a 1:1
+      // doesn't ask. There, the audio pulse carries the signal instead.
+      className={`uc-tile${speaking && !hero ? ' speaking' : ''}`}
       data-participant={participant.userId}
     >
       {participant.isBot && botSocket ? (
