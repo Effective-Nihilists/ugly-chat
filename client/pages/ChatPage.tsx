@@ -5,7 +5,7 @@ import { MdastViewer } from 'ugly-app/markdown/client';
 import { ConversationInput } from '../components/ConversationInput';
 import { VirtualMessageList } from '../components/VirtualMessageList';
 import { createPortal } from 'react-dom';
-import { extractImages, ChatImage, ImageZoomViewer } from '../components/ChatMedia';
+import { extractImages, extractFiles, ChatImage, ChatFile, ImageZoomViewer } from '../components/ChatMedia';
 import { nextSelectedId } from '../lib/messageSelection';
 import type { ChatMessage, ChatUser, ChatTypingEntry } from 'ugly-app/conversation/shared';
 import type { DBObject } from 'ugly-app/shared';
@@ -213,7 +213,10 @@ function MessageBody(props: {
   const hasText = text.trim().length > 0;
   // Split image attachments out of the markdown so we can size/place them with
   // the edge-to-edge / centered rules (the leftover text renders as usual).
-  const { images, text: bodyText } = extractImages(text);
+  const { images, text: afterImages } = extractImages(text);
+  // …and non-image attachments, so they render as real file cards instead of
+  // bare underlined links.
+  const { files, text: bodyText } = extractFiles(afterImages);
   // Arabic (and other RTL) content: render larger + RTL-aware so vocalization
   // marks (tashkeel) are legible — at body size the diacritics are too small to
   // verify, which defeats a translation/vocalization use case.
@@ -398,6 +401,14 @@ function MessageBody(props: {
           </div>
         </a>
       ))}
+
+      {files.length > 0 ? (
+        <div className="uc-files">
+          {files.map((f, i) => (
+            <ChatFile key={`${f.url}-${i}`} name={f.name} url={f.url} />
+          ))}
+        </div>
+      ) : null}
 
       {((msg as { sources?: Source[] }).sources ?? []).length > 0 ? (
         <div className="uc-sources">

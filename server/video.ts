@@ -21,6 +21,11 @@ export interface CallParticipant {
    *  `active` and re-rang the conversation on a fresh page load, with no way to
    *  dismiss it. Stale entries are pruned on read. */
   seenAt?: number;
+  /** Mic/camera state, published so PEERS can render a muted / camera-off badge.
+   *  Toggling only flipped the local track's `enabled`, so the other side saw a
+   *  silent participant or a black rectangle with no explanation. Absent = on. */
+  micOn?: boolean;
+  camOn?: boolean;
   /** Cloudflare Realtime SFU session id, once the client has created one. */
   sessionId?: string;
   /** Names of the local tracks this participant published to the SFU (the
@@ -228,6 +233,24 @@ export async function videoCaption(
   const caption: CallCaption = { userId, text, final, at: Date.now(), ...(typed ? { typed: true } : {}) };
   await db.setDocFields(collections.conversation, conversationId, {
     [`call.captions.${userId}`]: caption,
+  });
+}
+
+/**
+ * Publish this participant's mic/camera state to the roster so peers can render
+ * a muted / camera-off indicator. Dot-path write on their own subtree.
+ */
+export async function videoMedia(
+  db: DbLike,
+  collections: Collections,
+  conversationId: string,
+  userId: string,
+  micOn: boolean,
+  camOn: boolean,
+): Promise<void> {
+  await db.setDocFields(collections.conversation, conversationId, {
+    [`call.participants.${userId}.micOn`]: micOn,
+    [`call.participants.${userId}.camOn`]: camOn,
   });
 }
 

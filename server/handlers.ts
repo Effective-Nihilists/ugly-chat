@@ -31,7 +31,7 @@ import { unfurlMessageLinks } from './linkPreview';
 import { bumpListForMessage, markRead } from './listDenorm';
 import { UGLY_BOT_ID, FEATURED_BOT_IDS } from '../shared/bots';
 import { resolveProfiles, type Profile } from './profiles';
-import { videoJoin, videoLeave, videoEnd, videoBotJoin, videoPublish, videoState, videoCaption, type CallState } from './video';
+import { videoJoin, videoLeave, videoEnd, videoBotJoin, videoPublish, videoState, videoCaption, videoMedia, type CallState } from './video';
 import { notifyIncomingCall, notifyNewMessage } from './callNotify';
 import {
   realtimeIceServers,
@@ -344,6 +344,17 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       videoEnd(getDb(), { conversation: collections.conversation }, input.conversationId),
     conversationVideoBotJoin: async (_userId, input): Promise<CallState> =>
       videoBotJoin(getDb(), { conversation: collections.conversation }, input.conversationId, input.botId),
+    conversationVideoMedia: async (userId, input): Promise<{ ok: boolean }> => {
+      await videoMedia(
+        getDb(),
+        { conversation: collections.conversation },
+        input.conversationId,
+        userId,
+        input.micOn,
+        input.camOn,
+      );
+      return { ok: true };
+    },
     // Passing userId lets this double as the in-call heartbeat (only joined
     // clients poll it), which is what ages out abandoned/crashed participants.
     conversationVideoState: async (userId, input): Promise<CallState> =>

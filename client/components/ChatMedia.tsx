@@ -17,7 +17,7 @@
  * (two fingers) + drag + double-tap.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { X, Maximize2 } from 'lucide-react';
+import { X, Maximize2, FileText, Download } from 'lucide-react';
 
 export const MEDIA_MAX = 480; // desktop cap for an edge-to-edge media bubble
 const TALL_MAX_H = 480; // an image never renders taller than this
@@ -42,6 +42,79 @@ export function extractImages(md: string): { images: ExtractedImage[]; text: str
   return { images, text };
 }
 
+/**
+ * A NON-image attachment link: `[name](…/public/…)` on our own origin. Run this
+ * AFTER extractImages (so `![…]` are already gone). Anything else the user typed
+ * stays an ordinary inline link.
+ */
+const FILE_RE = /\[([^\]]*)\]\(\s*<?((?:https?:)?\/\/[^)\s>]*\/public\/[^)\s>]+|\/public\/[^)\s>]+)>?\s*\)/g;
+
+export interface ExtractedFile { name: string; url: string }
+
+/**
+ * Pull attachment links out of `md` so they can render as real file cards.
+ * They used to fall through to the markdown viewer as bare underlined text —
+ * no icon, no size, no download affordance, while images got full treatment.
+ */
+export function extractFiles(md: string): { files: ExtractedFile[]; text: string } {
+  const files: ExtractedFile[] = [];
+  const text = md
+    .replace(FILE_RE, (_m, name: string, url: string) => {
+      files.push({ name, url });
+      return '';
+    })
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  return { files, text };
+}
+
+/** Human-readable byte size. */
+function fmtBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
+
+/**
+ * One non-image attachment: icon + name + type/size + an explicit download.
+ * `download={name}` restores the ORIGINAL filename — the stored key is slugged
+ * (unicode → underscores) and the response carries no content-disposition, so a
+ * plain link saved "Ræ 🎉 file.txt" as underscore soup.
+ */
+export function ChatFile({ name, url }: ExtractedFile): React.ReactElement {
+  const [size, setSize] = useState<number | null>(null);
+  useEffect(() => {
+    let off = false;
+    // Tell the recipient how big it is BEFORE they click a 20MB download.
+    void fetch(url, { method: 'HEAD' })
+      .then((r) => {
+        const len = Number(r.headers.get('content-length') ?? 0);
+        if (!off && Number.isFinite(len) && len > 0) setSize(len);
+      })
+      .catch(() => undefined);
+    return () => { off = true; };
+  }, [url]);
+  const ext = (/\.([a-z0-9]{1,8})$/i.exec(name)?.[1] ?? 'file').toUpperCase();
+  return (
+    <a
+      href={url}
+      download={name}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="uc-file"
+      onClick={(e) => { e.stopPropagation(); }}
+      data-id="file-attachment"
+    >
+      <span className="ic"><FileText size={18} /></span>
+      <span className="body">
+        <span className="n">{name}</span>
+        <span className="m">{ext}{size == null ? '' : ` · ${fmtBytes(size)}`}</span>
+      </span>
+      <span className="dl"><Download size={16} /></span>
+    </a>
+  );
+}
+
 /** One inline chat image with the edge-to-edge / centered + aspect-ratio rules. */
 export function ChatImage({
   src,
@@ -61,6 +134,7 @@ export function ChatImage({
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longFiredRef = useRef(false);
   const startRef = useRef<{ x: number; y: number } | null>(null);
+  const pointerTypeRef = useRef<string>('mouse');
 
   const cancelPress = useCallback(() => {
     if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; }
@@ -68,8 +142,13 @@ export function ChatImage({
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     longFiredRef.current = false;
+    pointerTypeRef.current = e.pointerType;
     startRef.current = { x: e.clientX, y: e.clientY };
     cancelPress();
+    // Touch: long-press opens the viewer (a tap still selects the message).
+    // Mouse: handled on click below — a 450ms hold to open an image is a
+    // mobile gesture nobody discovers with a desktop cursor.
+    if (e.pointerType === 'mouse') return;
     pressTimer.current = setTimeout(() => {
       longFiredRef.current = true;
       onOpen(src, alt);
@@ -88,8 +167,16 @@ export function ChatImage({
       e.preventDefault();
       e.stopPropagation();
       longFiredRef.current = false;
+      return;
     }
-  }, []);
+    // Desktop: a click on an image opens it, which is what cursor:pointer has
+    // been promising. Previously it just selected the message.
+    if (pointerTypeRef.current === 'mouse') {
+      e.preventDefault();
+      e.stopPropagation();
+      onOpen(src, alt);
+    }
+  }, [onOpen, src, alt]);
 
   // Wrapper width policy:
   //  - text-dominant  → modest, centered column.

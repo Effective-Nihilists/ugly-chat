@@ -374,6 +374,14 @@ export const requests = defineRequests({
     output: z.any(),
   }),
 
+  // Publish mic/cam state so peers can show a muted / camera-off badge.
+  conversationVideoMedia: authReq({
+    input: z
+      .object({ conversationId: z.string(), micOn: z.boolean(), camOn: z.boolean() })
+      .catchall(z.unknown()),
+    output: z.any(),
+  }),
+
   // Fresh server-side call roster (clients poll this to pull peers reliably).
   conversationVideoState: authReq({
     input: z.object({ conversationId: z.string() }).catchall(z.unknown()),

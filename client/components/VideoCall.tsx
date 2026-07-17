@@ -80,6 +80,9 @@ interface CallParticipant {
   userId: string;
   isBot: boolean;
   joinedAt: number;
+  /** Published mic/cam state — absent means on. */
+  micOn?: boolean;
+  camOn?: boolean;
   sessionId?: string;
   tracks?: string[];
 }
@@ -475,20 +478,33 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
   // touches the SFU/track/renegotiation path). ───────────────────────────────
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
+  // Publish mic/cam to the roster so PEERS can show it. Flipping only the local
+  // track's `enabled` left the other side with silence / a black rectangle and
+  // no idea why.
+  const publishMedia = useCallback(
+    (mic: boolean, cam: boolean) => {
+      void socket
+        .request('conversationVideoMedia', { conversationId, micOn: mic, camOn: cam })
+        .catch(() => undefined);
+    },
+    [socket, conversationId],
+  );
   const toggleMic = useCallback(() => {
     setMicOn((on) => {
       const next = !on;
       streamRef.current?.getAudioTracks().forEach((t) => (t.enabled = next));
+      publishMedia(next, camOn);
       return next;
     });
-  }, []);
+  }, [publishMedia, camOn]);
   const toggleCam = useCallback(() => {
     setCamOn((on) => {
       const next = !on;
       streamRef.current?.getVideoTracks().forEach((t) => (t.enabled = next));
+      publishMedia(micOn, next);
       return next;
     });
-  }, []);
+  }, [publishMedia, micOn]);
 
   // ── Elapsed-call timer (real time from local join). ─────────────────────────
   const [now, setNow] = useState(() => Date.now());
@@ -660,7 +676,11 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
         <div style={{ position: 'absolute', inset: 0 }}>
           {other ? (
             <div data-id="call-tile-peer" style={{ position: 'absolute', inset: 0 }}>
-              {remoteStreams.has(other.userId) ? (
+              {/* `camOn === false` matters: turning a camera off only disables the
+                  track, so the stream still exists and RemoteTile rendered a solid
+                  BLACK rectangle — no avatar, no name, no reason. Fall back to the
+                  avatar tile the app already has. */}
+              {remoteStreams.has(other.userId) && other.camOn !== false ? (
                 <>
                   <RemoteTile stream={remoteStreams.get(other.userId)!} speakerId={speakerId} />
                   {/* Camera on (no avatar) → a simple audio pulse when speaking. */}
@@ -698,6 +718,9 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
                 }}
               >
                 {resolveName(other.userId, userId, other.isBot, profiles)}
+                {/* Peers had no way to know you'd muted — the audio just stopped. */}
+                {other.micOn === false ? <MicOff size={13} data-id="peer-muted" /> : null}
+                {other.camOn === false ? <VideoOff size={13} data-id="peer-cam-off" /> : null}
               </span>
             </div>
           ) : (
