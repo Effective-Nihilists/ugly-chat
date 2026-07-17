@@ -1533,8 +1533,11 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         <button
           type="button"
           onClick={() => videoRef.current?.start()}
-          aria-label={botId ? `Start a voice call with ${title}` : 'Start video call'}
-          title={botId ? `Voice call ${title}` : 'Start video call'}
+          // "Voice call" was a lie the button told about itself: it wears a
+          // video icon and opens a dialog headed "Start video call" with a
+          // camera preview. Hovering to check contradicted the click.
+          aria-label={botId ? `Start a video call with ${title}` : 'Start video call'}
+          title={botId ? `Video call ${title}` : 'Start video call'}
           style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', flexShrink: 0 }} data-id="start-video-call"
         >
           <Video size={19} />

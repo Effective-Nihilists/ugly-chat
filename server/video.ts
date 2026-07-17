@@ -270,5 +270,19 @@ export async function videoBotJoin(
   botId: string,
 ): Promise<CallState> {
   if (!isBot(botId)) throw new Error('not a bot');
+  // A bot may only join a call a HUMAN is already in. Bots never leave on their
+  // own and never send a heartbeat, so a bot-only call sat `active: true` in the
+  // conversation doc forever: every client tracking the doc rendered an incoming
+  // ring from Ugly Bot that survived Decline, reload, and a fresh session — the
+  // conversation was permanently hostage to a call the user had already ended.
+  // (Only `videoState` prunes, and nothing polls it unless someone is joined, so
+  // there was nobody left to clean it up.) The resurrection race was an in-flight
+  // bot-join landing just after the last human's videoLeave.
+  const conv = await db.getDoc(collections.conversation, conversationId);
+  const call = getCall(conv);
+  const humans = Object.values(call.participants).filter((p) => !p.isBot);
+  if (!call.active || humans.length === 0) {
+    throw new Error('no active call to join');
+  }
   return videoJoin(db, collections, conversationId, botId, true);
 }

@@ -668,7 +668,13 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
       return undefined;
     }
     const id = setInterval(() => {
-      setSelfLive((localVideoRef.current?.videoWidth ?? 0) > 0);
+      const el = localVideoRef.current;
+      if (!el) return;
+      // A paused preview never recovers on its own — a mute toggle left the
+      // element paused with a live track behind it, i.e. a black tile claiming
+      // the camera was on. Nudge it back rather than report a lie.
+      if (el.paused) void el.play().catch(() => undefined);
+      setSelfLive(el.videoWidth > 0);
     }, 400);
     return () => { clearInterval(id); };
   }, [joined, camOn]);
@@ -841,12 +847,13 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
           autoPlay
           muted
           playsInline
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            display: camOn && selfLive ? 'block' : 'none',
-          }}
+          // NEVER gate this on `selfLive`. Hiding the element until it has
+          // frames is a deadlock: a display:none video stops decoding, so
+          // videoWidth stays 0, so selfLive stays false, so it stays hidden —
+          // one mute→unmute cycle and the self-view was black for the rest of
+          // the call while the camera button still read "on". The state label
+          // overlays this element rather than replacing it.
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: camOn ? 'block' : 'none' }}
         />
         {!camOn ? (
           // Camera off → show MY avatar (3D model over the avatar background, or
@@ -920,9 +927,14 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
             <UserPlus size={19} />
           </CtrlButton>
         ) : null}
-        <CtrlButton dataId="call-add-bot" label="Add ugly-bot" active={false} off={false} onClick={() => { addBot(); }} data-id="add-ugly-bot">
-          <BotIcon size={19} />
-        </CtrlButton>
+        {/* Hidden once a bot is on the roster — offering "Add ugly-bot" during a
+            call whose stage says UGLY BOT · AI just makes people hesitate over
+            what it would even do. */}
+        {!botParticipant ? (
+          <CtrlButton dataId="call-add-bot" label="Add ugly-bot" active={false} off={false} onClick={() => { addBot(); }} data-id="add-ugly-bot">
+            <BotIcon size={19} />
+          </CtrlButton>
+        ) : null}
         <button
           type="button"
           data-id="call-end"

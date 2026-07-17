@@ -122,10 +122,21 @@ export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(function 
 
   const participants = call.participants ?? {};
   const meParticipant = !!participants[meId];
-  // Someone is calling us: call active, we're not in it, not joined, not in the
-  // lobby, and we haven't declined this exact call instance.
+  // A PERSON has to be calling us. Second layer under the server's bot-join
+  // guard: a bot left alone on a stale roster rang forever — it never leaves and
+  // never times out, so `active` stayed true and Decline couldn't outlive it (a
+  // resurrected call gets a new `startedAt`, so the declined id never matched
+  // again). Bots don't call people; they answer.
+  const humanCallers = Object.values(participants).filter((p) => !p.isBot && p.userId !== meId);
+  // Someone is calling us: call active, a human is in it, we're not, not joined,
+  // not in the lobby, and we haven't declined this exact call instance.
   const incoming =
-    !!call.active && !meParticipant && !joined && !lobbyOpen && (call.startedAt ?? 0) !== declinedAt;
+    !!call.active &&
+    humanCallers.length > 0 &&
+    !meParticipant &&
+    !joined &&
+    !lobbyOpen &&
+    (call.startedAt ?? 0) !== declinedAt;
 
   // Caller = the (first, human) participant that isn't us — for the ring/lobby.
   const callerId = Object.values(participants)
