@@ -561,6 +561,71 @@ hr {
 .uc-arabic p {
   line-height: 2;
 }
+/* Arabic (RTL) runs inline inside otherwise-LTR replies — bump every level so
+   nested "notes"/word-by-word Arabic stays legible, not just top-level lines. */
+.uc-arabic :is(p, li, td, th, blockquote, span, strong, em, h1, h2, h3, h4) {
+  font-size: 1.05em;
+  line-height: 1.9;
+}
+
+/* Search citation cards — numbered [n] to mirror the inline [n] markers in the
+   answer (a real sequence). Stark/mono to match the receipt + starter-button
+   language; sharp corners, hairline border, primary on hover. */
+.uc-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 520px;
+  margin-top: 2px;
+}
+.uc-src {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  padding: 8px 11px;
+  border: 1px solid var(--app-border);
+  border-radius: 0;
+  background: var(--app-main);
+  color: var(--app-foreground);
+  text-decoration: none;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+a.uc-src:hover {
+  border-color: var(--app-primary);
+  background: var(--app-tertiary);
+}
+.uc-src .n {
+  font-family: var(--app-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--app-primary);
+  flex-shrink: 0;
+  line-height: 17px;
+}
+.uc-src .body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.uc-src .t {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 17px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.uc-src .d {
+  font-family: var(--app-font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--app-foreground-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 /* Vertical stack when a single message carries several images. */
 .uc-media {
   display: flex;
@@ -708,6 +773,26 @@ hr {
 
 /* ---- brand utilities (ported from mockups/brand.css) ---- */
 .uc-mono-label { font-family: var(--app-font-mono); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.22em; color: var(--app-foreground-muted); }
+/* Active-mode badge in the chat header — makes a non-default mode (Search /
+   Image / Honest, and especially LIE) visible at a glance instead of hidden in
+   the ⋯ menu. Lie gets a warning tint so satirical answers aren't mistaken for
+   real ones. */
+.uc-mode-badge {
+  font-family: var(--app-font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  padding: 3px 5px;
+  border: 1px solid var(--app-primary);
+  color: var(--app-primary);
+  border-radius: 0;
+}
+.uc-mode-badge.warn {
+  border-color: var(--app-warning, #d97706);
+  color: var(--app-warning, #d97706);
+}
 .uc-receipt { font-family: var(--app-font-mono); font-size: 10.5px; letter-spacing: 0.02em; color: var(--app-foreground-muted); display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap; white-space: normal; }
 .uc-receipt .cost { color: var(--app-primary); }
 .uc-receipt .dot { color: var(--app-border); }

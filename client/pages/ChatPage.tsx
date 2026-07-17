@@ -43,6 +43,15 @@ interface LinkPreview {
   siteName?: string;
 }
 
+// A web/corpus source cited by the search bot — persisted in the message's
+// `custom.sources` and rendered as numbered citation cards under the answer.
+interface Source {
+  url?: string;
+  title: string;
+  snippet?: string;
+  citation?: string;
+}
+
 interface MessageDoc extends DBObject {
   conversationId: string;
   userId: string;
@@ -60,6 +69,7 @@ interface MessageDoc extends DBObject {
   systemType?: string;
   systemParam?: string;
   telemetry?: MsgTelemetry;
+  custom?: { sources?: Source[] };
 }
 
 // A tappable message button: a custom-bot starter ({label, prompt}) or a generic
@@ -365,6 +375,48 @@ function MessageBody(props: {
         </a>
       ))}
 
+      {((msg as { sources?: Source[] }).sources ?? []).length > 0 ? (
+        <div className="uc-sources">
+          <div className="uc-mono-label">Sources</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {(msg as { sources?: Source[] }).sources!.map((s, i) => {
+              const domain =
+                s.citation && s.citation.length > 0
+                  ? s.citation
+                  : s.url && s.url.length > 0
+                    ? s.url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0] ?? ''
+                    : '';
+              const title =
+                s.title.length > 0 ? s.title : domain.length > 0 ? domain : s.url ?? '';
+              const inner = (
+                <>
+                  <span className="n">[{i + 1}]</span>
+                  <span className="body">
+                    <span className="t">{title}</span>
+                    {domain ? <span className="d">{domain}</span> : null}
+                  </span>
+                </>
+              );
+              return s.url ? (
+                <a
+                  key={`${s.url}-${i}`}
+                  href={s.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="uc-src"
+                  onClick={(e) => { e.stopPropagation(); }}
+                  data-id="source"
+                >
+                  {inner}
+                </a>
+              ) : (
+                <div key={`src-${i}`} className="uc-src" data-id="source">{inner}</div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
       {buttons.length > 0 ? (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', maxWidth: 520 }}>
           {buttons.map((b, i) => (
@@ -559,6 +611,7 @@ function toChatMessage(d: MessageDoc): ChatMessage {
     ...(d.reactionUsers ? { reactionUsers: d.reactionUsers } : {}),
     ...(d.buttons ? { buttons: d.buttons } : {}),
     ...(d.linkPreviews ? { linkPreviews: d.linkPreviews } : {}),
+    ...(d.custom?.sources?.length ? { sources: d.custom.sources } : {}),
     ...(d.edited ? { edited: true } : {}),
     ...(d.systemType ? { systemType: d.systemType, systemParam: d.systemParam } : {}),
     ...(d.telemetry ? { telemetry: d.telemetry } : {}),
@@ -1335,6 +1388,11 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
               caused a visible layout shift). Bots show their model once resolved;
               humans show nothing (no fabricated "online" presence). */}
           <div className="uc-receipt" style={{ marginTop: 1, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
+            {botMode && botMode !== 'chat' ? (
+              <span className={`uc-mode-badge${botMode === 'lie' ? ' warn' : ''}`}>
+                {BOT_MODES.find((m) => m.id === botMode)?.label ?? botMode}
+              </span>
+            ) : null}
             {headerModel ? <b>{headerModel}</b> : null}
           </div>
         </div>

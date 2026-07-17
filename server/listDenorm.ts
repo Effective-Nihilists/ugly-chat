@@ -31,7 +31,15 @@ interface DbLike {
 const isBotId = (id: string): boolean => id.startsWith('bot-') || id === UGLY_BOT_ID;
 
 function preview(text: string): string {
-  const t = text.replace(/[#*_`>~]/g, '').replace(/\s+/g, ' ').trim();
+  const t = text
+    // Image markdown (incl. huge base64 data: URLs) → its alt text, or "Image".
+    // Without this the sidebar showed a raw `![alt](data:image/…base64,…)` blob.
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, (_m, alt: string) => (alt.trim() || 'Image'))
+    // Link markdown → the link text.
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/[#*_`>~]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
   return t.length > 100 ? `${t.slice(0, 100)}…` : t;
 }
 
