@@ -19,7 +19,7 @@ import { useSTT } from 'ugly-app/client';
 import type { UglyBotSocket } from 'ugly-app/client';
 import { useApp } from 'ugly-app/client';
 import type { DBObject } from 'ugly-app/shared';
-import { upsertTurn, type Turn } from '../../shared/transcript';
+import { isSilenceHallucination, upsertTurn, type Turn } from '../../shared/transcript';
 import type { CallCaption } from '../../server/video';
 
 type AppSocketT = ReturnType<typeof useApp>['socket'];
@@ -74,6 +74,13 @@ export function useCallTranscript(
   useEffect(() => {
     const text = stt.transcript;
     if (!text) return;
+    // Drop a FINAL turn that's just an STT silence-hallucination ("Thank you."
+    // on a quiet mic) — it's not something the speaker said, and relaying it
+    // would put it in the peers' transcripts too. Partials still show live.
+    if (stt.isFinal && isSilenceHallucination(text)) {
+      lastRelayed.current = `${text}|true`;
+      return;
+    }
     setTurns((t) => upsertTurn(t, { speaker: meId, text, final: stt.isFinal, at: Date.now() }));
     // Avoid re-relaying an identical partial (the hook can re-render without a
     // text change); always relay finals so peers freeze the row.

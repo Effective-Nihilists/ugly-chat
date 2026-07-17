@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, MessageSquare, Bot as BotIcon, X } from 'lucide-react';
 import type { AppSocket } from 'ugly-app/client';
 import type { AppRegistry } from '../../shared/api';
-import { startBotChat, type BotDoc } from '../lib/bots';
+import { startBotChat, modelLabel, type BotDoc } from '../lib/bots';
 
 // Popups render in the router's portal, OUTSIDE <AppProvider>, so they can't
 // use useApp()/useRouter() — deps are passed in by the opener instead. We pass
@@ -114,7 +114,10 @@ export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPo
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={botName}>{b.name}</div>
-                    <div style={botSub}>Built-in{b.model ? ` · ${b.model}` : ''}</div>
+                    {/* modelLabel() maps the raw enum to its display name — the
+                        panel used to leak `deepseek_v4_flash` while the header
+                        two inches away rendered "DeepSeek V4 Flash". */}
+                    <div style={botSub}>Built-in{b.model ? ` · ${modelLabel(b.model)}` : ''}</div>
                   </div>
                   <button
                     type="button"

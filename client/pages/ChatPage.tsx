@@ -7,7 +7,7 @@ import { VirtualMessageList } from '../components/VirtualMessageList';
 import { createPortal } from 'react-dom';
 import { extractImages, extractFiles, ChatImage, ChatFile, ImageZoomViewer } from '../components/ChatMedia';
 import { nextSelectedId } from '../lib/messageSelection';
-import { directConversationPeer } from '../../shared/conversationId';
+import { directConversationPeer, isDirectRoom } from '../../shared/conversationId';
 import type { ChatMessage, ChatUser, ChatTypingEntry } from 'ugly-app/conversation/shared';
 import type { DBObject } from 'ugly-app/shared';
 import type { UserConversation } from '../../shared/collections';
@@ -1328,7 +1328,10 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const statMsgs: StatMsg[] = useMemo(
     () =>
       messages
-        .filter((m) => !(m as { isBot?: boolean }).isBot)
+        // System events ("X joined") are not conversation — counting them as
+        // the other side's messages meant YOUR SHARE read 33% when you were the
+        // only person who had actually said anything. Drop bots and system rows.
+        .filter((m) => !(m as { isBot?: boolean }).isBot && !(m as { systemType?: string }).systemType)
         .map((m) => ({ userId: m.userId, created: m.created }))
         .sort((a, b) => a.created - b.created),
     [messages],
@@ -1547,8 +1550,8 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           <button
             type="button"
             onClick={() => { router.push('settings/:conversationId', { conversationId: roomId }); }}
-            aria-label="Group info"
-            title="Group info"
+            aria-label={hasBot ? 'Bot info' : isDirectRoom(roomId) ? 'Chat info' : 'Group info'}
+            title={hasBot ? 'Bot info' : isDirectRoom(roomId) ? 'Chat info' : 'Group info'}
             style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', flexShrink: 0 }} data-id="group-info"
           >
             <Settings size={18} />

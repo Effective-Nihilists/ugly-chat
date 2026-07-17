@@ -8,6 +8,7 @@ import type { Avatar as AvatarT } from 'ugly-app/shared';
 import { useRouter } from '../router';
 import { Avatar } from '../lib/conversations';
 import { isValidEmail, normalizeEmail } from '../../shared/email';
+import { isDirectRoom } from '../../shared/conversationId';
 import { modalStyles as S } from '../lib/modalStyles';
 
 interface Member {
@@ -75,6 +76,28 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
   const self = members.find((m) => m.userId === userId);
   const isOwner = self?.role === 'owner';
 
+  // A 1:1 (with a person or a bot) is NOT a group, and a bot chat is neither.
+  // The page hard-coded "Group info", "N members", invite-by-email and read
+  // receipts onto every conversation, so a chat with a robot claimed it had
+  // "1 members", offered to invite people by email, and promised the bot would
+  // see your "seen" — none of which is true.
+  const isBotChat = id.startsWith('bc-') || members.some((m) => m.isBot);
+  const isDirect = isDirectRoom(id);
+
+  const close = useCallback(() => {
+    if (id) router.push(':conversationId', { conversationId: id });
+    else router.push('', {});
+  }, [id, router]);
+
+  // Escape and click-outside close it. It's a full-screen route styled as a
+  // modal, so without these the only exit was the × — and hitting Escape (which
+  // did nothing) then clicking the page just got swallowed by the overlay.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => { if (e.key === 'Escape') close(); };
+    window.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener('keydown', onKey); };
+  }, [close]);
+
   const setToggle = useCallback(
     (key: ToggleKey) => {
       setToggles((prev) => {
@@ -127,14 +150,19 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
   }, [id, socket, userId, router]);
 
   return (
-    <div style={S.page}>
+    <div
+      style={S.page}
+      // Click-outside (the backdrop, not the modal itself) closes.
+      onClick={(e) => { if (e.target === e.currentTarget) close(); }}
+      data-id="settings-backdrop"
+    >
       <div style={S.modal}>
         <div style={S.modalHead}>
-          <span style={S.modalTitle}>Group info</span>
+          <span style={S.modalTitle}>{isBotChat ? 'Bot info' : isDirect ? 'Chat info' : 'Group info'}</span>
           <button
             type="button"
             aria-label="Close"
-            onClick={() => { if (id) { router.push(':conversationId', { conversationId: id }); } else { router.push('', {}); } }}
+            onClick={close}
             style={S.closeBtn} data-id="close"
           >
             <X size={16} />
@@ -148,28 +176,35 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
             <div style={{ fontFamily: 'var(--app-font-heading)', fontWeight: 800, fontSize: 21, letterSpacing: '-0.02em', color: 'var(--app-foreground)' }}>
               {title}
             </div>
-            <div className="uc-receipt"><b>{members.length} members</b></div>
+            {/* No "N members" on a 1:1 — a bot chat read "1 members", both
+                wrong (bot uncounted) and ungrammatical. */}
+            {!isDirect ? <div className="uc-receipt"><b>{members.length} members</b></div> : null}
           </div>
 
           {/* Members + add by email */}
           <div style={S.field}>
             <div style={secLabel}>
-              <span>Members · {members.length}</span>
+              <span>{isDirect ? 'People' : `Members · ${members.length}`}</span>
             </div>
-            <div style={{ ...tokensRow, marginBottom: 4 }}>
-              <Mail size={16} style={{ color: 'var(--app-foreground-muted)', flexShrink: 0 }} />
-              <input
-                value={addEmail}
-                onChange={(e) => { setAddEmail(e.target.value); }}
-                onKeyDown={(e) => { if (e.key === 'Enter') void addByEmail(); }}
-                placeholder="invite someone — name@email.com"
-                spellCheck={false}
-                style={S.inputEl} data-id="invite-someone-name-email"
-              />
-              <button type="button" aria-label="Add by email" onClick={() => void addByEmail()} style={addBtn} data-id="add-by-email">
-                <Plus size={13} /> add
-              </button>
-            </div>
+            {/* Invite-by-email is group-only: on a direct/bot chat conversation
+                MemberAdd hard-rejects (type != group) and it makes no sense to
+                add a third person to a 1:1 from here. */}
+            {!isDirect ? (
+              <div style={{ ...tokensRow, marginBottom: 4 }}>
+                <Mail size={16} style={{ color: 'var(--app-foreground-muted)', flexShrink: 0 }} />
+                <input
+                  value={addEmail}
+                  onChange={(e) => { setAddEmail(e.target.value); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void addByEmail(); }}
+                  placeholder="invite someone — name@email.com"
+                  spellCheck={false}
+                  style={S.inputEl} data-id="invite-someone-name-email"
+                />
+                <button type="button" aria-label="Add by email" onClick={() => void addByEmail()} style={addBtn} data-id="add-by-email">
+                  <Plus size={13} /> add
+                </button>
+              </div>
+            ) : null}
             {status ? <div style={{ fontSize: 12.5, color: 'var(--app-primary)', fontWeight: 600 }}>{status}</div> : null}
             <div>
               {members.map((m) => (
@@ -199,27 +234,34 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
                 on={toggles.mute}
                 onToggle={() => { setToggle('mute'); }}
               />
-              <SettingRow
-                icon={<AlignLeft size={18} />}
-                title="Show typing"
-                desc="Others see the three dots while you type."
-                on={toggles.showTyping}
-                onToggle={() => { setToggle('showTyping'); }}
-              />
-              <SettingRow
-                icon={<Check size={18} />}
-                title="Read receipts"
-                desc='They see "seen". You see theirs.'
-                on={toggles.readReceipts}
-                onToggle={() => { setToggle('readReceipts'); }}
-              />
-              <SettingRow
-                icon={<BarChart3 size={18} />}
-                title="Response-time stats"
-                desc="The slightly rude dashboard: avg reply, left-on-read, your share %."
-                on={toggles.responseStats}
-                onToggle={() => { setToggle('responseStats'); }}
-              />
+              {/* These are about the OTHER human: a bot doesn't see your "seen",
+                  doesn't watch you type, and "avg reply / left-on-read" against a
+                  bot that answers in 6s is nonsense. Hidden in a bot chat. */}
+              {!isBotChat ? (
+                <>
+                  <SettingRow
+                    icon={<AlignLeft size={18} />}
+                    title="Show typing"
+                    desc="Others see the three dots while you type."
+                    on={toggles.showTyping}
+                    onToggle={() => { setToggle('showTyping'); }}
+                  />
+                  <SettingRow
+                    icon={<Check size={18} />}
+                    title="Read receipts"
+                    desc='They see "seen". You see theirs.'
+                    on={toggles.readReceipts}
+                    onToggle={() => { setToggle('readReceipts'); }}
+                  />
+                  <SettingRow
+                    icon={<BarChart3 size={18} />}
+                    title="Response-time stats"
+                    desc="The slightly rude dashboard: avg reply, left-on-read, your share %."
+                    on={toggles.responseStats}
+                    onToggle={() => { setToggle('responseStats'); }}
+                  />
+                </>
+              ) : null}
             </div>
           </div>
 
