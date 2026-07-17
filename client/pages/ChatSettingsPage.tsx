@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  X, Users, Mail, Plus, BellOff, AlignLeft, Check, BarChart3,
+  X, Users, User, Bot as BotIcon, Mail, Plus, BellOff, AlignLeft, Check, BarChart3,
   Pin, Image as ImageIcon, Download, Trash2, LogOut, ChevronRight,
 } from 'lucide-react';
 import { useApp } from 'ugly-app/client';
@@ -170,9 +170,15 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
         </div>
 
         <div style={S.modalBody}>
-          {/* Identity */}
+          {/* Identity — a bot chat is not a group of people: use the bot glyph,
+              a person glyph for a 1:1, and the group glyph only for real groups.
+              (Priya: "generic two-person silhouette" on a solo bot chat.) */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '4px 0 8px' }}>
-            <div style={idAvatar}><Users size={26} style={{ opacity: 0.5 }} /></div>
+            <div style={idAvatar}>
+              {isBotChat ? <BotIcon size={26} style={{ opacity: 0.6 }} />
+                : isDirect ? <User size={26} style={{ opacity: 0.5 }} />
+                : <Users size={26} style={{ opacity: 0.5 }} />}
+            </div>
             <div style={{ fontFamily: 'var(--app-font-heading)', fontWeight: 800, fontSize: 21, letterSpacing: '-0.02em', color: 'var(--app-foreground)' }}>
               {title}
             </div>
@@ -215,9 +221,17 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
                       {m.name}{m.userId === userId ? ' (you)' : ''}
                     </div>
                   </div>
-                  <span style={m.role === 'owner' ? roleAdmin : roleMember}>
-                    {m.isBot ? 'bot' : m.role === 'owner' ? 'admin' : 'member'}
-                  </span>
+                  {/* Role badges are group hierarchy. In a 1:1 (person or bot)
+                      there is no admin/member distinction — tagging the sole
+                      human "ADMIN" of a chat-with-a-robot is meaningless. Show
+                      the badge only in groups; keep the "bot" tag anywhere. */}
+                  {m.isBot ? (
+                    <span style={roleMember}>bot</span>
+                  ) : !isDirect ? (
+                    <span style={m.role === 'owner' ? roleAdmin : roleMember}>
+                      {m.role === 'owner' ? 'admin' : 'member'}
+                    </span>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -279,7 +293,9 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
           <div style={S.field}>
             <div style={secLabel}><span>Danger zone</span></div>
             <div>
-              <DangerRow icon={<Trash2 size={18} />} title="Clear my history" desc="Wipes it for you. Everyone else keeps theirs." onClick={clearHistory} data-id="clear-history" />
+              {/* "Everyone else keeps theirs" implies members who don't exist in
+                  a 1:1 / bot chat. Only mention them when there ARE others. */}
+              <DangerRow icon={<Trash2 size={18} />} title="Clear my history" desc={isDirect ? 'Wipes this conversation for you.' : 'Wipes it for you. Everyone else keeps theirs.'} onClick={clearHistory} data-id="clear-history" />
               {!isOwner ? (
                 <DangerRow icon={<LogOut size={18} />} title="Leave group" onClick={leaveGroup} data-id="leave-group" />
               ) : null}

@@ -1535,13 +1535,17 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
             what it does instead of implying a webcam on the other end. */}
         <button
           type="button"
-          onClick={() => videoRef.current?.start()}
+          // Disabled while a call is live — clicking it mid-call opened a SECOND
+          // lobby modal stacked over the call stage that intercepted pointer
+          // events and blocked End call, so you could feel unable to hang up.
+          disabled={callActive}
+          onClick={() => { if (!callActive) videoRef.current?.start(); }}
           // "Voice call" was a lie the button told about itself: it wears a
           // video icon and opens a dialog headed "Start video call" with a
           // camera preview. Hovering to check contradicted the click.
-          aria-label={botId ? `Start a video call with ${title}` : 'Start video call'}
-          title={botId ? `Video call ${title}` : 'Start video call'}
-          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', flexShrink: 0 }} data-id="start-video-call"
+          aria-label={callActive ? 'Call in progress' : botId ? `Start a video call with ${title}` : 'Start video call'}
+          title={callActive ? 'Call in progress' : botId ? `Video call ${title}` : 'Start video call'}
+          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: callActive ? 'default' : 'pointer', opacity: callActive ? 0.35 : 1, flexShrink: 0 }} data-id="start-video-call"
         >
           <Video size={19} />
         </button>

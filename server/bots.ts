@@ -128,6 +128,26 @@ export function parseImageGenResponse(data: unknown): string {
   return '';
 }
 
+/**
+ * Strip heavy, useless-to-a-text-model content from a history message before it
+ * becomes prompt context. Exported for unit-testing.
+ *
+ * The trigger: a bot image reply is stored as `![alt](<src>)`, and before the R2
+ * change `<src>` was a ~572KB base64 data: URI. Fed back as text context every
+ * turn, that tokenizes to ~400k INPUT tokens — which both made the telemetry
+ * strip read "807k tokens" for a two-line chat AND quietly inflated the real
+ * cost billed to the user (every turn re-processed the blob). A text model can't
+ * use an image URL either way, so collapse image markdown to a short placeholder
+ * and nuke any lingering base64 data: URI.
+ */
+export function sanitizeHistoryContent(content: string): string {
+  let out = content.replace(/!\[([^\]]*)\]\([^)]*\)/g, (_m, alt: string) =>
+    alt.trim() ? `[image: ${alt.trim()}]` : '[image]',
+  );
+  out = out.replace(/data:[^;,\s]+;base64,[A-Za-z0-9+/=]+/g, '[image]');
+  return out;
+}
+
 /** `data:image/jpeg;base64,…` → the bytes + mime, or null if it isn't one. */
 export function parseDataUrl(src: string): { bytes: Uint8Array; mime: string } | null {
   const m = /^data:([^;,]+);base64,(.*)$/s.exec(src);
@@ -255,6 +275,25 @@ const PAYMENT_REPLY =
   `[Add credits or subscribe](${BILLING_URL}) to keep chatting.`;
 const isPaymentError = (err: unknown): boolean =>
   (err as { status?: number } | null)?.status === 402;
+
+/**
+ * Turn an image-gen failure into a reason-bearing reply with a retry path.
+ * Exported for unit-testing. The old fallback was a single generic "Couldn't
+ * generate an image for that — try again", which told the user nothing about
+ * WHY and offered no way forward. Classify the common cases and always say how
+ * to retry (re-send the prompt) — that IS the retry affordance in a chat.
+ */
+export function imageFailureReply(err: unknown): { reply: string; color?: string } {
+  if (isPaymentError(err)) return { reply: PAYMENT_REPLY, color: 'error' };
+  const msg = (err as { message?: string } | null)?.message ?? '';
+  if (/\b(400|safety|policy|nsfw|blocked|rejected|content)\b/i.test(msg)) {
+    return { reply: 'The image model rejected that prompt. Try rephrasing it and send again.' };
+  }
+  if (/\b(429|rate|busy|overloaded)\b/i.test(msg)) {
+    return { reply: 'The image service is busy right now — wait a moment, then send your prompt again.' };
+  }
+  return { reply: "The image service hiccuped and couldn't finish that one — send your prompt again to retry." };
+}
 
 // A conversation can still list a bot member whose config row is gone — e.g. a
 // migrated bot that never got an editable `bot` row, or one that was deleted.
@@ -443,7 +482,8 @@ export async function triggerBotReplies(
     .filter((m) => m.deleted !== true)
     .map((m) => ({
       role: botSet.has(m.userId) ? ('assistant' as const) : ('user' as const),
-      content: m.text ?? m.markdown ?? '',
+      // Collapse image markdown / base64 blobs — see sanitizeHistoryContent.
+      content: sanitizeHistoryContent(m.text ?? m.markdown ?? ''),
     }))
     .filter((m) => m.content.length > 0);
 
@@ -506,8 +546,10 @@ export async function triggerBotReplies(
     if (mode === 'image') {
       // Image mode: generate an image from the user's latest prompt.
       const prompt = history[history.length - 1]?.content ?? '';
-      try {
-        if (prompt) {
+      if (!prompt) {
+        reply = 'Tell me what to draw — send a description and I\'ll generate an image.';
+      } else {
+        try {
           const out = await uglyBotImageGen(cfg.imageModel ?? 'flux_1_dev', prompt, cfg.imageSize ?? 'square');
           if (out.url) {
             // Store the bytes in R2 and reference the URL. Embedding the raw
@@ -519,12 +561,17 @@ export async function triggerBotReplies(
             // Report the image turn on the meter (model + real cost), like text.
             usage = out.usage;
           }
+        } catch (err) {
+          console.warn(`[bots] imageGen failed for ${botId}:`, (err as Error).message);
+          const f = imageFailureReply(err);
+          reply = f.reply;
+          replyColor = f.color;
         }
-      } catch (err) {
-        console.warn(`[bots] imageGen failed for ${botId}:`, (err as Error).message);
-        if (isPaymentError(err)) { reply = PAYMENT_REPLY; replyColor = 'error'; }
+        // A reason-bearing fallback beats the old dead-end "couldn't generate…
+        // try again" — it names what went wrong and how to retry (re-send the
+        // prompt), instead of leaving the user staring at a generic failure.
+        if (!reply) reply = imageFailureReply(null).reply;
       }
-      if (!reply) reply = "Couldn't generate an image for that — try again, or switch back to Chat mode.";
     } else {
       // Text modes. The Ugly Bot's `honest`/`lie` personas override its system
       // prompt; every other bot just uses its own instruction.

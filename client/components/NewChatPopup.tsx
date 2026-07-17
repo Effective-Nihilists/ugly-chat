@@ -209,6 +209,11 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
   const count = selected.length + allEmails().length;
   const isGroup = count >= 2;
   const canSubmit = count >= 1 && !busy;
+  // A single recipient who isn't on ugly.chat only gets an EMAIL — no chat opens
+  // until they join. The button used to say "Start chat" here, promising a
+  // thread that won't exist; say what actually happens.
+  const soleEmail = count === 1 && selected.length === 0 ? allEmails()[0] : undefined;
+  const soleInvite = !!soleEmail && lookups[soleEmail]?.status === 'invite';
   const contactById = new Map(contacts.map((c) => [c.userId, c]));
 
   return (
@@ -370,6 +375,10 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
         <button type="button" disabled={!canSubmit} onClick={() => void submit()} style={ctaBtn(!canSubmit)} data-id="button-3">
           {isGroup ? (
             <>Create group · {count}</>
+          ) : soleInvite ? (
+            <>
+              <Mail size={16} /> Send invite
+            </>
           ) : (
             <>
               <MessageSquarePlus size={16} /> Start chat
