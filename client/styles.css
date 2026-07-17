@@ -944,17 +944,15 @@ a.uc-src:hover {
 .uc-tp-cbox input::placeholder { color: var(--app-foreground-muted); }
 
 /* Subtitle overlay — fixed light-on-dark (lives over the dark video stage). */
-.uc-subs { position: absolute; left: 16px; right: 16px; z-index: 4; display: flex; flex-direction: column; gap: 7px; text-align: center; pointer-events: none; }
-.uc-sub-line { font-family: var(--app-font-heading); font-weight: 700; font-size: 15px; line-height: 1.35; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7); color: rgba(255, 255, 255, 0.45); }
-.uc-sub-line .who { font-family: var(--app-font-mono); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); margin-right: 7px; }
+.uc-subs { position: absolute; left: 16px; right: 16px; z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 5px; text-align: center; pointer-events: none; }
+/* Each line carries its own scrim. A text-shadow alone is no match for a bright
+   camera frame — at 45% white the spoken line was simply unreadable over video. */
+.uc-sub-line { max-width: 100%; padding: 4px 10px; background: rgba(0, 0, 0, 0.62); font-family: var(--app-font-heading); font-weight: 700; font-size: 15px; line-height: 1.35; color: rgba(255, 255, 255, 0.72); }
+.uc-sub-line .who { font-family: var(--app-font-mono); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--app-primary); margin-right: 7px; }
 .uc-sub-line.past { font-size: 13px; }
 .uc-sub-line.active { color: #fff; }
 
 /* Mobile compose bar overlaid on video — fixed light-on-dark. */
-.uc-mcompose { display: flex; align-items: center; gap: 8px; padding: 5px 5px 5px 12px; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 10px; background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(10px); }
-.uc-mcompose input { flex: 1; border: none; background: none; outline: none; color: #fff; font-size: 13px; font-family: var(--app-font-body); }
-.uc-mcompose input::placeholder { color: rgba(255, 255, 255, 0.4); }
-.uc-mcompose:focus-within { border-color: rgba(255, 255, 255, 0.4); }
 
 /* ---- session telemetry strip (§9 receipts) ---- */
 .uc-telemetry { display: flex; align-items: stretch; border-bottom: 1px solid var(--app-border); background: var(--app-tertiary); overflow-x: auto; flex-shrink: 0; }
@@ -1009,4 +1007,224 @@ a.uc-src:hover {
   .uc-tel-cell { padding: 6px 8px; min-width: 0; flex: 0 1 auto; }
   .uc-tel-cell .k { font-size: 8px; letter-spacing: 0.08em; }
   .uc-tel-cell .v { font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+}
+
+/* ── video-call stage ────────────────────────────────────────────────────────
+   The stage composes every peer. 1 peer is full-bleed; 2-4 share an equal grid;
+   5+ promote the active speaker here and push the rest into `.uc-strip`. The
+   grid tracks are driven by the `n1..n4` class rather than auto-fit so a 3-way
+   is a deliberate 2x2-with-a-gap instead of three slivers. */
+/* The stage stops above a reserved control band. The bar used to float over a
+   full-bleed stage, and since it is centred, it sat exactly on the left edge of
+   any tile starting at the stage's midpoint — so in a 2-up the second peer's
+   name badge was covered by the mic button. Reserving the band fixes the whole
+   class of collision (labels, self-PiP, filmstrip) instead of nudging each one. */
+.uc-stage {
+  position: absolute;
+  inset: 0 0 var(--uc-band) 0;
+  display: grid;
+  gap: 2px;
+  z-index: 1;
+}
+.uc-stage.n1 { grid-template-columns: 1fr; }
+.uc-stage.n2 { grid-template-columns: 1fr 1fr; }
+.uc-stage.n3,
+.uc-stage.n4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+/* Odd tile out spans both columns rather than leaving a hole. */
+.uc-stage.n3 > :nth-child(3) { grid-column: 1 / -1; }
+
+.uc-tile {
+  position: relative;
+  overflow: hidden;
+  background: #0b1018;
+  min-width: 0;
+  min-height: 0;
+}
+/* Speaking ring is inset so it reads on a tile whose video bleeds to the edge. */
+.uc-tile.speaking::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--app-primary);
+  pointer-events: none;
+  z-index: 4;
+}
+/* Every tile is named. Peers used to be identified only by a single chip in the
+   stage corner, so in a group call you could not tell who was who. */
+.uc-tile-label {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 16px);
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  line-height: 1;
+}
+.uc-tile-label .n {
+  font-family: var(--app-font-heading);
+  font-weight: 700;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.uc-tile-label .ai {
+  font-family: var(--app-font-mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  padding: 2px 4px;
+  background: var(--app-primary);
+  color: #000;
+}
+
+.uc-strip {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: calc(var(--uc-band) + 8px);
+  z-index: 2;
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.uc-strip::-webkit-scrollbar { display: none; }
+.uc-strip .uc-tile {
+  flex: 0 0 auto;
+  width: 132px;
+  height: 92px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.uc-strip .uc-tile-label { left: 4px; bottom: 4px; padding: 2px 5px; }
+.uc-strip .uc-tile-label .n { font-size: 10px; }
+
+.uc-waiting {
+  position: absolute;
+  inset: 0 0 var(--uc-band) 0;
+  z-index: 1;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+  background: radial-gradient(circle at 50% 40%, #1b2430, #0d131b 70%);
+}
+.uc-waiting .ring {
+  width: 56px;
+  height: 56px;
+  border: 2px solid var(--app-primary);
+  border-radius: 50%;
+  opacity: 0.55;
+  animation: uc-ring 1.8s ease-out infinite;
+}
+@keyframes uc-ring {
+  0% { transform: scale(0.8); opacity: 0.7; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .uc-waiting .ring { animation: none; }
+}
+.uc-waiting .t {
+  font-family: var(--app-font-heading);
+  font-weight: 700;
+  font-size: 15px;
+  color: #fff;
+}
+.uc-waiting .s {
+  font-family: var(--app-font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  max-width: 34ch;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+@media (max-width: 640px) {
+  /* Four side-by-side tiles at 390px are unreadable — stack to one column. */
+  .uc-stage.n2 { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+  .uc-stage.n3 { grid-template-rows: repeat(3, 1fr); grid-template-columns: 1fr; }
+  .uc-stage.n3 > :nth-child(3) { grid-column: auto; }
+  .uc-strip .uc-tile { width: 96px; height: 68px; }
+}
+
+/* ── video-call chrome ───────────────────────────────────────────────────────
+   Control bar, self-PiP and their safe-area/mobile behaviour. These were inline
+   styles with hard-coded pixel offsets, which is why nothing adapted at 390px:
+   six 46px controls plus the end-call button measure ~400px and simply ran off
+   a 390px screen. */
+/* Height of the band the control bar owns; the stage ends here. Includes the
+   safe-area inset so the bar clears the iOS home indicator. */
+.uc-call-root {
+  --uc-band: calc(84px + env(safe-area-inset-bottom, 0px));
+}
+@media (max-width: 640px) {
+  .uc-call-root { --uc-band: calc(66px + env(safe-area-inset-bottom, 0px)); }
+}
+
+.uc-ctrlbar {
+  position: absolute;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px;
+  max-width: calc(100% - 20px);
+  backdrop-filter: blur(12px);
+}
+.uc-ctrl,
+.uc-ctrl-end {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+  place-items: center;
+  cursor: pointer;
+}
+/* End call is wider as well as red — rank by size and colour, not colour alone. */
+.uc-ctrl-end {
+  display: grid;
+  width: auto;
+  padding: 0 26px;
+}
+
+.uc-self {
+  position: absolute;
+  right: 18px;
+  /* Sits just above the reserved control band, never on top of the bar. */
+  bottom: calc(var(--uc-band) + 8px);
+  width: 132px;
+  height: 92px;
+  overflow: hidden;
+  z-index: 4;
+}
+/* The filmstrip must stop where the self-PiP starts rather than slide under it. */
+.uc-strip { right: 164px; }
+
+@media (max-width: 640px) {
+  /* Shrink the controls to fit rather than overflow the viewport. */
+  .uc-ctrlbar { gap: 5px; padding: 6px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+  .uc-ctrl { width: 40px; height: 40px; }
+  .uc-ctrl-end { height: 40px; padding: 0 16px; }
+  .uc-self { right: 10px; width: 84px; height: 60px; }
+  .uc-strip { left: 10px; right: 104px; }
+}
+
+/* Gradient scrim so the HUD stays readable over any camera frame. */
+.uc-hud-scrim {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 110px;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), transparent);
 }

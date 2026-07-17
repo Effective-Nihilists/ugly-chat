@@ -7,6 +7,7 @@ import { VirtualMessageList } from '../components/VirtualMessageList';
 import { createPortal } from 'react-dom';
 import { extractImages, extractFiles, ChatImage, ChatFile, ImageZoomViewer } from '../components/ChatMedia';
 import { nextSelectedId } from '../lib/messageSelection';
+import { directConversationPeer } from '../../shared/conversationId';
 import type { ChatMessage, ChatUser, ChatTypingEntry } from 'ugly-app/conversation/shared';
 import type { DBObject } from 'ugly-app/shared';
 import type { UserConversation } from '../../shared/collections';
@@ -806,12 +807,9 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           setTitle(uc.title);
         } else if (!isCancelled()) {
           // DM with no title → show the other participant's name (ugly.bot
-          // parity). Direct conversations are keyed by the two user ids joined
-          // with ':' (framework native) or legacy '+'. Either way, a 2-part id
-          // containing our own userId is a DM.
-          const sep = roomId.includes(':') ? ':' : roomId.includes('+') ? '+' : '';
-          const parts = sep ? roomId.split(sep).filter(Boolean) : [];
-          const other = parts.length === 2 ? parts.find((p) => p !== userId) : undefined;
+          // parity). The id format lives with the minter in shared/ — parsing it
+          // inline here is exactly how the header ended up showing `dm-G7QvP…`.
+          const other = directConversationPeer(roomId, userId);
           if (other) {
             const res = (await socket.request('profilesGet', { userIds: [other] })) as {
               profiles?: { name: string; avatar?: { image?: { uri?: string } } }[];
@@ -982,12 +980,12 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       setBotId(roomId.slice(3, roomId.length - userId.length - 1));
       return;
     }
-    if (roomId.includes('+')) {
-      const other = roomId.split('+').filter(Boolean).find((p) => p !== userId);
-      if (other === UGLY_BOT_ID) {
-        setBotId(other);
-        return;
-      }
+    // Same prefix trap as the header title: splitting the raw id on '+' yields
+    // `dm-<UGLY_BOT_ID>` half the time, which never matches UGLY_BOT_ID.
+    const dmPeer = directConversationPeer(roomId, userId);
+    if (dmPeer === UGLY_BOT_ID) {
+      setBotId(dmPeer);
+      return;
     }
     const botP = Object.values(profiles).find((p) => p.id !== userId && p.isBot);
     if (botP) setBotId(botP.id);
@@ -1529,19 +1527,18 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
             <Palette size={18} />
           </button>
         ) : null}
-        {/* Video call is human-to-human only — a text AI bot has nothing to
-            answer, so don't offer it in bot chats (read as confusing). */}
-        {botId ? null : (
-          <button
-            type="button"
-            onClick={() => videoRef.current?.start()}
-            aria-label="Start video call"
-            title="Start video call"
-            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', flexShrink: 0 }} data-id="start-video-call"
-          >
-            <Video size={19} />
-          </button>
-        )}
+        {/* Calling a bot IS a feature — it joins as an avatar that speaks its
+            replies (BotAvatarTile + TTS), so the affordance stays; it just says
+            what it does instead of implying a webcam on the other end. */}
+        <button
+          type="button"
+          onClick={() => videoRef.current?.start()}
+          aria-label={botId ? `Start a voice call with ${title}` : 'Start video call'}
+          title={botId ? `Voice call ${title}` : 'Start video call'}
+          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', flexShrink: 0 }} data-id="start-video-call"
+        >
+          <Video size={19} />
+        </button>
         {/* Group info / settings */}
         {canManageMembers ? (
           <button
@@ -1678,7 +1675,10 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       ) : null}
 
       {/* Session telemetry strip — shown only for bot conversations */}
-      {botId ? (() => {
+      {/* Both stat strips are about the THREAD, so they're hidden during a call
+          — they were stealing vertical space from the stage and reading as call
+          chrome ("2 in call · $0.004" next to each other is a puzzle). */}
+      {botId && !callActive ? (() => {
         const tel = messages
           .filter((m) => !!(m as { telemetry?: MsgTelemetry }).telemetry)
           .map((m) => (m as { telemetry?: MsgTelemetry }).telemetry!);
@@ -1688,7 +1688,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       })() : null}
 
       {/* Response-time totals strip — human DMs only, gated by settings toggle */}
-      {!hasBot && statsOn && statMsgs.length > 1 ? (
+      {!hasBot && !callActive && statsOn && statMsgs.length > 1 ? (
         <HumanTelemetryStrip msgs={statMsgs} meId={userId} leftOnRead={leftOnReadCount} />
       ) : null}
 

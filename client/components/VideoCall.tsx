@@ -122,18 +122,34 @@ const C = {
   brand: '#ff5500',
   brandGrad: 'linear-gradient(135deg, #ff8a4d 0%, #ff5500 50%, #d2470f 100%)',
   brandGlow: 'rgba(255,85,0,0.30)',
+  /** Reserved for End call — the only destructive control on the stage. */
+  danger: '#dc2626',
 };
+
+/** Tiles that share the stage grid before the rest are demoted to a filmstrip. */
+export const GRID_MAX = 4;
+
+/**
+ * Split the peers into the stage grid and the overflow filmstrip.
+ *
+ * Up to GRID_MAX everyone shares an equal grid. Beyond that, the active speaker
+ * (`activeId` — a bot mid-utterance counts) takes the stage alone and the rest
+ * ride in the strip, because a 9-way equal grid is nine unreadable stamps.
+ * Exported for tests: the stage previously rendered a single hard-coded peer,
+ * so a 3-way call showed one tile — this split is the fix and must stay honest.
+ */
+export function rankPeers(
+  peers: CallParticipant[],
+  activeId: string | null,
+): { heroPeers: CallParticipant[]; stripPeers: CallParticipant[] } {
+  if (peers.length <= GRID_MAX) return { heroPeers: peers, stripPeers: [] };
+  const active = peers.find((p) => p.userId === activeId) ?? peers[0]!;
+  return { heroPeers: [active], stripPeers: peers.filter((p) => p.userId !== active.userId) };
+}
 
 function resolveName(id: string, meId: string, isBot: boolean, profiles: CallProfiles): string {
   if (isBot) return profiles[id]?.name ?? 'ugly-bot';
   return profiles[id]?.name ?? id.slice(0, 8);
-}
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '?';
-  if (parts.length === 1) return (parts[0] ?? '?').slice(0, 2).toUpperCase();
-  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase();
 }
 
 function fmtClock(ms: number): string {
@@ -518,12 +534,22 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
 
   const participants = Object.values(call.participants);
 
-  // Resolve the "other" participant for the name-chip (first non-self).
-  const other = useMemo(
-    () => participants.find((p) => p.userId !== userId) ?? null,
+  const botParticipant = useMemo(() => participants.find((p) => p.isBot) ?? null, [participants]);
+
+  // Everyone but us gets a tile. The stage used to render only `participants
+  // .find(p => p.userId !== userId)`, so a 3-way call showed exactly one peer.
+  const peers = useMemo(
+    () => participants.filter((p) => p.userId !== userId),
     [participants, userId],
   );
-  const botParticipant = useMemo(() => participants.find((p) => p.isBot) ?? null, [participants]);
+
+  const { heroPeers, stripPeers } = useMemo(
+    () => rankPeers(peers, pendingBotText?.botId ?? speakingPeerId),
+    [peers, speakingPeerId, pendingBotText],
+  );
+
+  const isSpeaking = (p: CallParticipant) =>
+    p.isBot ? pendingBotText?.botId === p.userId : speakingPeerId === p.userId;
 
   // Render the immersive stage ONLY when the LOCAL user has joined. A peer (or a
   // never-leaving bot) keeping `call.active` true must not strand us on an empty
@@ -532,9 +558,6 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
   if (!joined) return null;
 
   const connState = status || 'connecting';
-  const otherName = other ? resolveName(other.userId, userId, other.isBot, profiles) : 'ugly-bot';
-  const otherState = botParticipant ? (pendingBotText ? 'speaking' : 'in call') : 'in call';
-
   // HUD stat line — REAL values only. Bot call → model · live; else → roster.
   // `status` is OUR connection to the SFU, so sitting alone in a call read
   // "1 in call · connected" — the app claiming a connection to nobody. Until a
@@ -549,6 +572,7 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
   return (
     <div
       data-id="video-call"
+      className="uc-call-root"
       style={{
         position: 'absolute',
         inset: 0,
@@ -574,6 +598,11 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
         return <span key={c} style={{ ...base, ...pos[c] }} aria-hidden />;
       })}
 
+      {/* Scrim behind the HUD. It's white text laid straight over whatever the
+          peer's camera happens to be pointing at — over a bright frame the stat
+          line was simply unreadable. */}
+      <div className="uc-hud-scrim" aria-hidden />
+
       {/* ── HUD top-left: LIVE timer + real stat line ─────────────────────── */}
       <div style={{ position: 'absolute', top: 18, left: 18, zIndex: 4, display: 'flex', flexDirection: 'column', gap: 5 }}>
         <span
@@ -595,7 +624,9 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
           style={{
             fontFamily: 'var(--app-font-mono, monospace)',
             fontSize: 10,
-            color: C.faintOnDark,
+            // Was 40% white — legible on the empty stage it was designed
+            // against, invisible once a camera feed sat behind it.
+            color: 'rgba(255,255,255,0.75)',
             letterSpacing: '0.06em',
           }}
         >
@@ -603,145 +634,63 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
         </span>
       </div>
 
-      {/* ── name-chip top-right ───────────────────────────────────────────── */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 18,
-          right: 18,
-          zIndex: 4,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '7px 11px',
-          border: `1px solid ${C.hairline}`,
-          background: 'rgba(0,0,0,0.45)',
-          backdropFilter: 'blur(8px)',
-        }}
-      >
-        <span
-          aria-hidden
-          style={{
-            width: 22,
-            height: 22,
-            display: 'grid',
-            placeItems: 'center',
-            fontSize: 9,
-            fontWeight: 800,
-            background: 'rgba(255,255,255,0.08)',
-            border: '1px solid rgba(255,255,255,0.18)',
-            color: '#fff',
-            fontFamily: 'var(--app-font-heading, sans-serif)',
-          }}
-        >
-          {botParticipant ? <BotIcon size={12} /> : initials(otherName)}
-        </span>
-        <div>
-          <div style={{ fontFamily: 'var(--app-font-heading, sans-serif)', fontWeight: 700, fontSize: 12, color: '#fff' }}>
-            {otherName}
-          </div>
-          <div style={{ fontFamily: 'var(--app-font-mono, monospace)', fontSize: 9, color: C.brand, letterSpacing: '0.08em' }}>
-            {otherState}
-          </div>
-        </div>
-      </div>
-
-      {/* ── tiles / stage centre ──────────────────────────────────────────── */}
-      {botParticipant ? (
-        // BOT call — centered avatar fills the stage; self is a PiP.
-        <div style={{ position: 'absolute', inset: 0 }} data-id="call-tile-peer">
-          {uglyBotSocket ? (
-            <BotAvatarTile
-              socket={uglyBotSocket}
-              botId={botParticipant.userId}
-              speakText={
-                pendingBotText?.botId === botParticipant.userId ? pendingBotText.text : null
-              }
-              onSubtitleIndex={(i) => {
-                const full =
-                  pendingBotText?.botId === botParticipant.userId ? pendingBotText.text : '';
-                if (!full) return;
-                const revealed = full.slice(0, i);
-                onBotTurn?.(botParticipant.userId, revealed, i >= full.length);
-              }}
-            />
-          ) : (
-            <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: C.faintOnDark }}>
-              ugly-bot
-            </div>
-          )}
-        </div>
+      {/* ── stage: adaptive tile grid ─────────────────────────────────────────
+          The stage used to render ONE peer (`participants.find(...)`) no matter
+          how many people were in the call — a 3-way showed one tile while the
+          transcript happily named all three. It now composes every participant:
+          1 → full-bleed · 2–4 → equal grid · 5+ → active speaker + filmstrip. */}
+      {peers.length === 0 ? (
+        <CallWaiting />
       ) : (
-        // 1:1 / 2-person — remote large; self is a PiP in the corner.
-        <div style={{ position: 'absolute', inset: 0 }}>
-          {other ? (
-            <div data-id="call-tile-peer" style={{ position: 'absolute', inset: 0 }}>
-              {/* `camOn === false` matters: turning a camera off only disables the
-                  track, so the stream still exists and RemoteTile rendered a solid
-                  BLACK rectangle — no avatar, no name, no reason. Fall back to the
-                  avatar tile the app already has. */}
-              {remoteStreams.has(other.userId) && other.camOn !== false ? (
-                <>
-                  <RemoteTile stream={remoteStreams.get(other.userId)!} speakerId={speakerId} />
-                  {/* Camera on (no avatar) → a simple audio pulse when speaking. */}
-                  {speakingPeerId === other.userId ? <SpeakingPulse /> : null}
-                </>
-              ) : (
-                // No remote video yet (camera off, or still connecting) → show
-                // the peer's avatar (3D over background, or circular image). When
-                // they speak a typed message, the avatar lip-syncs to the TTS.
-                <ParticipantAvatarTile
-                  name={resolveName(other.userId, userId, other.isBot, profiles)}
-                  glbUrl={profiles[other.userId]?.avatarGlbUrl ?? null}
-                  imageUrl={profiles[other.userId]?.avatarUrl ?? null}
-                  backgroundUrl={profiles[other.userId]?.backgroundUrl ?? null}
-                  speaking={speakingPeerId === other.userId}
-                  analyser={peerTts.analyser}
-                />
-              )}
-              <span
-                style={{
-                  position: 'absolute',
-                  left: 16,
-                  bottom: 16,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '6px 10px',
-                  background: 'rgba(0,0,0,0.55)',
-                  backdropFilter: 'blur(8px)',
-                  fontFamily: 'var(--app-font-heading, sans-serif)',
-                  fontWeight: 700,
-                  fontSize: 13,
-                  color: '#fff',
-                  zIndex: 3,
-                }}
-              >
-                {resolveName(other.userId, userId, other.isBot, profiles)}
-                {/* Peers had no way to know you'd muted — the audio just stopped. */}
-                {other.micOn === false ? <MicOff size={13} data-id="peer-muted" /> : null}
-                {other.camOn === false ? <VideoOff size={13} data-id="peer-cam-off" /> : null}
-              </span>
-            </div>
-          ) : (
-            <PeerPlaceholder name="Waiting for others…" />
-          )}
+        <div className={`uc-stage n${Math.min(heroPeers.length, 4)}`}>
+          {heroPeers.map((p) => (
+            <CallTile
+              key={p.userId}
+              participant={p}
+              name={resolveName(p.userId, userId, p.isBot, profiles)}
+              profile={profiles[p.userId]}
+              stream={remoteStreams.get(p.userId)}
+              speaking={isSpeaking(p)}
+              speakerId={speakerId}
+              botSocket={uglyBotSocket}
+              botSpeakText={pendingBotText?.botId === p.userId ? pendingBotText.text : null}
+              onBotSubtitle={(i) => {
+                const full = pendingBotText?.botId === p.userId ? pendingBotText.text : '';
+                if (!full) return;
+                onBotTurn?.(p.userId, full.slice(0, i), i >= full.length);
+              }}
+              analyser={peerTts.analyser}
+              hero={heroPeers.length === 1}
+            />
+          ))}
         </div>
       )}
+      {/* Overflow beyond the grid rides in a filmstrip rather than vanishing. */}
+      {stripPeers.length > 0 ? (
+        <div className="uc-strip" data-id="call-strip">
+          {stripPeers.map((p) => (
+            <CallTile
+              key={p.userId}
+              participant={p}
+              name={resolveName(p.userId, userId, p.isBot, profiles)}
+              profile={profiles[p.userId]}
+              stream={remoteStreams.get(p.userId)}
+              speaking={isSpeaking(p)}
+              botSocket={uglyBotSocket}
+              analyser={peerTts.analyser}
+              hero={false}
+            />
+          ))}
+        </div>
+      ) : null}
 
       {/* ── self PiP bottom-right ─────────────────────────────────────────── */}
       <div
         data-id="call-tile-self"
+        className="uc-self"
         style={{
-          position: 'absolute',
-          right: 18,
-          bottom: 88,
-          width: 132,
-          height: 92,
           border: '1px solid rgba(255,255,255,0.2)',
-          overflow: 'hidden',
           background: 'linear-gradient(135deg, #2a2d35, #14161b)',
-          zIndex: 4,
         }}
       >
         <video
@@ -787,19 +736,10 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
 
       {/* ── control bar, floating bottom-center ───────────────────────────── */}
       <div
+        className="uc-ctrlbar"
         style={{
-          position: 'absolute',
-          left: '50%',
-          bottom: 20,
-          transform: 'translateX(-50%)',
-          zIndex: 5,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          padding: 9,
           border: `1px solid ${C.hairline}`,
           background: C.panel,
-          backdropFilter: 'blur(12px)',
         }}
       >
         <CtrlButton
@@ -847,16 +787,11 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
           onClick={() => void leave()}
           aria-label="End call"
           title="End call"
-          style={{
-            height: 46,
-            padding: '0 22px',
-            display: 'grid',
-            placeItems: 'center',
-            border: 'none',
-            background: C.brandGrad,
-            color: '#fff',
-            cursor: 'pointer',
-          }}
+          className="uc-ctrl-end"
+          // The one irreversible control on the bar wore the SAME brand orange
+          // as the accent used by every toggle, so the destructive action was
+          // the least distinguishable thing on screen. Red, and only red here.
+          style={{ border: 'none', background: C.danger, color: '#fff' }}
         >
           <PhoneOff size={20} />
         </button>
@@ -883,25 +818,36 @@ function CtrlButton({
   off: boolean;
   dashed?: boolean;
 }): React.ReactElement {
+  // `off` (muted / camera stopped) used to render at 40% white — the state you
+  // most need to notice was the FAINTEST thing on the bar, and it read as
+  // "disabled" rather than "you are muted". Off is now emphatic red; on is full
+  // contrast; the brand orange is reserved for a deliberately-enabled toggle.
+  const border = off
+    ? '1px solid rgba(220,38,38,0.9)'
+    : active
+      ? `1px solid ${C.brand}`
+      : dashed
+        ? `1px dashed ${C.brand}`
+        : '1px solid rgba(255,255,255,0.22)';
   return (
     <button
       type="button"
       data-id={dataId}
+      className="uc-ctrl"
       onClick={onClick}
       aria-label={label}
       title={label}
+      aria-pressed={active || off}
       style={{
-        width: 46,
-        height: 46,
         display: 'grid',
         placeItems: 'center',
-        border: active
-          ? '1px solid #ff5500'
-          : dashed
-            ? '1px dashed #ff5500'
-            : '1px solid rgba(255,255,255,0.14)',
-        background: active ? 'rgba(255,85,0,0.30)' : 'rgba(255,255,255,0.05)',
-        color: active || dashed ? '#ff5500' : off ? 'rgba(255,255,255,0.4)' : '#fff',
+        border,
+        background: off
+          ? 'rgba(220,38,38,0.22)'
+          : active
+            ? 'rgba(255,85,0,0.30)'
+            : 'rgba(255,255,255,0.08)',
+        color: off ? '#fca5a5' : active || dashed ? C.brand : '#fff',
         cursor: 'pointer',
       }}
     >
@@ -911,34 +857,97 @@ function CtrlButton({
 }
 
 // Neutral peer placeholder (no media yet) — dark silhouette like the mock.
-function PeerPlaceholder({ name }: { name: string }): React.ReactElement {
+/**
+ * One participant on the stage.
+ *
+ * Every tile answers the questions a caller actually asks — who is this, are
+ * they talking, are they muted, is their camera on — because the old stage
+ * answered none of them: it rendered a single unlabelled peer, printed that
+ * peer's name twice elsewhere in two different styles, and had no mute or
+ * speaking state anywhere.
+ *
+ * Falls back to the participant's avatar (3D over their backdrop, else image,
+ * else initials) whenever there's no usable video — camera off, still pulling,
+ * or a bot, which never has a camera at all.
+ */
+function CallTile({
+  participant,
+  name,
+  profile,
+  stream,
+  speaking,
+  speakerId,
+  botSocket,
+  botSpeakText,
+  onBotSubtitle,
+  analyser,
+  hero,
+}: {
+  participant: CallParticipant;
+  name: string;
+  profile?: CallProfile | undefined;
+  stream?: MediaStream | undefined;
+  speaking: boolean;
+  speakerId?: string | undefined;
+  botSocket?: UglyBotSocket | null;
+  botSpeakText?: string | null;
+  onBotSubtitle?: ((i: number) => void) | undefined;
+  analyser?: AnalyserNode | null;
+  hero: boolean;
+}): React.ReactElement {
+  const muted = participant.micOn === false;
+  const camOff = participant.camOn === false;
+  const showVideo = !!stream && !camOff;
   return (
     <div
-      style={{
-        position: 'absolute',
-        inset: 0,
-        display: 'grid',
-        placeItems: 'center',
-        background: 'radial-gradient(circle at 50% 40%, #2f3b4a, #182230 60%, #0b1018 100%)',
-      }}
+      data-id="call-tile-peer"
+      className={`uc-tile${speaking ? ' speaking' : ''}`}
+      data-participant={participant.userId}
     >
-      <div
-        style={{
-          width: 120,
-          height: 120,
-          borderRadius: '50%',
-          border: '1px solid rgba(255,255,255,0.12)',
-          background: 'radial-gradient(circle at 45% 35%, rgba(255,255,255,0.16), rgba(255,255,255,0.02))',
-          display: 'grid',
-          placeItems: 'center',
-          fontFamily: 'var(--app-font-heading, sans-serif)',
-          fontWeight: 800,
-          fontSize: 22,
-          color: 'rgba(255,255,255,0.85)',
-        }}
-      >
-        {initials(name)}
-      </div>
+      {participant.isBot && botSocket ? (
+        <BotAvatarTile
+          socket={botSocket}
+          botId={participant.userId}
+          speakText={botSpeakText ?? null}
+          {...(onBotSubtitle ? { onSubtitleIndex: onBotSubtitle } : {})}
+        />
+      ) : showVideo ? (
+        <>
+          <RemoteTile stream={stream} {...(speakerId ? { speakerId } : {})} />
+          {speaking && hero ? <SpeakingPulse /> : null}
+        </>
+      ) : (
+        <ParticipantAvatarTile
+          name={name}
+          glbUrl={profile?.avatarGlbUrl ?? null}
+          imageUrl={profile?.avatarUrl ?? null}
+          backgroundUrl={profile?.backgroundUrl ?? null}
+          speaking={speaking}
+          analyser={analyser ?? null}
+        />
+      )}
+      {/* One authoritative label per tile — scrimmed, because grey mono straight
+          on a live video plate was unreadable. */}
+      <span className="uc-tile-label">
+        {muted ? <MicOff size={12} data-id="peer-muted" /> : null}
+        {camOff && !participant.isBot ? <VideoOff size={12} data-id="peer-cam-off" /> : null}
+        <span className="n">{name}</span>
+        {participant.isBot ? <span className="ai">AI</span> : null}
+      </span>
+    </div>
+  );
+}
+
+// Alone on the stage. This used to be `<PeerPlaceholder name="Waiting for
+// others…" />`, which ran the label through initials() and rendered a big
+// confident "WF" — a placeholder avatar for a person who does not exist. Say
+// the actual state instead.
+function CallWaiting(): React.ReactElement {
+  return (
+    <div className="uc-waiting" data-id="call-waiting">
+      <span className="ring" aria-hidden />
+      <div className="t">Waiting for others to join</div>
+      <div className="s">They&rsquo;ve been notified. You can leave and they&rsquo;ll still get the call.</div>
     </div>
   );
 }

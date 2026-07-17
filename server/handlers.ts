@@ -44,6 +44,7 @@ import type { Todo, UserPublicDoc } from '../shared/collections';
 import { collections } from '../shared/collections';
 import { cronTasks } from '../shared/cron';
 import { resolveEmailToUser, type ResolveEnv, type ResolveResult } from './resolveEmail';
+import { directConversationId, directConversationPeer } from '../shared/conversationId';
 
 /**
  * Resolve one recipient address for the start/group flows.
@@ -63,7 +64,6 @@ async function resolveRecipient(raw: string, env: ResolveEnv): Promise<ResolveRe
     throw new Error("Couldn't look up that email address right now. Please try again.");
   }
 }
-import { directConversationId } from '../shared/conversationId';
 import { sendInviteEmail } from './invite';
 
 // Server env access mirrors server/bots.ts (`globalThis.process.env`) — both
@@ -751,12 +751,12 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       const id = directConversationId(userId, r.userId);
       const existing = await getDb().getDoc(collections.conversation, id);
       if (!existing) {
+        // Same trap as conversationStart's 1:1 branch: conversationCreate has
+        // already added both ownerIds, and conversationUserAdd hard-rejects any
+        // conversation whose type isn't 'group' — so the follow-up call threw
+        // errorAccessDenied and no direct conversation could be created here.
         await engineConversationCreate(
           { id, type: 'direct', title: '', mode: 'private', ownerIds: [userId, r.userId] },
-          userId,
-        );
-        await engineConversationUserAdd(
-          { conversationId: id, userId: r.userId, role: 'member', visibility: 'visible' },
           userId,
         );
       }
@@ -955,15 +955,11 @@ interface ConversationListRow {
 
 // DM/1:1 conversation ids are `{otherId}+{myUserId}` (either order). Return the
 // participant that isn't the current user, or null for group ids (no '+').
+// The id format lives with the minter in shared/conversationId. This used to be
+// a second, subtly different copy of the parse that forgot the `dm-` prefix —
+// which is how the sidebar ended up titling DMs `dm-t4ECy`.
 function deriveOtherUserId(conversationId: string, userId: string): string | null {
-  // Direct conversations are keyed by the two user ids joined with ':' (framework
-  // native, e.g. the Love couple chat) or legacy '+'. A 2-part id that includes
-  // our own userId is a DM; the other part is the partner.
-  const sep = conversationId.includes(':') ? ':' : conversationId.includes('+') ? '+' : '';
-  if (!sep) return null;
-  const parts = conversationId.split(sep).filter(Boolean);
-  if (parts.length !== 2 || !parts.includes(userId)) return null;
-  return parts.find((p) => p !== userId) ?? null;
+  return directConversationPeer(conversationId, userId);
 }
 
 // Post a membership system message (memberAdd/memberRemove/memberLeave) as the

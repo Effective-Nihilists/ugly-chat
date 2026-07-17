@@ -8,7 +8,7 @@
  * join as participants with `isBot: true` and are rendered client-side as a
  * "fake call" (avatar + local TTS), needing no media track.
  */
-import { botUser } from './bots';
+import { isBot } from './bots';
 import type { CollectionDef, DBObject, DocFields } from 'ugly-app/shared';
 import type { Conversation } from '../shared/collections';
 
@@ -254,13 +254,21 @@ export async function videoMedia(
   });
 }
 
-/** Add a bot to the call as a client-side "fake call" participant. */
+/**
+ * Add a bot to the call as a client-side "fake call" participant.
+ *
+ * Gated on `isBot` (any `bot-` id), NOT `botUser` — that only resolves the
+ * static built-in BOTS map, which the canonical Ugly Bot left when it moved to
+ * the `bot` collection. Every attempt to call `bot-ugly` (or any custom bot)
+ * therefore died here with "not a bot": the avatar never joined, and the stage
+ * sat on "nobody has joined yet" for the app's flagship feature.
+ */
 export async function videoBotJoin(
   db: DbLike,
   collections: Collections,
   conversationId: string,
   botId: string,
 ): Promise<CallState> {
-  if (!botUser(botId)) throw new Error('not a bot');
+  if (!isBot(botId)) throw new Error('not a bot');
   return videoJoin(db, collections, conversationId, botId, true);
 }

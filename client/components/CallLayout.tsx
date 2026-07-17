@@ -233,7 +233,9 @@ export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(function 
   // and only (a) collapse the container to zero height when not joined and
   // (b) mount/unmount the transcript chrome as a sibling.
   const showSubs = wide ? collapsed : !expanded;
-  const subBottom = wide ? 96 : 124;
+  // Sits just above the control band. The mobile value used to be 124 to clear
+  // the floating in-call composer, which no longer exists.
+  const subBottom = wide ? 100 : 82;
   const onToggle = wide ? () => { setCollapsed((v) => !v); } : () => { setExpanded((v) => !v); };
   const transcriptCollapsed = wide ? collapsed : expanded;
   const showTranscript = joined && (wide ? !collapsed : expanded);
@@ -263,11 +265,11 @@ export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(function 
           }}
         >
           {stage(showSubs, subBottom, onToggle, transcriptCollapsed)}
-          {!wide && joined && !expanded ? (
-            <div className="uc-mcompose" style={{ position: 'absolute', left: 16, right: 16, bottom: 78, zIndex: 4 }}>
-              <MobileCompose onSend={appendTyped} />
-            </div>
-          ) : null}
+          {/* No always-on composer over the stage. On a 390px screen this input
+              sat permanently across the video just above the control bar, so the
+              first thing you saw in a call was a text box — and it covered the
+              bottom row of tiles. Typing lives behind the transcript toggle in
+              the control bar, which opens the panel (it has its own input). */}
         </div>
         {/* Transcript chrome — sibling; mounting it never moves the stage slot. */}
         {showTranscript ? (
@@ -314,30 +316,3 @@ export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(function 
   );
 });
 
-// Slim mobile compose input (light-on-dark, lives inside .uc-mcompose).
-function MobileCompose({ onSend }: { onSend: (text: string) => void }): React.ReactElement {
-  const [draft, setDraft] = useState('');
-  const submit = (): void => {
-    const t = draft.trim();
-    if (!t) return;
-    onSend(t);
-    setDraft('');
-  };
-  return (
-    <input
-      data-id="call-mobile-input"
-      value={draft}
-      onChange={(e) => {
-        setDraft(e.target.value);
-      }}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          submit();
-        }
-      }}
-      placeholder="Type during the call…"
-      aria-label="Type a message during the call"
-    />
-  );
-}
