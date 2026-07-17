@@ -910,4 +910,11 @@ a.uc-src:hover {
 .uc-tel-cell .k { font-family: var(--app-font-body); font-size: 9px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--app-foreground-muted); }
 .uc-tel-cell .v { font-family: var(--app-font-body); font-weight: 600; font-size: 13px; color: var(--app-foreground); font-variant-numeric: tabular-nums; }
 .uc-tel-cell .v.cost { color: var(--app-primary); }
-.uc-tel-note { align-self: center; margin-left: auto; padding: 0 14px; font-family: var(--app-font-body); font-size: 10px; color: var(--app-foreground-muted); letter-spacing: 0.04em; text-align: right; }
+.uc-tel-note { align-self: center; margin-left: auto; padding: 0 14px; font-family: var(--app-font-body); font-size: 10px; color: var(--app-foreground-muted); letter-spacing: 0.04em; text-align: right; white-space: nowrap; }
+/* On a phone the "billed to your key" note's auto-margin created a gap that
+   shoved the SPENT column off-screen. Drop the note and tighten cells so all
+   five (session/messages/tokens/model/spent) fit or scroll cleanly. */
+@media (max-width: 480px) {
+  .uc-tel-note { display: none; }
+  .uc-tel-cell { padding: 7px 11px; }
+}

@@ -840,6 +840,24 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   // Message subscription — isolated from the conversation setup above so that
   // "Load more" (which grows msgLimit) re-subscribes ONLY the message window.
   // We fetch the newest `msgLimit` (created: -1) and re-sort ascending for
+  // A 1:1 bot chat (`bc-<botId>-<userId>`) isn't a 2-part DM, so the partner-
+  // avatar resolution above skips it and the header falls back to a monogram
+  // even though the bot has a logo. Resolve the bot's avatar for the header.
+  useEffect(() => {
+    if (!botId) return;
+    const cancel = { current: false };
+    void (async () => {
+      try {
+        const res = (await socket.request('profilesGet', { userIds: [botId] })) as {
+          profiles?: { avatar?: { image?: { uri?: string } } }[];
+        };
+        const uri = res.profiles?.[0]?.avatar?.image?.uri;
+        if (uri && !cancel.current) setConvImage((img: unknown) => img ?? uri);
+      } catch { /* header keeps the monogram fallback */ }
+    })();
+    return () => { cancel.current = true; };
+  }, [botId, socket]);
+
   // display; `hasMore` is true while we're getting a full window (older history
   // likely remains). Marking-read + read-state refresh ride along on each batch.
   useEffect(() => {

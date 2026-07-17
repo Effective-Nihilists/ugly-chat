@@ -390,6 +390,27 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         }))
         .filter((r) => r.conversationId !== '');
 
+      // Backfill the row avatar for 1:1 bot chats (`bc-<botId>-<userId>`) that
+      // never stored a conversation image — otherwise the sidebar shows a bare
+      // letter monogram next to the bot's real logo in the thread. Parse the
+      // botId off the id (userId is known), then resolve all bot avatars in one
+      // batched call.
+      const botIdOf = (convId: string): string | null =>
+        convId.startsWith('bc-') && convId.endsWith(`-${userId}`)
+          ? convId.slice(3, convId.length - userId.length - 1) || null
+          : null;
+      const missing = rows.filter((r) => !r.image && botIdOf(r.conversationId));
+      if (missing.length > 0) {
+        const botIds = [...new Set(missing.map((r) => botIdOf(r.conversationId)!))];
+        const avatarById = new Map(
+          (await resolveProfiles(db, botIds)).map((p) => [p.id, p.avatar.image.uri]),
+        );
+        for (const r of rows) {
+          const bid = botIdOf(r.conversationId);
+          if (!r.image && bid) r.image = avatarById.get(bid) ?? null;
+        }
+      }
+
       rows.sort(
         (a, b) => Number(b.pinned) - Number(a.pinned) || b.lastActivity - a.lastActivity,
       );

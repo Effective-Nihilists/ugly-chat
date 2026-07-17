@@ -91,8 +91,8 @@ export default function ChatHomePage(): React.ReactElement {
         background: 'var(--app-main)',
       }}
     >
-      {/* Top-right icon cluster (mobile-facing — desktop has it in the sidebar) */}
-      <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 1 }}>{iconCluster}</div>
+      {/* The sidebar already carries the icon cluster on desktop, so the empty
+          hero doesn't repeat it (it read as a redundant, confusing second trio). */}
 
       {/* Faint 64px grid, radial-masked toward the top-center. */}
       <div
