@@ -53,7 +53,9 @@ export async function runBotSearch(opts: RunBotSearchOptions): Promise<void> {
 
   const model: ModelCaller = {
     complete: async ({ model: m, messages, maxTokens }) => {
-      const out = await opts.textGen(m, messages, maxTokens ?? 1024);
+      // Floor the answer budget at 2048 — cited answers over several sources were
+      // being cut off mid-sentence (dangling "**") at the old 1024 default.
+      const out = await opts.textGen(m, messages, Math.max(maxTokens ?? 0, 2048));
       return { text: out.text, telemetry: out.usage };
     },
   };

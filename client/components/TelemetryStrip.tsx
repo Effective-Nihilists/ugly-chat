@@ -1,5 +1,6 @@
 import React from 'react';
 import { sumTelemetry, formatTokens, formatCost, type MsgTelemetry } from '../../shared/telemetry';
+import { modelLabel } from '../lib/bots';
 
 export function TelemetryStrip({ telemetry, openedAt }: { telemetry: MsgTelemetry[]; openedAt: number }): React.ReactElement {
   const t = sumTelemetry(telemetry);
@@ -15,7 +16,7 @@ export function TelemetryStrip({ telemetry, openedAt }: { telemetry: MsgTelemetr
       {cell('session', `${mins}m`)}
       {cell('messages', String(t.messages))}
       {cell('tokens', formatTokens(t.totalTokens))}
-      {cell('model', t.model || '—')}
+      {cell('model', modelLabel(t.model) || '—')}
       {cell('spent', formatCost(t.totalCostUsd), true)}
       <span className="uc-tel-note">billed to your key</span>
     </div>

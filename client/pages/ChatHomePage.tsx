@@ -5,6 +5,8 @@ import { useRouter } from '../router';
 import { useConversations } from '../lib/conversations';
 import { openNewChatPopup } from '../components/NewChatPopup';
 import { openBotsPopup } from '../components/BotsPopup';
+import { startBotChat } from '../lib/bots';
+import { UGLY_BOT_ID } from '../../shared/bots';
 import { openThemeMenu } from '../components/ThemeMenu';
 import { openUglyBotSettings } from '../lib/uglyBot';
 import { ConversationListBody } from '../components/ConversationListBody';
@@ -41,6 +43,12 @@ export default function ChatHomePage(): React.ReactElement {
     openNewChatPopup(router, socket, recent, navigate);
   }, [router, socket, conversations, navigate]);
 
+  // Primary first-run action: drop straight into a chat with the built-in AI.
+  // "New conversation" (people) dead-ended newcomers on an empty contacts list.
+  const chatWithAI = useCallback(() => {
+    void startBotChat(socket, userId, { _id: UGLY_BOT_ID, ownerId: '', name: 'Ugly Bot' }, navigate);
+  }, [socket, userId, navigate]);
+
   const openBots = useCallback(() => {
     openBotsPopup(router, socket, userId, (botId) => { router.push('bot/:botId', { botId }); }, navigate);
   }, [router, socket, userId, navigate]);
@@ -67,6 +75,7 @@ export default function ChatHomePage(): React.ReactElement {
     loading={loading}
     navigate={navigate}
     openNew={openNew}
+    chatWithAI={chatWithAI}
     iconCluster={iconCluster}
   />;
 
@@ -131,28 +140,41 @@ export default function ChatHomePage(): React.ReactElement {
           when it didn&apos;t.
         </p>
 
-        <button
-          type="button"
-          onClick={openNew}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '13px 22px',
-            border: 'none',
-            cursor: 'pointer',
-            background: 'var(--app-primary)',
-            color: 'var(--app-on-primary)',
-            fontFamily: 'var(--app-font-heading)',
-            fontWeight: 800,
-            fontSize: 13,
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
-          }} data-id="new-conversation"
-        >
-          <Plus size={16} />
-          New conversation
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+          <button
+            type="button"
+            onClick={chatWithAI}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '13px 22px',
+              border: 'none',
+              cursor: 'pointer',
+              background: 'var(--app-primary)',
+              color: 'var(--app-on-primary)',
+              fontFamily: 'var(--app-font-heading)',
+              fontWeight: 800,
+              fontSize: 13,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+            }} data-id="chat-with-ai"
+          >
+            <Bot size={16} />
+            Chat with Ugly Bot
+          </button>
+          <button
+            type="button"
+            onClick={openNew}
+            style={{
+              border: 'none', background: 'transparent', cursor: 'pointer',
+              fontFamily: 'var(--app-font-mono)', fontSize: 11, letterSpacing: '0.06em',
+              textTransform: 'uppercase', color: 'var(--app-foreground-muted)',
+            }} data-id="new-conversation"
+          >
+            or message a person
+          </button>
+        </div>
 
         <div
           style={{
@@ -185,18 +207,21 @@ function MobileHome({
   loading,
   navigate,
   openNew,
+  chatWithAI,
   iconCluster,
 }: {
   conversations: ReturnType<typeof useConversations>['conversations'];
   loading: boolean;
   navigate: (conversationId: string) => void;
   openNew: () => void;
+  chatWithAI: () => void;
   iconCluster: React.ReactElement;
 }): React.ReactElement {
   const [q, setQ] = useState('');
   const filtered = q.trim()
     ? conversations.filter((c) => (c.title || '').toLowerCase().includes(q.trim().toLowerCase()))
     : conversations;
+  const showHero = !loading && !q.trim() && conversations.length === 0;
 
   return (
     <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', height: '100%', boxSizing: 'border-box', paddingBottom: 'env(safe-area-inset-bottom)', background: 'var(--app-sidebar)' }}>
@@ -229,16 +254,42 @@ function MobileHome({
         </button>
       </div>
 
-      {/* Conversation list (shared body) */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '2px 0 80px' }}>
-        <ConversationListBody
-          conversations={conversations}
-          filtered={filtered}
-          loading={loading}
-          searching={Boolean(q)}
-          activeId={null}
-          onSelect={navigate}
-        />
+      {/* Conversation list — or, on a fresh account, a hero that points at the AI
+          instead of a bare "No conversations yet" list. */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: showHero ? '0' : '2px 0 80px' }}>
+        {showHero ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', height: '100%', padding: '0 32px 60px', gap: 16 }}>
+            <h1 style={{ margin: 0, fontFamily: 'var(--app-font-heading)', fontWeight: 800, fontSize: 30, lineHeight: 1, letterSpacing: '-0.03em', color: 'var(--app-foreground)' }}>
+              Start chatting.
+            </h1>
+            <p style={{ margin: 0, maxWidth: 300, fontSize: 14, lineHeight: 1.5, color: 'var(--app-foreground-muted)' }}>
+              Talk to the AI on your own key, build your own bots, or message a real person.
+            </p>
+            <button
+              type="button"
+              onClick={chatWithAI}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 9, marginTop: 4, padding: '13px 22px', border: 'none', cursor: 'pointer', background: 'var(--app-primary)', color: 'var(--app-on-primary)', fontFamily: 'var(--app-font-heading)', fontWeight: 800, fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase' }} data-id="chat-with-ai"
+            >
+              <Bot size={16} /> Chat with Ugly Bot
+            </button>
+            <button
+              type="button"
+              onClick={openNew}
+              style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--app-font-mono)', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--app-foreground-muted)' }} data-id="new-conversation"
+            >
+              or message a person
+            </button>
+          </div>
+        ) : (
+          <ConversationListBody
+            conversations={conversations}
+            filtered={filtered}
+            loading={loading}
+            searching={Boolean(q)}
+            activeId={null}
+            onSelect={navigate}
+          />
+        )}
       </div>
 
       {/* Floating new-chat button */}

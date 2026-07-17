@@ -567,6 +567,13 @@ hr {
   font-size: 1.05em;
   line-height: 1.9;
 }
+/* Per-block auto direction: an Arabic-led paragraph/list-item flows RTL and
+   right-aligns, an English one stays LTR — without tagging each node with dir.
+   Fixes standalone Arabic translations rendering left-aligned/LTR. */
+.uc-arabic :is(p, li, blockquote, h1, h2, h3, h4) {
+  unicode-bidi: plaintext;
+  text-align: start;
+}
 
 /* Search citation cards — numbered [n] to mirror the inline [n] markers in the
    answer (a real sequence). Stark/mono to match the receipt + starter-button
@@ -575,7 +582,7 @@ hr {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-width: 520px;
+  max-width: min(520px, 100%);
   margin-top: 2px;
 }
 .uc-src {
@@ -589,6 +596,9 @@ hr {
   color: var(--app-foreground);
   text-decoration: none;
   transition: border-color 0.12s ease, background 0.12s ease;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 a.uc-src:hover {
   border-color: var(--app-primary);
@@ -791,7 +801,25 @@ a.uc-src:hover {
 }
 .uc-mode-badge.warn {
   border-color: var(--app-warning, #d97706);
-  color: var(--app-warning, #d97706);
+  background: var(--app-warning, #d97706);
+  color: #fff;
+}
+/* Per-message provenance tag on a satirical (Lie-mode) reply, so a fabricated
+   answer is visibly flagged in scrollback, not just while the header badge shows
+   Lie. Filled warning color — this is a "do not trust this" marker. */
+.uc-lie-tag {
+  display: inline-block;
+  vertical-align: middle;
+  margin: 0 6px 2px 0;
+  padding: 1px 6px;
+  font-family: var(--app-font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #fff;
+  background: var(--app-warning, #d97706);
+  border-radius: 0;
 }
 .uc-receipt { font-family: var(--app-font-mono); font-size: 10.5px; letter-spacing: 0.02em; color: var(--app-foreground-muted); display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap; white-space: normal; }
 .uc-receipt .cost { color: var(--app-primary); }

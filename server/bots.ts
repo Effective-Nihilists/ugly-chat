@@ -16,7 +16,7 @@ import { runBotSearch, SEARCH_BOT_ID } from './searchBot';
 import { getUserToken } from 'ugly-app/server/adapter/workers';
 import { defaultAvatar, type Avatar } from 'ugly-app/shared';
 import type { CollectionDef, GetDocsOptions } from 'ugly-app/shared';
-import { toAvatar } from './avatar';
+import { botAvatar } from './avatar';
 import { collections } from '../shared/collections';
 import type { Conversation, Message } from '../shared/collections';
 import { bumpListForMessage } from './listDenorm';
@@ -274,7 +274,7 @@ export async function getBotConfig(db: MinimalDb, botId: string): Promise<BotCon
       model: doc.model,
       firstMessage: (doc.firstMessage) ?? null,
       buttons: (doc.buttons as { label: string; prompt: string }[] | undefined) ?? [],
-      avatar: toAvatar(doc.avatar),
+      avatar: botAvatar(doc),
     };
   }
   // A migrated bot with no editable `bot` row is no longer resolvable as a bot
@@ -465,7 +465,20 @@ export async function triggerBotReplies(
       }
     }
     await conversationMessageCreate(
-      { conversationId, message: { text: reply, markdown: reply, onlyUserIds: ['global'], ...(replyColor ? { color: replyColor } : {}), ...(usage ? { telemetry: usage } : {}) } },
+      {
+        conversationId,
+        message: {
+          text: reply,
+          markdown: reply,
+          onlyUserIds: ['global'],
+          ...(replyColor ? { color: replyColor } : {}),
+          ...(usage ? { telemetry: usage } : {}),
+          // Stamp the mode on satirical (Lie) replies so the transcript can flag
+          // them — otherwise a fabricated answer is indistinguishable from a real
+          // one on scrollback, long after the header badge has moved on.
+          ...(mode === 'lie' ? { custom: { botMode: 'lie' } } : {}),
+        },
+      },
       botId,
     );
     // Surface the bot's reply in the sidebar (preview + unread for recipients).

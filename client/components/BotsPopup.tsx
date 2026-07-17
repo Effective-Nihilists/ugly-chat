@@ -164,25 +164,31 @@ export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPo
                     <BotIcon size={22} style={{ opacity: 0.6 }} />
                   </div>
                 )}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--app-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.name}</div>
-                  <div style={{ fontSize: 13, color: 'var(--app-foreground)', opacity: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.model ?? ''}</div>
-                </div>
                 <button
                   type="button"
-                  title="Chat"
+                  onClick={() => { onClose(); void startBotChat(socket, userId, b, (cid) => { navigate(cid); }); }}
+                  aria-label={`Chat with ${b.name}`}
+                  style={{ flex: 1, minWidth: 0, textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer', padding: 0 }}
+                  data-id="bot-open"
+                >
+                  <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--app-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.name}</div>
+                  <div style={{ fontSize: 13, color: 'var(--app-foreground)', opacity: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.model ?? ''}</div>
+                </button>
+                <button
+                  type="button"
+                  title="Chat" aria-label={`Chat with ${b.name}`}
                   onClick={() => { onClose(); void startBotChat(socket, userId, b, (cid) => { navigate(cid); }); }}
                   style={iconBtn} data-id="button"
                 >
                   <MessageSquare size={18} />
                 </button>
-                <button type="button" title="Edit" onClick={() => { onClose(); editBot(b._id); }} style={iconBtn} data-id="button-2">
+                <button type="button" title="Edit" aria-label={`Edit ${b.name}`} onClick={() => { onClose(); editBot(b._id); }} style={iconBtn} data-id="button-2">
                   <Pencil size={18} />
                 </button>
                 {confirmId === b._id ? (
                   <button
                     type="button"
-                    title="Confirm delete"
+                    title="Confirm delete" aria-label={`Confirm delete ${b.name}`}
                     onClick={() => { remove(b._id); setConfirmId(null); }}
                     style={{ ...iconBtn, width: 'auto', padding: '0 12px', gap: 6, color: '#fff', background: 'var(--app-error)', border: 'none', fontSize: 13, fontWeight: 700 }} data-id="delete"
                   >
@@ -191,7 +197,7 @@ export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPo
                 ) : (
                   <button
                     type="button"
-                    title="Delete"
+                    title="Delete" aria-label={`Delete ${b.name}`}
                     onClick={() => { setConfirmId(b._id); }}
                     style={{ ...iconBtn, color: 'var(--app-error)' }} data-id="button-3"
                   >

@@ -58,8 +58,8 @@ export const IMAGE_MODELS: { id: string; label: string }[] = [
 // Image aspect ratios (maps to the proxy's `options.aspectRatio`).
 export const IMAGE_SIZES: { id: string; label: string }[] = [
   { id: 'square', label: '1:1 Square' },
-  { id: 'portrait_4_3', label: '4:3 Portrait' },
-  { id: 'portrait_16_9', label: '16:9 Portrait' },
+  { id: 'portrait_4_3', label: '3:4 Portrait' },
+  { id: 'portrait_16_9', label: '9:16 Portrait' },
   { id: 'landscape_4_3', label: '4:3 Landscape' },
   { id: 'landscape_16_9', label: '16:9 Landscape' },
 ];

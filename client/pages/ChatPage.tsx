@@ -52,6 +52,23 @@ interface Source {
   citation?: string;
 }
 
+// Decode HTML entities (incl. double-encoded `&amp;quot;`) that leak into search
+// source titles, so cards show real quotes/ampersands instead of raw entities.
+function decodeEntities(s: string): string {
+  let out = s;
+  let prev = '';
+  for (let i = 0; i < 3 && out !== prev; i++) {
+    prev = out;
+    out = out
+      .replace(/&quot;/g, '"')
+      .replace(/&#0?39;|&apos;/g, "'")
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&');
+  }
+  return out;
+}
+
 interface MessageDoc extends DBObject {
   conversationId: string;
   userId: string;
@@ -69,7 +86,7 @@ interface MessageDoc extends DBObject {
   systemType?: string;
   systemParam?: string;
   telemetry?: MsgTelemetry;
-  custom?: { sources?: Source[] };
+  custom?: { sources?: Source[]; botMode?: string };
 }
 
 // A tappable message button: a custom-bot starter ({label, prompt}) or a generic
@@ -315,6 +332,9 @@ function MessageBody(props: {
             ) : null}
             {hasBody ? (
               <div className={`${mediaBubble ? 'uc-cap' : ''}${hasArabic ? ' uc-arabic' : ''}`.trim() || undefined} {...(hasArabic ? { dir: 'auto' as const } : {})}>
+                {(msg as { botMode?: string }).botMode === 'lie' ? (
+                  <span className="uc-lie-tag" title="Lie mode: this answer is deliberately, satirically false.">Lie</span>
+                ) : null}
                 <MdastViewer markdown={bodyText} width={520} openUri={openLink} />
                 {(msg as { edited?: unknown }).edited ? (
                   <span style={{ fontSize: 11, opacity: 0.5, marginLeft: 6 }}>(edited)</span>
@@ -386,8 +406,9 @@ function MessageBody(props: {
                   : s.url && s.url.length > 0
                     ? s.url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0] ?? ''
                     : '';
-              const title =
-                s.title.length > 0 ? s.title : domain.length > 0 ? domain : s.url ?? '';
+              const title = decodeEntities(
+                s.title.length > 0 ? s.title : domain.length > 0 ? domain : s.url ?? '',
+              );
               const inner = (
                 <>
                   <span className="n">[{i + 1}]</span>
@@ -612,6 +633,7 @@ function toChatMessage(d: MessageDoc): ChatMessage {
     ...(d.buttons ? { buttons: d.buttons } : {}),
     ...(d.linkPreviews ? { linkPreviews: d.linkPreviews } : {}),
     ...(d.custom?.sources?.length ? { sources: d.custom.sources } : {}),
+    ...(d.custom?.botMode ? { botMode: d.custom.botMode } : {}),
     ...(d.edited ? { edited: true } : {}),
     ...(d.systemType ? { systemType: d.systemType, systemParam: d.systemParam } : {}),
     ...(d.telemetry ? { telemetry: d.telemetry } : {}),
@@ -1408,15 +1430,19 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
             <Palette size={18} />
           </button>
         ) : null}
-        <button
-          type="button"
-          onClick={() => videoRef.current?.start()}
-          aria-label="Start video call"
-          title="Start video call"
-          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', flexShrink: 0 }} data-id="start-video-call"
-        >
-          <Video size={19} />
-        </button>
+        {/* Video call is human-to-human only — a text AI bot has nothing to
+            answer, so don't offer it in bot chats (read as confusing). */}
+        {botId ? null : (
+          <button
+            type="button"
+            onClick={() => videoRef.current?.start()}
+            aria-label="Start video call"
+            title="Start video call"
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', flexShrink: 0 }} data-id="start-video-call"
+          >
+            <Video size={19} />
+          </button>
+        )}
         {/* Group info / settings */}
         {canManageMembers ? (
           <button

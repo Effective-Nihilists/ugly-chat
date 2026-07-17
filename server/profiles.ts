@@ -11,7 +11,7 @@
 import { defaultAvatar, type Avatar } from 'ugly-app/shared';
 import type { CollectionDef } from 'ugly-app/shared';
 import { botUser } from './bots';
-import { toAvatar } from './avatar';
+import { botAvatar } from './avatar';
 import { uglyBotRequest } from './uglybot';
 import { collections } from '../shared/collections';
 
@@ -43,7 +43,7 @@ export async function resolveProfiles(db: DbLike, userIds: string[]): Promise<Pr
     // collection (authoritative for their name/avatar).
     const botDoc = await db.getDoc(collections.bot, id);
     if (botDoc) {
-      out.push({ id, name: botDoc.name, avatar: toAvatar(botDoc.avatar), isBot: true });
+      out.push({ id, name: botDoc.name, avatar: botAvatar(botDoc), isBot: true });
       continue;
     }
     // A `bot-` id with no editable row yet is still a bot (minimal persona).
