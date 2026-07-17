@@ -128,15 +128,22 @@ export function parseImageGenResponse(data: unknown): string {
 }
 
 // Image generation via ugly.bot's user-billed image endpoint (same auth model as
-// uglyBotTextGen). Returns the generated image URL (or an inline data: URL), or
-// '' on failure.
-async function uglyBotImageGen(model: string, prompt: string, size: string): Promise<string> {
+// uglyBotTextGen). Returns the generated image URL (or an inline data: URL) plus
+// usage, so an image turn moves the SPENT/MESSAGES meter like a text turn does
+// (it previously reported nothing and the meter looked frozen). `url` is '' on
+// failure.
+async function uglyBotImageGen(
+  model: string,
+  prompt: string,
+  size: string,
+): Promise<{ url: string; usage: MsgTelemetry }> {
   const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
   const base = env.UGLY_BOT_LOCAL === '1' ? 'http://localhost:3000' : env.UGLY_BOT_URL ?? 'https://ugly.bot';
   const userToken = getUserToken();
   const endpoint = userToken ? `${base}/v1/ai/user-billed/image` : `${base}/v1/ai/image`;
   const bearer = userToken ?? env.UGLY_BOT_TOKEN;
   if (!bearer) throw new Error('no end-user token and UGLY_BOT_TOKEN not set');
+  const t0 = Date.now();
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${bearer}` },
@@ -145,7 +152,17 @@ async function uglyBotImageGen(model: string, prompt: string, size: string): Pro
   if (!res.ok) throw new Error(`imageGen HTTP ${res.status}`);
   const data = (await res.json()) as Record<string, unknown>;
   if (data.error) throw new Error(typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
-  return parseImageGenResponse(data);
+  const cost = Number(data.realCostUsd ?? data.costUsd ?? 0);
+  return {
+    url: parseImageGenResponse(data),
+    usage: {
+      model,
+      inputTokens: 0,
+      outputTokens: 0,
+      costUsd: Number.isFinite(cost) ? cost : 0,
+      latencyMs: Date.now() - t0,
+    },
+  };
 }
 
 // Ugly Bot persona overrides for the non-default text modes (mirrors the old
@@ -424,8 +441,12 @@ export async function triggerBotReplies(
       const prompt = history[history.length - 1]?.content ?? '';
       try {
         if (prompt) {
-          const url = await uglyBotImageGen(cfg.imageModel ?? 'flux_1_dev', prompt, cfg.imageSize ?? 'square');
-          if (url) reply = `![${prompt.slice(0, 80).replace(/[\[\]]/g, '')}](${url})`;
+          const out = await uglyBotImageGen(cfg.imageModel ?? 'flux_1_dev', prompt, cfg.imageSize ?? 'square');
+          if (out.url) {
+            reply = `![${prompt.slice(0, 80).replace(/[\[\]]/g, '')}](${out.url})`;
+            // Report the image turn on the meter (model + real cost), like text.
+            usage = out.usage;
+          }
         }
       } catch (err) {
         console.warn(`[bots] imageGen failed for ${botId}:`, (err as Error).message);

@@ -911,10 +911,50 @@ a.uc-src:hover {
 .uc-tel-cell .v { font-family: var(--app-font-body); font-weight: 600; font-size: 13px; color: var(--app-foreground); font-variant-numeric: tabular-nums; }
 .uc-tel-cell .v.cost { color: var(--app-primary); }
 .uc-tel-note { align-self: center; margin-left: auto; padding: 0 14px; font-family: var(--app-font-body); font-size: 10px; color: var(--app-foreground-muted); letter-spacing: 0.04em; text-align: right; white-space: nowrap; }
+/* Keyboard focus. There was no focus indicator anywhere — every control returned
+   outline:none with no replacement, so keyboard/AT users were flying blind. Use
+   :focus-visible so pointer users never see a ring. */
+:where(button, a, input, textarea, select, [tabindex], [contenteditable="true"]):focus-visible {
+  outline: 2px solid var(--app-primary);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Attachment problem (too large / upload failed) — shown above the composer.
+   These used to be console-only, so files vanished with no explanation. */
+.uc-attach-error {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--app-error);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--app-error) 8%, transparent);
+  color: var(--app-error);
+  font-family: var(--app-font-mono);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.uc-attach-error button {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  padding: 2px;
+  flex-shrink: 0;
+}
+
 /* On a phone the "billed to your key" note's auto-margin created a gap that
    shoved the SPENT column off-screen. Drop the note and tighten cells so all
    five (session/messages/tokens/model/spent) fit or scroll cleanly. */
 @media (max-width: 480px) {
   .uc-tel-note { display: none; }
-  .uc-tel-cell { padding: 7px 11px; }
+  /* Fit all five cells inside 390px instead of relying on a scroll nobody can
+     see: tighten the gutters, shrink the type a step, and let the one long value
+     (the model name) ellipsis rather than shoving SPENT past the edge. */
+  .uc-tel-cell { padding: 6px 8px; min-width: 0; flex: 0 1 auto; }
+  .uc-tel-cell .k { font-size: 8px; letter-spacing: 0.08em; }
+  .uc-tel-cell .v { font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
 }

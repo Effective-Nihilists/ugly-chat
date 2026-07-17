@@ -43,7 +43,26 @@ import { requests } from '../shared/api';
 import type { Todo, UserPublicDoc } from '../shared/collections';
 import { collections } from '../shared/collections';
 import { cronTasks } from '../shared/cron';
-import { resolveEmailToUser, type ResolveEnv } from './resolveEmail';
+import { resolveEmailToUser, type ResolveEnv, type ResolveResult } from './resolveEmail';
+
+/**
+ * Resolve one recipient address for the start/group flows.
+ *
+ * An INVALID address is skipped (null) so one typo doesn't kill the batch. Any
+ * OTHER failure — missing UGLY_BOT_TOKEN, lookup outage, bad response — is
+ * re-thrown with a message worth showing. Swallowing every error to null turned
+ * a config outage into a bogus "No recipients" and a silent dead end: the
+ * dialog counted your recipients, then threw them away without a word.
+ */
+async function resolveRecipient(raw: string, env: ResolveEnv): Promise<ResolveResult | null> {
+  try {
+    return await resolveEmailToUser(raw, env);
+  } catch (err) {
+    if (/invalid email/i.test((err as Error).message)) return null;
+    console.error('[chat] email lookup failed', err);
+    throw new Error("Couldn't look up that email address right now. Please try again.");
+  }
+}
 import { directConversationId } from '../shared/conversationId';
 import { sendInviteEmail } from './invite';
 
@@ -742,10 +761,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       );
       const invited: string[] = [];
       for (const raw of input.emails) {
-        const r = await resolveEmailToUser(raw, getEnv()).catch((err: unknown) => {
-          console.error('[group] resolve failed', err);
-          return null;
-        });
+        const r = await resolveRecipient(raw, getEnv());
         if (!r) continue;
         if (r.status === 'found') {
           await engineConversationUserAdd(
@@ -769,10 +785,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       const invited: string[] = [];
       const fromEmail: string[] = [];
       for (const raw of input.emails ?? []) {
-        const r = await resolveEmailToUser(raw, getEnv()).catch((err: unknown) => {
-          console.error('[start] resolve failed', err);
-          return null;
-        });
+        const r = await resolveRecipient(raw, getEnv());
         if (!r) continue;
         if (r.status === 'found') fromEmail.push(r.userId);
         else invited.push(r.email);
@@ -786,12 +799,12 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         const id = directConversationId(userId, other);
         const existing = await getDb().getDoc(collections.conversation, id);
         if (!existing) {
+          // conversationCreate already inserts a conversationUser + userConversation
+          // for every ownerId, so both people are members here. Do NOT follow up
+          // with conversationUserAdd: it hard-rejects any conversation whose type
+          // isn't 'group' (errorAccessDenied), which killed every new 1:1.
           await engineConversationCreate(
             { id, type: 'direct', title: '', mode: 'private', ownerIds: [userId, other] },
-            userId,
-          );
-          await engineConversationUserAdd(
-            { conversationId: id, userId: other, role: 'member', visibility: 'visible' },
             userId,
           );
         }

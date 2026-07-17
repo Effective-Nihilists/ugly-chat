@@ -126,6 +126,8 @@ interface PendingAttachment {
   name: string;
   type: string;
   uploading: boolean;
+  /** Upload failed — the chip stays visible (flagged) instead of vanishing. */
+  failed?: boolean;
 }
 
 // ugly.bot uses lucide icons, never emoji.
@@ -708,6 +710,9 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   // Track when the user opened this conversation (for the session-duration cell).
   const openedAtRef = useRef(Date.now());
   const [pending, setPending] = useState<PendingAttachment[]>([]);
+  // User-facing attachment problem (too large / upload failed). Previously these
+  // were console-only, so files vanished silently.
+  const [attachError, setAttachError] = useState<string | null>(null);
   // Bot-chat extras: the conversation's bot id (if any), its starter buttons
   // (shown persistently above the composer), and the header "⋯" menu state.
   const [botId, setBotId] = useState<string | null>(null);
@@ -840,6 +845,17 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   // Message subscription — isolated from the conversation setup above so that
   // "Load more" (which grows msgLimit) re-subscribes ONLY the message window.
   // We fetch the newest `msgLimit` (created: -1) and re-sort ascending for
+  // Escape closes the ⋯ menu. Without this the only way out was clicking the
+  // invisible overlay, which also sat on top of the composer eating clicks.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') { setMenuOpen(false); setConfirmDeleteConv(false); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener('keydown', onKey); };
+  }, [menuOpen]);
+
   // A 1:1 bot chat (`bc-<botId>-<userId>`) isn't a 2-part DM, so the partner-
   // avatar resolution above skips it and the header falls back to a monogram
   // even though the bot has a logo. Resolve the bot's avatar for the header.
@@ -1040,9 +1056,14 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const onFiles = useCallback((files: FileList | null) => {
     if (!files) return;
     const MAX_BYTES = 25 * 1024 * 1024; // 25 MB — well under the 100 MB Worker limit
+    setAttachError(null);
     for (const file of Array.from(files)) {
+      // Over the cap: SAY so. This used to `continue` with only a console.warn —
+      // the file just vanished and the user had no idea it wasn't attached.
       if (file.size > MAX_BYTES) {
-        console.warn('[ChatPage] file too large, skipped:', file.name, file.size);
+        setAttachError(
+          `"${file.name}" is ${(file.size / 1024 / 1024).toFixed(1)} MB — over the 25 MB limit, so it wasn't attached.`,
+        );
         continue;
       }
       const preview = URL.createObjectURL(file);
@@ -1054,9 +1075,12 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           const { key } = await uploadBlob(processed, { name: file.name });
           setPending((p) => p.map((x) => (x.id === id ? { ...x, key, uploading: false } : x)));
         } catch (err) {
+          // Keep the chip, flagged as failed, and say so. Silently dropping it and
+          // sending the message text-only is exactly the "told you it sent when it
+          // didn't" sin this product's own landing page disavows.
           console.error('[ChatPage] upload failed', err);
-          URL.revokeObjectURL(preview);
-          setPending((p) => p.filter((x) => x.id !== id));
+          setPending((p) => p.map((x) => (x.id === id ? { ...x, uploading: false, failed: true } : x)));
+          setAttachError(`"${file.name}" failed to upload. Remove it, or try again.`);
         }
       })();
     }
@@ -1074,23 +1098,40 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   // the message markdown (images inline, other files as links), then send.
   const handleSendWithAttachments = useCallback(
     (text: string) => {
+      // Never send while an attachment is unresolved. Sending text-only and
+      // dropping the file is the app telling you the message sent when it didn't.
+      if (pending.some((p) => p.uploading)) {
+        setAttachError('Still uploading — give it a moment, then send.');
+        return;
+      }
+      if (pending.some((p) => p.failed)) {
+        setAttachError("An attachment failed to upload, so nothing was sent. Remove it or try again.");
+        return;
+      }
       const ready = pending.filter((p) => p.key);
       if (ready.length === 0) {
         handleSend(text);
         return;
       }
       setPending([]);
+      setAttachError(null);
       void (async () => {
         const parts = text.trim() ? [text.trim()] : [];
+        const dropped: string[] = [];
         for (const att of ready) {
           try {
             const url = await promoteBlob(socket, att.key);
             parts.push(att.type.startsWith('image/') ? `![${att.name}](${url})` : `[${att.name}](${url})`);
           } catch (err) {
             console.error('[ChatPage] promote failed', err);
+            dropped.push(att.name);
           } finally {
             URL.revokeObjectURL(att.preview);
           }
+        }
+        // Own up to anything that didn't make it rather than quietly omitting it.
+        if (dropped.length > 0) {
+          setAttachError(`Couldn't attach ${dropped.join(', ')} — left out of the message.`);
         }
         const markdown = parts.join('\n\n');
         if (markdown.trim()) handleSend(markdown);
@@ -1376,13 +1417,18 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   // Header subtitle model: the bot's configured model, else the model named on
   // the most recent telemetry receipt (covers bots whose doc we couldn't read).
   const headerModel = useMemo(() => {
+    // In Image mode the work is done by the IMAGE model — showing the text model
+    // next to a spend figure was simply the wrong name for what just ran.
+    if (botMode === 'image') {
+      return IMAGE_MODELS.find((m) => m.id === botImageModel)?.label ?? botImageModel;
+    }
     if (botModel) return modelLabel(botModel);
     for (let i = messages.length - 1; i >= 0; i--) {
       const t = (messages[i] as { telemetry?: MsgTelemetry }).telemetry;
       if (t?.model) return modelLabel(t.model);
     }
     return '';
-  }, [botModel, messages]);
+  }, [botModel, botMode, botImageModel, messages]);
 
   // ⋯-menu picker row (label + check). Reused for mode / model / image rows.
   const menuLabelStyle: React.CSSProperties = { padding: '8px 14px 4px', fontSize: 11, fontWeight: 700, color: 'var(--app-foreground-muted)', textTransform: 'uppercase', letterSpacing: 0.5 };
@@ -1489,7 +1535,10 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
             {menuOpen ? (
               <>
                 <div onClick={() => { setMenuOpen(false); setConfirmDeleteConv(false); }} style={{ position: 'fixed', inset: 0, zIndex: 20 }} data-id="div-3" />
-                <div style={{ position: 'absolute', top: 38, right: 0, zIndex: 21, background: 'var(--app-main)', border: '1px solid var(--app-border)', borderRadius: 10, boxShadow: 'var(--app-shadow-button-default)', minWidth: 200, overflow: 'hidden', maxHeight: 360, overflowY: 'auto' }}>
+                {/* maxHeight was a flat 360px against ~530px of content, so 4 of
+                    the 9 models were silently unreachable behind an invisible
+                    overlay scrollbar. Size to the viewport instead. */}
+                <div style={{ position: 'absolute', top: 38, right: 0, zIndex: 21, background: 'var(--app-main)', border: '1px solid var(--app-border)', borderRadius: 10, boxShadow: 'var(--app-shadow-button-default)', minWidth: 200, overflow: 'hidden', maxHeight: 'min(70vh, 560px)', overflowY: 'auto' }}>
                   {botId ? (
                     <div style={{ borderBottom: '1px solid var(--app-border)' }}>
                       <div style={menuLabelStyle}>Mode</div>
@@ -1676,14 +1725,23 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                 ))}
               </div>
             ) : null}
+            {attachError ? (
+              <div className="uc-attach-error" role="status" data-id="attach-error">
+                <AlertTriangle size={13} style={{ flexShrink: 0 }} />
+                <span style={{ flex: 1, minWidth: 0 }}>{attachError}</span>
+                <button type="button" onClick={() => { setAttachError(null); }} aria-label="Dismiss" data-id="attach-error-dismiss">
+                  <X size={12} />
+                </button>
+              </div>
+            ) : null}
             {pending.length > 0 ? (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
                 {pending.map((p) => (
-                  <div key={p.id} style={{ position: 'relative', width: 60, height: 60 }}>
+                  <div key={p.id} style={{ position: 'relative', width: 60, height: 60 }} title={p.failed ? `${p.name} — upload failed` : p.name}>
                     {p.type.startsWith('image/') ? (
-                      <img src={p.preview} alt={p.name} style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 10, opacity: p.uploading ? 0.45 : 1, border: '1px solid var(--app-border)' }} />
+                      <img src={p.preview} alt={p.name} style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 10, opacity: p.uploading ? 0.45 : 1, border: p.failed ? '1.5px solid var(--app-error)' : '1px solid var(--app-border)' }} />
                     ) : (
-                      <div style={{ width: 60, height: 60, borderRadius: 10, border: '1px solid var(--app-border)', background: 'var(--app-tertiary)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, fontSize: 9, padding: 4, textAlign: 'center', color: 'var(--app-foreground)', opacity: p.uploading ? 0.45 : 1, overflow: 'hidden' }}>
+                      <div style={{ width: 60, height: 60, borderRadius: 10, border: p.failed ? '1.5px solid var(--app-error)' : '1px solid var(--app-border)', background: 'var(--app-tertiary)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, fontSize: 9, padding: 4, textAlign: 'center', color: 'var(--app-foreground)', opacity: p.uploading ? 0.45 : 1, overflow: 'hidden' }}>
                         <FileText size={20} style={{ opacity: 0.7, flexShrink: 0 }} />
                         <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{p.name}</span>
                       </div>

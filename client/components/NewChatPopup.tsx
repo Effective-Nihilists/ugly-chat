@@ -147,7 +147,10 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
       }
     } catch (err) {
       console.error('[new-chat] submit failed', err);
-      setStatus('Could not start the chat. Try again.');
+      // Prefer the server's own reason (e.g. "Couldn't look up that email address
+      // right now") — a generic retry line hid a real, actionable outage.
+      const msg = (err as Error | undefined)?.message;
+      setStatus(msg && msg.length > 0 && !msg.startsWith('[') ? msg : 'Could not start the chat. Try again.');
       setStatusError(true);
       setBusy(false);
     }
