@@ -37,14 +37,17 @@ export function modelLabel(id: string | null | undefined): string {
 // default; `honest` = helpful, no roast; `lie` = satirical liar; `image` =
 // generate an image from your prompt. The personas (honest/lie) only apply to
 // the built-in Ugly Bot; custom bots use their own instruction.
-export const BOT_MODES: { id: string; label: string; persona: boolean }[] = [
-  { id: 'chat', label: 'Chat', persona: true },
-  { id: 'honest', label: 'Honest', persona: true },
-  { id: 'lie', label: 'Lie', persona: true },
-  { id: 'image', label: 'Image', persona: false },
+// `desc` is the one-line hint shown under each mode in the composer picker — a
+// newcomer had no idea what Honest/Lie/Chat meant, and a bare "Lie" is alarming
+// without context.
+export const BOT_MODES: { id: string; label: string; persona: boolean; desc: string }[] = [
+  { id: 'chat', label: 'Chat', persona: true, desc: 'Normal conversation' },
+  { id: 'honest', label: 'Honest', persona: true, desc: 'Blunt, no sugar-coating' },
+  { id: 'lie', label: 'Lie', persona: true, desc: 'Deliberately, satirically false — for fun' },
+  { id: 'image', label: 'Image', persona: false, desc: 'Generate an image from your prompt' },
   // Web search (cited answers) — runs the AnswerEngine via runBotSearch. Requires
   // ugly-app ≥ 0.1.863 (fixed web-search proxy op); before that it 400'd silently.
-  { id: 'search', label: 'Search', persona: false },
+  { id: 'search', label: 'Search', persona: false, desc: 'Answer from the web, with citations' },
 ];
 
 // Image-gen models ugly.bot serves (via /v1/ai/user-billed/image).

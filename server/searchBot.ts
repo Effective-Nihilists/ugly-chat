@@ -17,6 +17,34 @@ import type { MsgTelemetry } from 'ugly-app/conversation/shared';
 
 export const SEARCH_BOT_ID = 'bot-search';
 
+/**
+ * Show only the sources the answer actually CITES, renumbering `[n]` to match.
+ * Exported for unit-testing.
+ *
+ * The engine reads its top-N sources and passes all of them along; the model
+ * often cites just a couple, so the card list showed retrieved-but-unused
+ * sources (sometimes off-topic) beside the cited ones. Simply dropping the
+ * uncited cards would break the `[n]↔card` mapping, so we renumber the citations
+ * too: cited sources are kept in order and re-labelled `[1]..[k]`.
+ */
+export function trimToCitedSources<T>(
+  text: string,
+  sources: T[] | undefined,
+): { text: string; sources: T[] | undefined } {
+  if (!sources || sources.length === 0) return { text, sources };
+  const cited = [...new Set([...text.matchAll(/\[(\d+)\]/g)].map((x) => Number(x[1])))]
+    .filter((n) => n >= 1 && n <= sources.length)
+    .sort((a, b) => a - b);
+  // Nothing cited, or everything read was cited → leave it (numbers already line up).
+  if (cited.length === 0 || cited.length === sources.length) return { text, sources };
+  const remap = new Map(cited.map((old, i) => [old, i + 1]));
+  const newText = text.replace(/\[(\d+)\]/g, (m, d: string) => {
+    const n = remap.get(Number(d));
+    return n ? `[${n}]` : m;
+  });
+  return { text: newText, sources: cited.map((n) => sources[n - 1]!) };
+}
+
 interface ChatTurn { role: 'system' | 'user' | 'assistant'; content: string }
 type TextGen = (
   model: string,
@@ -78,14 +106,16 @@ export async function runBotSearch(opts: RunBotSearchOptions): Promise<void> {
       hubOptions: { collection: 'message', keyField: 'conversationId' },
       persist: {
         commit: async (m) => {
+          // Trim the shown sources to the ones the answer cites, renumbering [n].
+          const { text, sources } = trimToCitedSources(m.text, m.sources);
           await conversationMessageCreate(
             {
               conversationId: opts.conversationId,
               message: {
                 id: messageId,
-                text: m.text,
-                markdown: m.text,
-                ...(m.sources ? { custom: { sources: m.sources } } : {}),
+                text,
+                markdown: text,
+                ...(sources ? { custom: { sources } } : {}),
                 ...(m.telemetry ? { telemetry: m.telemetry } : {}),
               },
             },

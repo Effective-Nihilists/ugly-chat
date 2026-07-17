@@ -16,6 +16,18 @@ export function formatCost(usd: number): string {
   return `$${usd < 0.01 ? usd.toFixed(3) : usd.toFixed(2)}`;
 }
 
+/**
+ * Session totals for the telemetry strip.
+ *
+ * `totalTokens` sums OUTPUT tokens only — the tokens the model actually
+ * GENERATED this session. Input tokens re-count the entire conversation context
+ * on every turn (the model re-reads the whole thread each reply), so summing
+ * them across a session over-counts massively and produces absurd numbers next
+ * to a tiny cost (a persona saw "812k TOKENS · $0.16"). It was worse with a
+ * legacy row whose context still held a base64 image (~400k tokens for one
+ * reply). Output is the only per-turn-additive token quantity. Cost is summed
+ * per-turn (each turn is billed once) and stays exact.
+ */
 export function sumTelemetry(msgs: MsgTelemetry[]): {
   messages: number;
   totalTokens: number;
@@ -24,7 +36,7 @@ export function sumTelemetry(msgs: MsgTelemetry[]): {
 } {
   let totalTokens = 0, totalCostUsd = 0, model = '';
   for (const m of msgs) {
-    totalTokens += (m.inputTokens || 0) + (m.outputTokens || 0);
+    totalTokens += m.outputTokens || 0;
     totalCostUsd += m.costUsd || 0;
     if (m.model) model = m.model;
   }

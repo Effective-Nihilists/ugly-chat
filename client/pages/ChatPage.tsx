@@ -1438,7 +1438,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
 
   // ⋯-menu picker row (label + check). Reused for mode / model / image rows.
   const menuLabelStyle: React.CSSProperties = { padding: '8px 14px 4px', fontSize: 11, fontWeight: 700, color: 'var(--app-foreground-muted)', textTransform: 'uppercase', letterSpacing: 0.5 };
-  const pickRow = (key: string, label: string, selected: boolean, onClick: () => void): React.ReactNode => (
+  const pickRow = (key: string, label: string, selected: boolean, onClick: () => void, desc?: string): React.ReactNode => (
     <button
       key={key}
       type="button"
@@ -1446,7 +1446,10 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       onClick={onClick}
       style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 9, width: '100%', padding: '9px 14px', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', fontSize: 13, fontWeight: 600, textAlign: 'left' }} data-id="button-7"
     >
-      <span>{label}</span>
+      <span style={{ minWidth: 0 }}>
+        {label}
+        {desc ? <span style={{ display: 'block', fontSize: 11, fontWeight: 500, color: 'var(--app-foreground-muted)', marginTop: 1 }}>{desc}</span> : null}
+      </span>
       {selected ? <Check size={15} style={{ color: 'var(--app-primary)', flexShrink: 0 }} /> : null}
     </button>
   );
@@ -1473,7 +1476,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           <div onClick={() => { setMenuOpen(false); }} style={{ position: 'fixed', inset: 0, zIndex: 20 }} data-id="mode-scrim" />
           <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, zIndex: 21, background: 'var(--app-main)', border: '1px solid var(--app-border)', borderRadius: 10, boxShadow: 'var(--app-shadow-button-default)', minWidth: 210, overflow: 'hidden', maxHeight: 'min(60vh, 460px)', overflowY: 'auto' }} data-id="mode-popover">
             <div style={menuLabelStyle}>Mode</div>
-            {availableModes.map((m) => pickRow(`mode-${m.id}`, m.label, botMode === m.id, () => { pickBotMode(m.id); }))}
+            {availableModes.map((m) => pickRow(`mode-${m.id}`, m.label, botMode === m.id, () => { pickBotMode(m.id); }, m.desc))}
             {botMode === 'image' ? (
               <>
                 <div style={menuLabelStyle}>Image model</div>
@@ -1745,7 +1748,12 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
             />
             <div style={{ border: '1px solid var(--app-primary)', borderRadius: 0, background: 'var(--app-main)' }}>
               <ConversationInput
-                placeholder={botId ? 'Ask anything · ↩ send · ⇧↩ new line' : 'Message · ↩ send · ⇧↩ new line'}
+                placeholder={
+                  !botId ? 'Message · ↩ send · ⇧↩ new line'
+                    : botMode === 'image' ? 'Describe an image to generate · ↩ send'
+                    : botMode === 'search' ? 'Search the web · ↩ send'
+                    : 'Ask anything · ↩ send · ⇧↩ new line'
+                }
                 autoFocus
                 onSend={handleSendWithAttachments}
                 onType={signalTyping}

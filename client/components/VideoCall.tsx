@@ -662,11 +662,14 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
   // ASKED for — a granted-but-dead camera kept it true while the tile stayed
   // black. videoWidth is the only honest signal that pixels exist.
   const [selfLive, setSelfLive] = useState(false);
+  const camOnAtRef = useRef(0);
   useEffect(() => {
     if (!joined || !camOn) {
       setSelfLive(false);
+      camOnAtRef.current = 0;
       return undefined;
     }
+    if (!camOnAtRef.current) camOnAtRef.current = Date.now();
     const id = setInterval(() => {
       const el = localVideoRef.current;
       if (!el) return;
@@ -674,7 +677,14 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
       // element paused with a live track behind it, i.e. a black tile claiming
       // the camera was on. Nudge it back rather than report a lie.
       if (el.paused) void el.play().catch(() => undefined);
-      setSelfLive(el.videoWidth > 0);
+      // videoWidth is the honest "pixels exist" signal — but some environments
+      // never report it for the LOCAL preview even with a live track, which left
+      // "Starting camera…" pinned over a working camera for the whole call. So
+      // after a short grace, a live+enabled track counts as on too.
+      const vt = streamRef.current?.getVideoTracks()[0];
+      const trackLive = !!vt && vt.readyState === 'live' && vt.enabled;
+      const graced = Date.now() - camOnAtRef.current > 3500;
+      setSelfLive(el.videoWidth > 0 || (graced && trackLive));
     }, 400);
     return () => { clearInterval(id); };
   }, [joined, camOn]);

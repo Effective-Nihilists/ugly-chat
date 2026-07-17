@@ -59,6 +59,8 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
   const [draft, setDraft] = useState('');
   const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
+  // True right after an invite email is sent → the footer shows a clear "Done".
+  const [sentInvite, setSentInvite] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [statusError, setStatusError] = useState(false);
   // People picker: contacts (people you share conversations with) + the set the
@@ -191,6 +193,10 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
         setEmails([]);
         setDraft('');
         setBusy(false);
+        // The dialog used to sit open with a cleared field and a disabled "Start
+        // chat", so the invite read as if nothing happened. Flip the footer to a
+        // clear "Done" so the confirmation has an unmistakable exit.
+        setSentInvite(true);
       } else {
         go(res.conversationId);
       }
@@ -267,6 +273,7 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
               value={draft}
               onChange={(ev) => {
                 setDraft(ev.target.value);
+                if (sentInvite) { setSentInvite(false); setStatus(null); }
                 if (statusError) {
                   setStatus(null);
                   setStatusError(false);
@@ -369,22 +376,30 @@ export function NewChatPopup({ onClose, socket, recent, navigate }: NewChatPopup
       </div>
 
       <div style={modalFoot}>
-        <button type="button" onClick={onClose} style={ghostBtn} data-id="cancel">
-          Cancel
-        </button>
-        <button type="button" disabled={!canSubmit} onClick={() => void submit()} style={ctaBtn(!canSubmit)} data-id="button-3">
-          {isGroup ? (
-            <>Create group · {count}</>
-          ) : soleInvite ? (
-            <>
-              <Mail size={16} /> Send invite
-            </>
-          ) : (
-            <>
-              <MessageSquarePlus size={16} /> Start chat
-            </>
-          )}
-        </button>
+        {sentInvite ? (
+          <button type="button" onClick={onClose} style={ctaBtn(false)} data-id="invite-done">
+            Done
+          </button>
+        ) : (
+          <>
+            <button type="button" onClick={onClose} style={ghostBtn} data-id="cancel">
+              Cancel
+            </button>
+            <button type="button" disabled={!canSubmit} onClick={() => void submit()} style={ctaBtn(!canSubmit)} data-id="button-3">
+              {isGroup ? (
+                <>Create group · {count}</>
+              ) : soleInvite ? (
+                <>
+                  <Mail size={16} /> Send invite
+                </>
+              ) : (
+                <>
+                  <MessageSquarePlus size={16} /> Start chat
+                </>
+              )}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
