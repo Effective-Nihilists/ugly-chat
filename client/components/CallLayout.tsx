@@ -233,9 +233,9 @@ export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(function 
   // and only (a) collapse the container to zero height when not joined and
   // (b) mount/unmount the transcript chrome as a sibling.
   const showSubs = wide ? collapsed : !expanded;
-  // Sits just above the control band. The mobile value used to be 124 to clear
-  // the floating in-call composer, which no longer exists.
-  const subBottom = wide ? 100 : 82;
+  // Clears the control band AND the bottom row of tile name labels — anchored at
+  // the stage floor the caption band sat straight on top of "Ben Okafor".
+  const subBottom = wide ? 116 : 98;
   const onToggle = wide ? () => { setCollapsed((v) => !v); } : () => { setExpanded((v) => !v); };
   const transcriptCollapsed = wide ? collapsed : expanded;
   const showTranscript = joined && (wide ? !collapsed : expanded);

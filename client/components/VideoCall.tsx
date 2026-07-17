@@ -129,6 +129,89 @@ const C = {
 /** Tiles that share the stage grid before the rest are demoted to a filmstrip. */
 export const GRID_MAX = 4;
 
+/** Normalised RMS above which a peer counts as talking (empirical: room tone
+ *  sits well under this, speech runs 0.15+). */
+const SPEAK_THRESHOLD = 0.075;
+
+/**
+ * Who is actually talking, measured off the peers' live audio.
+ *
+ * The stage used to derive "speaking" ONLY from typed-message TTS, so on a real
+ * call — people talking into microphones — nothing was ever marked as speaking
+ * and every tile looked identical. That left "who said that?" unanswerable the
+ * moment a call had more than two people in it.
+ */
+function useActiveSpeaker(streams: Map<string, MediaStream>, enabled: boolean): string | null {
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const ctxRef = useRef<AudioContext | null>(null);
+
+  useEffect(() => {
+    if (!enabled || streams.size === 0) {
+      setActiveId(null);
+      return undefined;
+    }
+    ctxRef.current ??= new AudioContext();
+    const ctx = ctxRef.current;
+
+    const nodes: {
+      id: string;
+      src: MediaStreamAudioSourceNode;
+      an: AnalyserNode;
+      buf: Uint8Array<ArrayBuffer>;
+    }[] = [];
+    for (const [id, stream] of streams) {
+      if (stream.getAudioTracks().length === 0) continue;
+      try {
+        const src = ctx.createMediaStreamSource(stream);
+        const an = ctx.createAnalyser();
+        an.fftSize = 512;
+        an.smoothingTimeConstant = 0.8;
+        src.connect(an);
+        nodes.push({ id, src, an, buf: new Uint8Array(an.frequencyBinCount) });
+      } catch (err) {
+        console.warn('[VideoCall] audio analyser failed', err);
+      }
+    }
+    if (nodes.length === 0) return undefined;
+
+    const timer = setInterval(() => {
+      let bestId: string | null = null;
+      let best = 0;
+      for (const n of nodes) {
+        n.an.getByteFrequencyData(n.buf);
+        let sum = 0;
+        for (const v of n.buf) sum += v * v;
+        const rms = Math.sqrt(sum / n.buf.length) / 255;
+        if (rms > best) {
+          best = rms;
+          bestId = n.id;
+        }
+      }
+      setActiveId(best >= SPEAK_THRESHOLD ? bestId : null);
+    }, 200);
+
+    return () => {
+      clearInterval(timer);
+      for (const n of nodes) {
+        n.src.disconnect();
+        n.an.disconnect();
+      }
+    };
+  }, [streams, enabled]);
+
+  // Release the AudioContext only on unmount — reusing it across roster changes
+  // avoids burning through the browser's per-page context budget.
+  useEffect(
+    () => () => {
+      void ctxRef.current?.close();
+      ctxRef.current = null;
+    },
+    [],
+  );
+
+  return activeId;
+}
+
 /**
  * Split the peers into the stage grid and the overflow filmstrip.
  *
@@ -532,6 +615,21 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
   }, [joined]);
   const elapsed = joined && joinedAtRef.current ? now - joinedAtRef.current : 0;
 
+  // Is the local camera actually producing frames? `camOn` only reflects what we
+  // ASKED for — a granted-but-dead camera kept it true while the tile stayed
+  // black. videoWidth is the only honest signal that pixels exist.
+  const [selfLive, setSelfLive] = useState(false);
+  useEffect(() => {
+    if (!joined || !camOn) {
+      setSelfLive(false);
+      return undefined;
+    }
+    const id = setInterval(() => {
+      setSelfLive((localVideoRef.current?.videoWidth ?? 0) > 0);
+    }, 400);
+    return () => { clearInterval(id); };
+  }, [joined, camOn]);
+
   const participants = Object.values(call.participants);
 
   const botParticipant = useMemo(() => participants.find((p) => p.isBot) ?? null, [participants]);
@@ -543,13 +641,18 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
     [participants, userId],
   );
 
+  // Active speaker = a bot mid-utterance, a peer whose typed text we're speaking,
+  // or — the case that actually matters on a real call — whoever's mic is hot.
+  const activeAudioId = useActiveSpeaker(remoteStreams, joined);
+  const activeId = pendingBotText?.botId ?? speakingPeerId ?? activeAudioId;
+
   const { heroPeers, stripPeers } = useMemo(
-    () => rankPeers(peers, pendingBotText?.botId ?? speakingPeerId),
-    [peers, speakingPeerId, pendingBotText],
+    () => rankPeers(peers, activeId),
+    [peers, activeId],
   );
 
-  const isSpeaking = (p: CallParticipant) =>
-    p.isBot ? pendingBotText?.botId === p.userId : speakingPeerId === p.userId;
+  const isSpeaking = (p: CallParticipant): boolean =>
+    p.isBot ? pendingBotText?.botId === p.userId : activeId === p.userId;
 
   // Render the immersive stage ONLY when the LOCAL user has joined. A peer (or a
   // never-leaving bot) keeping `call.active` true must not strand us on an empty
@@ -598,13 +701,8 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
         return <span key={c} style={{ ...base, ...pos[c] }} aria-hidden />;
       })}
 
-      {/* Scrim behind the HUD. It's white text laid straight over whatever the
-          peer's camera happens to be pointing at — over a bright frame the stat
-          line was simply unreadable. */}
-      <div className="uc-hud-scrim" aria-hidden />
-
       {/* ── HUD top-left: LIVE timer + real stat line ─────────────────────── */}
-      <div style={{ position: 'absolute', top: 18, left: 18, zIndex: 4, display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <div className="uc-hud">
         <span
           style={{
             display: 'inline-flex',
@@ -623,10 +721,10 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
         <span
           style={{
             fontFamily: 'var(--app-font-mono, monospace)',
-            fontSize: 10,
+            fontSize: 10.5,
             // Was 40% white — legible on the empty stage it was designed
             // against, invisible once a camera feed sat behind it.
-            color: 'rgba(255,255,255,0.75)',
+            color: 'rgba(255,255,255,0.9)',
             letterSpacing: '0.06em',
           }}
         >
@@ -684,21 +782,28 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
         </div>
       ) : null}
 
-      {/* ── self PiP bottom-right ─────────────────────────────────────────── */}
+      {/* ── self PiP bottom-right ─────────────────────────────────────────────
+          Self-view exists to answer ONE question: am I broadcasting? It used to
+          answer it with a flat black rectangle whenever the camera was on but
+          hadn't produced a frame yet (starting, or failed) — indistinguishable
+          from "off" and from "broken", while the camera button still read as on.
+          Every state is now named. */}
       <div
         data-id="call-tile-self"
         className="uc-self"
-        style={{
-          border: '1px solid rgba(255,255,255,0.2)',
-          background: 'linear-gradient(135deg, #2a2d35, #14161b)',
-        }}
+        style={{ border: '1px solid rgba(255,255,255,0.2)', background: '#14161b' }}
       >
         <video
           ref={localVideoRef}
           autoPlay
           muted
           playsInline
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: camOn ? 'block' : 'none' }}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            display: camOn && selfLive ? 'block' : 'none',
+          }}
         />
         {!camOn ? (
           // Camera off → show MY avatar (3D model over the avatar background, or
@@ -710,25 +815,14 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
             backgroundUrl={profiles[userId]?.backgroundUrl ?? null}
           />
         ) : null}
-        <span
-          style={{
-            position: 'absolute',
-            left: 6,
-            bottom: 5,
-            fontFamily: 'var(--app-font-mono, monospace)',
-            fontSize: 9,
-            color: '#fff',
-            textShadow: '0 1px 3px #000',
-            letterSpacing: '0.06em',
-          }}
-        >
-          you
-        </span>
-        {!micOn ? (
-          <span style={{ position: 'absolute', right: 6, bottom: 5, color: '#f87171', display: 'grid', placeItems: 'center' }}>
-            <MicOff size={13} />
-          </span>
+        {camOn && !selfLive ? (
+          <span className="uc-self-state" data-id="self-starting">Starting camera…</span>
         ) : null}
+        {!camOn ? <span className="uc-self-state" data-id="self-cam-off">Camera off</span> : null}
+        <span className="uc-tile-label">
+          {!micOn ? <MicOff size={11} data-id="self-muted" /> : null}
+          <span className="n">You</span>
+        </span>
       </div>
 
       {/* ── subtitle overlay slot (shown when transcript collapsed) ───────── */}
@@ -742,24 +836,31 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
           background: C.panel,
         }}
       >
+        {/* Mic and camera are the primary controls — pressed constantly, under
+            time pressure. They're the largest, and their OFF state is the loud
+            one. Captions and add-bot are secondary and deliberately quiet: they
+            used to wear the brand orange, which ranked "captions" above "mute". */}
         <CtrlButton
           dataId="call-mic"
           label={micOn ? 'Mute mic' : 'Unmute mic'}
           active={false}
           off={!micOn}
+          primary
           onClick={toggleMic} data-id="toggle-mic"
         >
-          {micOn ? <Mic size={21} /> : <MicOff size={21} />}
+          {micOn ? <Mic size={23} /> : <MicOff size={23} />}
         </CtrlButton>
         <CtrlButton
           dataId="call-camera"
           label={camOn ? 'Stop camera' : 'Start camera'}
           active={false}
           off={!camOn}
+          primary
           onClick={toggleCam} data-id="toggle-cam"
         >
-          {camOn ? <Video size={21} /> : <VideoOff size={21} />}
+          {camOn ? <Video size={23} /> : <VideoOff size={23} />}
         </CtrlButton>
+        <span style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.14)' }} />
         {onToggleTranscript ? (
           <CtrlButton
             dataId="call-captions"
@@ -768,19 +869,17 @@ export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function Vi
             off={false}
             onClick={onToggleTranscript} data-id="toggle-transcript"
           >
-            <Captions size={21} />
+            <Captions size={19} />
           </CtrlButton>
         ) : null}
-        <span style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.14)' }} />
         {onAddPerson ? (
           <CtrlButton dataId="call-add-person" label="Add person" active={false} off={false} onClick={onAddPerson} data-id="add-person">
-            <UserPlus size={21} />
+            <UserPlus size={19} />
           </CtrlButton>
         ) : null}
-        <CtrlButton dataId="call-add-bot" label="Add ugly-bot" active={false} off={false} dashed onClick={() => { addBot(); }} data-id="add-ugly-bot">
-          <BotIcon size={21} />
+        <CtrlButton dataId="call-add-bot" label="Add ugly-bot" active={false} off={false} onClick={() => { addBot(); }} data-id="add-ugly-bot">
+          <BotIcon size={19} />
         </CtrlButton>
-        <span style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.14)' }} />
         <button
           type="button"
           data-id="call-end"
@@ -809,6 +908,7 @@ function CtrlButton({
   active,
   off,
   dashed = false,
+  primary = false,
 }: {
   children: React.ReactNode;
   onClick: () => void;
@@ -817,13 +917,14 @@ function CtrlButton({
   active: boolean;
   off: boolean;
   dashed?: boolean;
+  primary?: boolean;
 }): React.ReactElement {
   // `off` (muted / camera stopped) used to render at 40% white — the state you
   // most need to notice was the FAINTEST thing on the bar, and it read as
-  // "disabled" rather than "you are muted". Off is now emphatic red; on is full
+  // "disabled" rather than "you are muted". Off is now filled red; on is full
   // contrast; the brand orange is reserved for a deliberately-enabled toggle.
   const border = off
-    ? '1px solid rgba(220,38,38,0.9)'
+    ? '1px solid #ef4444'
     : active
       ? `1px solid ${C.brand}`
       : dashed
@@ -833,7 +934,7 @@ function CtrlButton({
     <button
       type="button"
       data-id={dataId}
-      className="uc-ctrl"
+      className={`uc-ctrl${primary ? ' primary' : ''}`}
       onClick={onClick}
       aria-label={label}
       title={label}
@@ -842,12 +943,11 @@ function CtrlButton({
         display: 'grid',
         placeItems: 'center',
         border,
-        background: off
-          ? 'rgba(220,38,38,0.22)'
-          : active
-            ? 'rgba(255,85,0,0.30)'
-            : 'rgba(255,255,255,0.08)',
-        color: off ? '#fca5a5' : active || dashed ? C.brand : '#fff',
+        // Muted/camera-off is FILLED red: the one state worth reading from
+        // across the room, and the only thing on the bar wearing red besides
+        // End call (which is red AND wider AND set apart).
+        background: off ? '#ef4444' : active ? 'rgba(255,85,0,0.30)' : 'rgba(255,255,255,0.08)',
+        color: off ? '#fff' : active || dashed ? C.brand : '#fff',
         cursor: 'pointer',
       }}
     >

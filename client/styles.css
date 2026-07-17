@@ -944,12 +944,18 @@ a.uc-src:hover {
 .uc-tp-cbox input::placeholder { color: var(--app-foreground-muted); }
 
 /* Subtitle overlay — fixed light-on-dark (lives over the dark video stage). */
-.uc-subs { position: absolute; left: 16px; right: 16px; z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 5px; text-align: center; pointer-events: none; }
+/* One caption zone, anchored as a full-bleed band. These lines used to float
+   free over whoever's face happened to be behind them, straddling tile edges
+   and sliding under the self-PiP — desktop got a transcript rail, mobile got
+   text thrown at the wall. Fixed to the stage bottom so it never reflows over
+   a face, and stopping clear of the self-PiP. */
+.uc-subs { position: absolute; left: 0; right: 0; z-index: 4; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 12px; text-align: left; pointer-events: none; background: linear-gradient(to top, rgba(0,0,0,0.78), rgba(0,0,0,0.55) 62%, transparent); }
 /* Each line carries its own scrim. A text-shadow alone is no match for a bright
    camera frame — at 45% white the spoken line was simply unreadable over video. */
-.uc-sub-line { max-width: 100%; padding: 4px 10px; background: rgba(0, 0, 0, 0.62); font-family: var(--app-font-heading); font-weight: 700; font-size: 15px; line-height: 1.35; color: rgba(255, 255, 255, 0.72); }
+.uc-sub-line { max-width: 100%; font-family: var(--app-font-heading); font-weight: 700; font-size: 15px; line-height: 1.35; color: rgba(255, 255, 255, 0.6); }
 .uc-sub-line .who { font-family: var(--app-font-mono); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--app-primary); margin-right: 7px; }
 .uc-sub-line.past { font-size: 13px; }
+@media (max-width: 640px) { .uc-subs { right: 104px; } .uc-sub-line { font-size: 14px; } }
 .uc-sub-line.active { color: #fff; }
 
 /* Mobile compose bar overlaid on video — fixed light-on-dark. */
@@ -1188,11 +1194,31 @@ a.uc-src:hover {
   place-items: center;
   cursor: pointer;
 }
-/* End call is wider as well as red — rank by size and colour, not colour alone. */
+/* Mic + camera are pressed constantly; captions/bot are not. Rank by size. */
+.uc-ctrl.primary { width: 54px; height: 54px; }
+/* End call is wider as well as red — rank by size and colour, not colour alone —
+   and set well clear of the cluster so a reach for mute can't hang up the call. */
 .uc-ctrl-end {
   display: grid;
   width: auto;
+  height: 54px;
   padding: 0 26px;
+  margin-left: 18px;
+}
+
+/* Named state for a self-view with no picture — never a silent black square. */
+.uc-self-state {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  padding: 4px;
+  text-align: center;
+  font-family: var(--app-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .uc-self {
@@ -1217,14 +1243,18 @@ a.uc-src:hover {
   .uc-strip { left: 10px; right: 104px; }
 }
 
-/* Gradient scrim so the HUD stays readable over any camera frame. */
-.uc-hud-scrim {
+/* A gradient wash is no match for a bright frame — over the fake feed's own
+   green timecode the HUD was still unreadable. The HUD gets a solid plate, the
+   same device the tile name labels already use. */
+.uc-hud {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 110px;
-  z-index: 3;
-  pointer-events: none;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), transparent);
+  top: 14px;
+  left: 14px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px 10px;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(8px);
 }
