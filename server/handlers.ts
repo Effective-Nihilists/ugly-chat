@@ -24,7 +24,7 @@ import {
 import type { WorkerHandlers, CollectionDef, DBObject, DocFields, GetDocsOptions } from 'ugly-app/shared';
 import { dbDefaults, defaultAvatar } from 'ugly-app/shared';
 import { nanoid } from 'nanoid';
-import { getUserToken } from 'ugly-app/server/adapter/workers';
+import { getUserToken, backgroundWait } from 'ugly-app/server/adapter/workers';
 import { triggerBotReplies, getBotConfig, isBot } from './bots';
 import { fireMessageWebhooks } from './webhooks';
 import { unfurlMessageLinks } from './linkPreview';
@@ -335,7 +335,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         userId,
       );
       // Ring the other participant(s) via push (best-effort; only on call start).
-      void notifyIncomingCall(getDb(), input.conversationId, userId, call);
+      backgroundWait(notifyIncomingCall(getDb(), input.conversationId, userId, call));
       return call;
     },
     conversationVideoLeave: async (userId, input): Promise<CallState> =>
