@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   X, Users, User, Bot as BotIcon, Mail, Plus, BellOff, AlignLeft, Check, BarChart3,
-  Pin, Image as ImageIcon, Download, Trash2, LogOut, ChevronRight,
+  Pin, Image as ImageIcon, Download, Trash2, LogOut, ChevronRight, Type,
 } from 'lucide-react';
 import { useApp } from 'ugly-app/client';
 import type { Avatar as AvatarT } from 'ugly-app/shared';
@@ -10,6 +10,9 @@ import { Avatar, deleteOrLeaveConversation } from '../lib/conversations';
 import { isValidEmail, normalizeEmail } from '../../shared/email';
 import { isDirectRoom } from '../../shared/conversationId';
 import { modalStyles as S } from '../lib/modalStyles';
+import {
+  TEXT_SIZES, loadTextSize, saveTextSize, applyTextSize, type TextSizeId,
+} from '../lib/textSize';
 
 interface Member {
   userId: string;
@@ -52,6 +55,15 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
     showTyping: loadToggle(id, 'showTyping'),
     responseStats: loadToggle(id, 'responseStats'),
   }));
+
+  // Message text-size — global preference (not per-conversation). Applying it
+  // sets --uc-msg-size on :root, so every open thread rescales immediately.
+  const [textSize, setTextSize] = useState<TextSizeId>(() => loadTextSize());
+  const pickTextSize = useCallback((next: TextSizeId) => {
+    setTextSize(next);
+    saveTextSize(next);
+    applyTextSize(next);
+  }, []);
 
   const refetchMembers = useCallback(() => {
     if (!id) return;
@@ -289,6 +301,36 @@ export default function ChatSettingsPage({ conversationId }: { conversationId?: 
             </div>
           </div>
 
+          {/* Display — message text size (global). Fixes "font has become small
+              and I can't adjust the size": the thread reads --uc-msg-size. */}
+          <div style={S.field}>
+            <div style={secLabel}><span>Display</span></div>
+            <div style={srow}>
+              <span style={{ color: 'var(--app-foreground)', display: 'inline-flex', flexShrink: 0 }}><Type size={18} /></span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={srowTitle}>Text size</div>
+                <div style={srowDesc}>How big messages appear in every conversation.</div>
+              </div>
+            </div>
+            <div style={segRow} role="group" aria-label="Message text size">
+              {TEXT_SIZES.map((t) => {
+                const on = t.id === textSize;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => { pickTextSize(t.id); }}
+                    style={segBtn(on)}
+                    data-id={`text-size-${t.id}`}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Conversation */}
           <div style={S.field}>
             <div style={secLabel}><span>Conversation</span></div>
@@ -446,6 +488,23 @@ const srow: React.CSSProperties = {
   padding: '11px 4px',
   borderBottom: '1px solid var(--app-border)',
 };
+const segRow: React.CSSProperties = {
+  display: 'flex',
+  gap: 6,
+  padding: '4px 0 2px',
+};
+const segBtn = (on: boolean): React.CSSProperties => ({
+  flex: 1,
+  padding: '8px 6px',
+  fontFamily: 'var(--app-font-mono)',
+  fontSize: 12,
+  fontWeight: on ? 700 : 600,
+  letterSpacing: '0.02em',
+  border: `1px solid ${on ? 'var(--app-primary)' : 'var(--app-border)'}`,
+  background: on ? 'rgba(var(--app-primary-rgb), 0.10)' : 'var(--app-tertiary)',
+  color: on ? 'var(--app-primary)' : 'var(--app-foreground)',
+  cursor: 'pointer',
+});
 const srowTitle: React.CSSProperties = { fontSize: 14, fontWeight: 600, color: 'var(--app-foreground)' };
 const srowDesc: React.CSSProperties = { fontSize: 12, color: 'var(--app-foreground)', opacity: 0.5, marginTop: 1 };
 const switchTrack = (on: boolean): React.CSSProperties => ({

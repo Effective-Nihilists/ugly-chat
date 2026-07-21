@@ -157,6 +157,8 @@ export function registerAppApi(
     }
     const convId = typeof body.id === 'string' ? body.id : nanoid();
     const creator = memberUserIds[0] ?? id.ownerUserId;
+    if (!creator) return c.json({ error: 'no creator/member resolved' }, 400);
+    const owners = (memberUserIds.length ? memberUserIds : [creator]).filter(Boolean);
     const bots = Object.fromEntries(botIds.map((b) => [b, {}]));
 
     await engineConversationCreate(
@@ -166,7 +168,7 @@ export function registerAppApi(
         title: typeof body.title === 'string' ? body.title : '',
         background: body.background ?? null,
         mode: 'private',
-        ownerIds: memberUserIds.length ? memberUserIds : [creator],
+        ownerIds: owners,
         bots,
         custom: body.custom ?? undefined,
         disableJoinMessages: true,

@@ -908,7 +908,7 @@ a.uc-src:hover {
 .uc-metarow .sender.bot { color: var(--app-primary); }
 .uc-metarow .t { font-family: var(--app-font-mono); font-size: 9.5px; color: var(--app-foreground-muted); }
 
-.uc-bubble { padding: 9px 13px; font-size: 14px; line-height: 1.5; word-break: break-word; max-width: 100%; }
+.uc-bubble { padding: 9px 13px; font-size: var(--uc-msg-size, 16px); line-height: 1.5; word-break: break-word; max-width: 100%; }
 .uc-bubble.peer { background: var(--app-tertiary); border: 1px solid var(--app-border); color: var(--app-foreground); border-radius: 14px 14px 14px 3px; }
 .uc-bubble.own { background: var(--app-gradient-primary); color: var(--app-on-primary); border: none; border-radius: 14px 14px 3px 14px; }
 .uc-bubble.own.stack, .uc-bubble.peer.stack { border-radius: 14px; }

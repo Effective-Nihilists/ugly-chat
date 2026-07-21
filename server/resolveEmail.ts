@@ -31,12 +31,18 @@ export async function resolveEmailToUser(
   const res = await fetchFn(`${base}/v1/users/by-email?email=${encodeURIComponent(email)}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (res.ok) {
-    const data = (await res.json()) as { user?: { userId?: string; name?: string } };
-    if (data.user?.userId) {
+  // Guard on content-type: a 200 with HTML (SPA fallback / misroute) would make
+  // res.json() throw and blow up the whole "start a chat with a human" flow.
+  // Any non-JSON / non-2xx / missing-user response degrades to the invite path.
+  const ct = res.headers.get('content-type') ?? '';
+  if (res.ok && ct.includes('application/json')) {
+    const data = (await res.json().catch(() => null)) as
+      | { user?: { userId?: string; name?: string } }
+      | null;
+    if (data?.user?.userId) {
       return { status: 'found', userId: data.user.userId, name: data.user.name ?? email };
     }
   }
-  // 404 / no user → invite path (the invite email is sent by the create handler)
+  // 404 / no user / non-JSON → invite path (the invite email is sent by the create handler)
   return { status: 'invite', email };
 }

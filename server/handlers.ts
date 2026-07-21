@@ -513,6 +513,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
     },
 
     conversationReadState: async (userId, input) => {
+      if (!input.conversationId || !userId) return { readers: [] };
       const db = getDb();
       const self = await db.getDoc(
         collections.conversationUser,
@@ -532,6 +533,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
     },
 
     conversationPinMessage: async (userId, input): Promise<{ ok: boolean }> => {
+      if (!input.conversationId || !userId) return { ok: false };
       const db = getDb();
       // Members only (the pin is shared by the whole conversation).
       const member = await db.getDoc(
@@ -676,6 +678,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
 
     // ── Group membership admin ──────────────────────────────────────────────
     conversationMembers: async (userId, input) => {
+      if (!input.conversationId || !userId) return { members: [] };
       const db = getDb();
       // Only members may view the roster.
       const self = await db.getDoc(
@@ -742,6 +745,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       ),
 
     conversationDelete: async (userId, input): Promise<{ ok: boolean }> => {
+      if (!input.conversationId || !userId) return { ok: false };
       const db = getDb();
       const self = await db.getDoc(
         collections.conversationUser,

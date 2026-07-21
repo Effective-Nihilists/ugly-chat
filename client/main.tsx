@@ -6,6 +6,7 @@ import { AppShell } from './components/AppShell';
 import { RouterProvider, RouterView } from './router';
 import './styles.css';
 import { loadTheme, applyTheme } from './lib/theme';
+import { loadTextSize, applyTextSize } from './lib/textSize';
 
 // Initialize the client logger so console.error/warn + uncaught errors are
 // forwarded to our Postgres errorLog. Importing+calling this is required to keep
@@ -15,6 +16,10 @@ initClientLogger();
 
 // Apply persisted theme ASAP so first paint is correct (auto = no attribute → OS media query).
 applyTheme(loadTheme());
+
+// Apply persisted message text-size so `.uc-bubble` (which reads --uc-msg-size)
+// renders at the chosen size from first paint, before any conversation mounts.
+applyTextSize(loadTextSize());
 
 bootstrapApp({
   requests,
