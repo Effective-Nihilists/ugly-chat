@@ -1,20 +1,20 @@
 ---
 name: fix-perf
-description: Fetch performance issues and optimize slow paths (requires dev or prod parameter)
+description: Fetch prod performance issues and optimize slow paths
 user-invocable: true
 ---
 
-Fetch performance issues and optimize slow paths.
+Fetch performance issues from the project's **production** Cloudflare D1 and optimize
+the slow paths.
 
-**Required parameter: `dev` or `prod`**
+Perf logs are written only by the deployed Worker, so this is prod-only:
 
-If the user did not specify `dev` or `prod`, stop and ask which one before proceeding.
+```bash
+npx ugly-app perf            # add --limit <n> as needed
+```
 
-## Dev (your dev-tunnel sessions, filtered by devTunnelId)
-Run: `npm run perf:dev`
-
-## Prod (production deployed servers — requires `ugly-app login`)
-Run: `npm run perf:prod`
+If it reports "No prod Cloudflare D1 found", the app hasn't been deployed yet — run
+`npm run deploy` first.
 
 For each slow path:
 1. Find the source of the slowdown

@@ -1,22 +1,22 @@
 ---
 name: fix-feedback
-description: Fetch user feedback and fix reported issues (requires dev or prod parameter)
+description: Fetch prod user feedback and fix reported issues
 user-invocable: true
 ---
 
-Fetch user feedback and fix reported issues.
+Fetch recent user feedback from the project's **production** Cloudflare D1 and fix the
+reported issues.
 
-**Required parameter: `dev` or `prod`**
+Feedback is written only by the deployed app, so this is prod-only:
 
-If the user did not specify `dev` or `prod`, stop and ask which one before proceeding.
+```bash
+npx ugly-app feedback            # add --limit <n> as needed
+```
 
-## Dev (your dev-tunnel sessions, filtered by devTunnelId)
-Run: `npm run feedback:dev`
+If it reports "No prod Cloudflare D1 found", the app hasn't been deployed yet — run
+`npm run deploy` first.
 
-## Prod (production deployed servers — requires `ugly-app login`)
-Run: `npm run feedback:prod`
-
-This fetches recent user feedback from MongoDB. For each piece of feedback:
+For each piece of feedback:
 1. Understand the user's issue or request
 2. Implement the fix or feature — **no matter how large or complex**
 3. Run `npm run build` to verify it compiles
@@ -72,29 +72,3 @@ Use this to:
 - See exact computed styles causing design issues (e.g., low contrast, wrong font size)
 - Read animation configs (duration, easing) to adjust motion timing
 - Go directly from `dataSource` to the file and line to edit
-
-## When you genuinely can't fix it: instrument, then hand it back
-
-**Last resort — not an escape hatch.** This applies ONLY to a *bug you cannot
-reproduce or root-cause* after real investigation (you read the report, its
-`logs`, the screenshot/`elementMap`, and the relevant code, and still can't
-localize the failure). It does NOT apply to feature requests, redesigns, or work
-that is merely large or hard — the Ambition policy above governs all of those.
-Hard is not "can't". Never reach for this to dodge effort.
-
-When a bug can't be root-caused from the available signal:
-
-1. **Add targeted logging, then ship it.** Instrument the suspected path(s) so the
-   NEXT occurrence captures exactly what's missing — the inputs, which branch ran,
-   and the state at the failure point (not a blanket dump). Deploy it through the
-   app's normal build/deploy flow so it's live before you hand the report back.
-2. **Hand it back honestly via the resolve CLI.** Because it is NOT fixed, use
-   `--status declined` (the reporter is still emailed your message, and the item
-   leaves the `new` queue so the next run doesn't reprocess it):
-
-   ```bash
-   npx ugly-app feedback:resolve --id "<feedbackId>" --status declined \
-     --resolution "I couldn't reproduce this from the report, so I added logging around <where> to capture <what>. Please trigger it again and re-submit — the next report will carry the diagnostic data I need to fix it."
-   ```
-
-Never mark a bug `--status resolved` (fixed) that you did not actually fix.

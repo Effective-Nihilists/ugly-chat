@@ -1,29 +1,30 @@
 ---
 name: check-errors
-description: Query recent error logs (requires dev or prod parameter)
+description: Query recent error logs from the project's PROD Cloudflare D1
 user-invocable: true
 ---
 
-# Checking Error Logs
+# Checking Error Logs (prod)
 
-**Required parameter: `dev` or `prod`**
+Error logs are written only by the **deployed Worker** into its Cloudflare D1, so this
+command is production-only — it always reads the prod Cloudflare D1 the
+deploy flow provisioned (no `DATABASE_URL` / local dev DB involved).
 
-If the user did not specify `dev` or `prod`, stop and ask which one before proceeding.
-
-## Dev (your dev-tunnel sessions, filtered by devTunnelId)
 ```bash
-npm run error:dev
+npx ugly-app errors                 # most recent 50
+npx ugly-app errors --limit 100
+npx ugly-app errors --level error   # filter by level
+npx ugly-app errors --json          # machine-readable
 ```
 
-## Prod (production deployed servers — requires `ugly-app login`)
-```bash
-npm run error:prod
-```
+If it reports "No prod Cloudflare D1 found", the app hasn't been deployed yet — run
+`npm run deploy` first.
 
 ## Tips
 - `source: 'server'` = server-side error, `source: 'browser'` = client-side
-- Check `stack` field for full stack trace
-- `userId: null` means unauthenticated user
+- `context.recentLogs` holds the console history captured right before a browser error
+- Check the `stack` field for the full trace
+- `userId: null` means an unauthenticated user
 
 # Notes
 <!-- Claude: append observations here -->

@@ -1,23 +1,23 @@
 ---
 name: fix-errors
-description: Fetch errors and fix them (requires dev or prod parameter)
+description: Fetch prod errors and fix them
 user-invocable: true
 ---
 
-Fetch errors and fix them.
+Fetch errors from the project's **production** Cloudflare D1 and fix them.
 
-**Required parameter: `dev` or `prod`**
+Error logs are written only by the deployed Worker, so this is prod-only:
 
-If the user did not specify `dev` or `prod`, stop and ask which one before proceeding.
+```bash
+npx ugly-app errors            # add --limit <n> / --level error as needed
+```
 
-## Dev (your dev-tunnel sessions, filtered by devTunnelId)
-Run: `npm run error:dev`
-
-## Prod (production deployed servers — requires `ugly-app login`)
-Run: `npm run error:prod`
+If it reports "No prod Cloudflare D1 found", the app hasn't been deployed yet — run
+`npm run deploy` first.
 
 For each error:
-1. Find the relevant source file
+1. Find the relevant source file (`source: 'browser'` errors include
+   `context.recentLogs` — the console history right before the error)
 2. Understand the root cause
 3. Fix the code
 4. Run `npm run build` to verify the fix compiles
