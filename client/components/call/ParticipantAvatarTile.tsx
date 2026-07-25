@@ -1,3 +1,4 @@
+import { crossOriginProps } from 'ugly-app/client';
 /**
  * ParticipantAvatarTile — what a call participant shows when their CAMERA IS OFF
  * (per the call rule): their 3D avatar (GLB) over their avatar background; or,
@@ -126,7 +127,7 @@ export function ParticipantAvatarTile({
         }}
       >
         {imageUrl ? (
-          <img src={imageUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img {...crossOriginProps(imageUrl)} src={imageUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
           initials(name)
         )}

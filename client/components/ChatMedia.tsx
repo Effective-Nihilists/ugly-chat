@@ -1,3 +1,4 @@
+import { crossOriginProps } from 'ugly-app/client';
 /**
  * ChatMedia — image attachment rendering + fullscreen pan/zoom viewer.
  *
@@ -194,7 +195,7 @@ export function ChatImage({
 
   return (
     <div style={{ ...wrap, position: 'relative' }}>
-      <img
+      <img {...crossOriginProps(src)}
         src={src}
         alt={alt}
         loading="lazy"
@@ -392,7 +393,7 @@ export function ImageZoomViewer({
         cursor: tf.s > 1 ? 'grab' : 'default',
       }} data-id="div"
     >
-      <img
+      <img {...crossOriginProps(src)}
         ref={imgRef}
         src={src}
         alt={alt}

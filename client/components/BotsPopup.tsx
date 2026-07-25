@@ -1,3 +1,4 @@
+import { crossOriginProps } from 'ugly-app/client';
 import React, { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, MessageSquare, Bot as BotIcon, X } from 'lucide-react';
 import type { AppSocket } from 'ugly-app/client';
@@ -108,7 +109,7 @@ export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPo
               {featured.map((b) => (
                 <div key={b._id} style={botRow} data-id={`featured-${b._id}`}>
                   {botAvatarUri(b) ? (
-                    <img src={botAvatarUri(b)} alt="" style={avatarImg} />
+                    <img {...crossOriginProps(botAvatarUri(b) ?? '')} src={botAvatarUri(b)} alt="" style={avatarImg} />
                   ) : (
                     <div style={avatarFallback}><BotIcon size={22} style={{ opacity: 0.6 }} /></div>
                   )}
@@ -161,7 +162,7 @@ export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPo
                 }}
               >
                 {b.avatar?.image.uri ? (
-                  <img src={b.avatar.image.uri} alt="" style={{ width: 48, height: 48, borderRadius: 0, border: '1px solid var(--app-border)', objectFit: 'cover', flexShrink: 0 }} />
+                  <img {...crossOriginProps(b.avatar.image.uri)} src={b.avatar.image.uri} alt="" style={{ width: 48, height: 48, borderRadius: 0, border: '1px solid var(--app-border)', objectFit: 'cover', flexShrink: 0 }} />
                 ) : (
                   <div style={{ width: 48, height: 48, borderRadius: 0, border: '1px solid var(--app-border)', background: 'var(--app-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <BotIcon size={22} style={{ opacity: 0.6 }} />

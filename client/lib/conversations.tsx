@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useApp } from 'ugly-app/client';
+import { useApp, crossOriginProps } from 'ugly-app/client';
 
 // One row of the sidebar / chat-home conversation list (mirrors the
 // `conversationListMine` handler output).
@@ -108,7 +108,7 @@ export function Avatar(props: { image?: unknown; seed: string; label?: string; s
   const url = resolveImageUrl(props.image);
   if (url) {
     return (
-      <img
+      <img {...crossOriginProps(url)}
         src={url}
         width={size}
         height={size}

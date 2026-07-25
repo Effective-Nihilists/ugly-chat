@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ThumbsUp, ThumbsDown, Heart, Laugh, HelpCircle, AlertTriangle, Trash2, Video, Paperclip, X, FileText, Pencil, Volume2, VolumeX, Pin, Settings, Check, Palette, Copy, ChevronDown } from 'lucide-react';
-import { useApp, uploadBlob, promoteBlob, downscaleImage, useSafeAreaInsets } from 'ugly-app/client';
+import { useApp, uploadBlob, promoteBlob, downscaleImage, useSafeAreaInsets, crossOriginProps } from 'ugly-app/client';
 import { MdastViewer } from 'ugly-app/markdown/client';
 import { ConversationInput } from '../components/ConversationInput';
 import { VirtualMessageList } from '../components/VirtualMessageList';
@@ -378,7 +378,7 @@ function MessageBody(props: {
           }} data-id="a"
         >
           {lp.image ? (
-            <img
+            <img {...crossOriginProps(lp.image)}
               src={lp.image}
               alt=""
               style={{ width: '100%', maxHeight: 168, objectFit: 'cover', display: 'block' }}
@@ -1717,7 +1717,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
                 {pending.map((p) => (
                   <div key={p.id} style={{ position: 'relative', width: 60, height: 60 }} title={p.failed ? `${p.name} — upload failed` : p.name}>
                     {p.type.startsWith('image/') ? (
-                      <img src={p.preview} alt={p.name} style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 10, opacity: p.uploading ? 0.45 : 1, border: p.failed ? '1.5px solid var(--app-error)' : '1px solid var(--app-border)' }} />
+                      <img {...crossOriginProps(p.preview)} src={p.preview} alt={p.name} style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 10, opacity: p.uploading ? 0.45 : 1, border: p.failed ? '1.5px solid var(--app-error)' : '1px solid var(--app-border)' }} />
                     ) : (
                       <div style={{ width: 60, height: 60, borderRadius: 10, border: p.failed ? '1.5px solid var(--app-error)' : '1px solid var(--app-border)', background: 'var(--app-tertiary)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, fontSize: 9, padding: 4, textAlign: 'center', color: 'var(--app-foreground)', opacity: p.uploading ? 0.45 : 1, overflow: 'hidden' }}>
                         <FileText size={20} style={{ opacity: 0.7, flexShrink: 0 }} />

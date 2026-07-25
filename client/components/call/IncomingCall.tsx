@@ -1,3 +1,4 @@
+import { crossOriginProps } from 'ugly-app/client';
 /**
  * IncomingCall — the ring overlay shown to a user who is NOT yet in the call
  * but whose conversation has an active call (someone is calling them). Accept →
@@ -55,7 +56,7 @@ export function IncomingCall({ callerName, callerAvatarUrl, onAccept, onDecline 
           }}
         >
           {callerAvatarUrl ? (
-            <img src={callerAvatarUrl} alt={callerName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img {...crossOriginProps(callerAvatarUrl)} src={callerAvatarUrl} alt={callerName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
             initials(callerName)
           )}
