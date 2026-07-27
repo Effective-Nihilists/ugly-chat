@@ -67,12 +67,13 @@
 
   /* Font variables — hardcoded from shared/DefaultStyle constants */
   /* IMPORTANT: Keep in sync with shared/DefaultStyle.ts if font values change */
-  --app-font-heading: 'Plus Jakarta Sans', 'Noto Sans Arabic', sans-serif;
-  --app-font-body: 'Inter', 'Noto Sans Arabic', sans-serif;
+  --app-font-heading: "Plus Jakarta Sans", "Noto Sans Arabic", sans-serif;
+  --app-font-body: "Inter", "Noto Sans Arabic", sans-serif;
   --app-font-heading-weight: 700;
   --app-font-body-weight: 400;
   --app-font-body-weight-bold: 600;
-  --app-font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  --app-font-mono:
+    "JetBrains Mono", "SF Mono", "Fira Code", ui-monospace, monospace;
   --app-font-size-large: 17px;
   --app-font-size-medium: 15px;
   --app-font-size-small: 12px;
@@ -130,56 +131,96 @@
   }
 }
 
-:root[data-theme='dark'] {
-  --app-primary: #ff5500; --app-primary-rgb: 255, 85, 0;
-  --app-secondary: #1a1d23; --app-secondary-rgb: 26, 29, 35;
-  --app-tertiary: #141720; --app-tertiary-rgb: 20, 23, 32;
-  --app-sidebar: #1e2128; --app-main: #0f1115; --app-main-rgb: 15, 17, 21;
-  --app-border: #2a2d35; --app-border-rgb: 42, 45, 53;
-  --app-foreground: #ffffff; --app-foreground-rgb: 255, 255, 255;
-  --app-input: #12141a; --app-error: #e3120b; --app-error-rgb: 227, 18, 11;
-  --app-foreground-10: rgba(255,255,255,0.1); --app-foreground-20: rgba(255,255,255,0.2);
-  --app-foreground-50: rgba(255,255,255,0.5); --app-foreground-60: rgba(255,255,255,0.6);
-  --app-foreground-80: rgba(255,255,255,0.8); --app-primary-20: rgba(255,85,0,0.2);
-  --app-error-20: rgba(227,18,11,0.2); --app-foreground-muted: rgba(255,255,255,0.55);
+:root[data-theme="dark"] {
+  --app-primary: #ff5500;
+  --app-primary-rgb: 255, 85, 0;
+  --app-secondary: #1a1d23;
+  --app-secondary-rgb: 26, 29, 35;
+  --app-tertiary: #141720;
+  --app-tertiary-rgb: 20, 23, 32;
+  --app-sidebar: #1e2128;
+  --app-main: #0f1115;
+  --app-main-rgb: 15, 17, 21;
+  --app-border: #2a2d35;
+  --app-border-rgb: 42, 45, 53;
+  --app-foreground: #ffffff;
+  --app-foreground-rgb: 255, 255, 255;
+  --app-input: #12141a;
+  --app-error: #e3120b;
+  --app-error-rgb: 227, 18, 11;
+  --app-foreground-10: rgba(255, 255, 255, 0.1);
+  --app-foreground-20: rgba(255, 255, 255, 0.2);
+  --app-foreground-50: rgba(255, 255, 255, 0.5);
+  --app-foreground-60: rgba(255, 255, 255, 0.6);
+  --app-foreground-80: rgba(255, 255, 255, 0.8);
+  --app-primary-20: rgba(255, 85, 0, 0.2);
+  --app-error-20: rgba(227, 18, 11, 0.2);
+  --app-foreground-muted: rgba(255, 255, 255, 0.55);
   --app-gradient-default: linear-gradient(135deg, #282d36 0%, #1a1d23 100%);
   --app-gradient-debug: linear-gradient(135deg, #2a2832 0%, #1e1c26 100%);
 }
 
-:root[data-theme='cosmic-latte'] {
-  --app-font-heading: 'Playfair Display', 'Cormorant Garamond', Georgia, serif;
-  --app-font-body: 'Cormorant Garamond', 'EB Garamond', Georgia, serif;
-  --app-font-body-weight: 500; --app-font-body-weight-bold: 700;
-  --app-primary: #ff5500; --app-primary-rgb: 255, 85, 0;
-  --app-secondary: #f5edd6; --app-secondary-rgb: 245, 237, 214;
+:root[data-theme="cosmic-latte"] {
+  --app-font-heading: "Playfair Display", "Cormorant Garamond", Georgia, serif;
+  --app-font-body: "Cormorant Garamond", "EB Garamond", Georgia, serif;
+  --app-font-body-weight: 500;
+  --app-font-body-weight-bold: 700;
+  --app-primary: #ff5500;
+  --app-primary-rgb: 255, 85, 0;
+  --app-secondary: #f5edd6;
+  --app-secondary-rgb: 245, 237, 214;
   /* Peer bubble (`--app-tertiary`) is a deeper cream so it reads distinctly
      against the lighter chat background (`--app-main`). */
-  --app-tertiary: #f3e7c4; --app-tertiary-rgb: 243, 231, 196;
-  --app-sidebar: #f5edd6; --app-main: #fff8e7; --app-main-rgb: 255, 248, 231;
-  --app-border: #e6dcc0; --app-border-rgb: 230, 220, 192;
+  --app-tertiary: #f3e7c4;
+  --app-tertiary-rgb: 243, 231, 196;
+  --app-sidebar: #f5edd6;
+  --app-main: #fff8e7;
+  --app-main-rgb: 255, 248, 231;
+  --app-border: #e6dcc0;
+  --app-border-rgb: 230, 220, 192;
   /* Default body text is solid black for max legibility on the cream theme. */
-  --app-foreground: #000000; --app-foreground-rgb: 0, 0, 0;
-  --app-input: #fffdf5; --app-error: #a44a3a; --app-error-rgb: 164, 74, 58;
-  --app-foreground-10: rgba(0,0,0,0.1); --app-foreground-20: rgba(0,0,0,0.2);
-  --app-foreground-50: rgba(0,0,0,0.5); --app-foreground-60: rgba(0,0,0,0.62);
-  --app-foreground-80: rgba(0,0,0,0.8); --app-primary-20: rgba(255,85,0,0.2);
-  --app-error-20: rgba(164,74,58,0.2); --app-foreground-muted: rgba(0,0,0,0.6);
+  --app-foreground: #000000;
+  --app-foreground-rgb: 0, 0, 0;
+  --app-input: #fffdf5;
+  --app-error: #a44a3a;
+  --app-error-rgb: 164, 74, 58;
+  --app-foreground-10: rgba(0, 0, 0, 0.1);
+  --app-foreground-20: rgba(0, 0, 0, 0.2);
+  --app-foreground-50: rgba(0, 0, 0, 0.5);
+  --app-foreground-60: rgba(0, 0, 0, 0.62);
+  --app-foreground-80: rgba(0, 0, 0, 0.8);
+  --app-primary-20: rgba(255, 85, 0, 0.2);
+  --app-error-20: rgba(164, 74, 58, 0.2);
+  --app-foreground-muted: rgba(0, 0, 0, 0.6);
 }
 
-:root[data-theme='vim'] {
-  --app-font-heading: 'Space Mono', 'JetBrains Mono', monospace;
-  --app-font-body: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
-  --app-primary: #15d34c; --app-primary-rgb: 21, 211, 76;
-  --app-secondary: #0a0a0a; --app-secondary-rgb: 10, 10, 10;
-  --app-tertiary: #050505; --app-tertiary-rgb: 5, 5, 5;
-  --app-sidebar: #0a0a0a; --app-main: #000000; --app-main-rgb: 0, 0, 0;
-  --app-border: #0fa83b; --app-border-rgb: 15, 168, 59;
-  --app-foreground: #15d34c; --app-foreground-rgb: 21, 211, 76;
-  --app-input: #0a0a0a; --app-error: #ff4444; --app-error-rgb: 255, 68, 68;
-  --app-foreground-10: rgba(21,211,76,0.1); --app-foreground-20: rgba(21,211,76,0.2);
-  --app-foreground-50: rgba(21,211,76,0.5); --app-foreground-60: rgba(21,211,76,0.6);
-  --app-foreground-80: rgba(21,211,76,0.8); --app-primary-20: rgba(21,211,76,0.2);
-  --app-error-20: rgba(255,68,68,0.2); --app-foreground-muted: rgba(21,211,76,0.55);
+:root[data-theme="vim"] {
+  --app-font-heading: "Space Mono", "JetBrains Mono", monospace;
+  --app-font-body: "JetBrains Mono", "SF Mono", Menlo, monospace;
+  --app-primary: #15d34c;
+  --app-primary-rgb: 21, 211, 76;
+  --app-secondary: #0a0a0a;
+  --app-secondary-rgb: 10, 10, 10;
+  --app-tertiary: #050505;
+  --app-tertiary-rgb: 5, 5, 5;
+  --app-sidebar: #0a0a0a;
+  --app-main: #000000;
+  --app-main-rgb: 0, 0, 0;
+  --app-border: #0fa83b;
+  --app-border-rgb: 15, 168, 59;
+  --app-foreground: #15d34c;
+  --app-foreground-rgb: 21, 211, 76;
+  --app-input: #0a0a0a;
+  --app-error: #ff4444;
+  --app-error-rgb: 255, 68, 68;
+  --app-foreground-10: rgba(21, 211, 76, 0.1);
+  --app-foreground-20: rgba(21, 211, 76, 0.2);
+  --app-foreground-50: rgba(21, 211, 76, 0.5);
+  --app-foreground-60: rgba(21, 211, 76, 0.6);
+  --app-foreground-80: rgba(21, 211, 76, 0.8);
+  --app-primary-20: rgba(21, 211, 76, 0.2);
+  --app-error-20: rgba(255, 68, 68, 0.2);
+  --app-foreground-muted: rgba(21, 211, 76, 0.55);
   --app-on-primary: #000000;
 }
 
@@ -217,15 +258,15 @@ html {
   overflow-x: hidden;
   overscroll-behavior-x: none;
   -webkit-touch-callout: none;
-  height: calc(100% + env(safe-area-inset-top));
-  min-height: calc(100% + env(safe-area-inset-top));
+  height: calc(100% + var(--safe-area-inset-top, 0px));
+  min-height: calc(100% + var(--safe-area-inset-top, 0px));
   --safe-area-inset-top: env(safe-area-inset-top);
   --safe-area-inset-right: env(safe-area-inset-right);
   --safe-area-inset-bottom: env(safe-area-inset-bottom);
   --safe-area-inset-left: env(safe-area-inset-left);
 }
 
-html[data-mode='embed'] {
+html[data-mode="embed"] {
   height: 100%;
   min-height: 100%;
 }
@@ -259,9 +300,8 @@ body,
   font-weight: var(--app-font-body-weight);
 }
 
-
 p {
-  font-family: 'Inter', 'Noto Sans Arabic', sans-serif;
+  font-family: "Inter", "Noto Sans Arabic", sans-serif;
   font-weight: 400;
   font-size: 15px;
   line-height: 21px;
@@ -325,7 +365,7 @@ button,
 input,
 textarea,
 select {
-  font-family: 'Inter', 'Noto Sans Arabic', sans-serif;
+  font-family: "Inter", "Noto Sans Arabic", sans-serif;
   font-weight: 400;
   font-size: inherit;
   border: none;
@@ -370,7 +410,7 @@ div {
 }
 
 h1 {
-  font-family: 'Plus Jakarta Sans', 'Noto Sans Arabic', sans-serif;
+  font-family: "Plus Jakarta Sans", "Noto Sans Arabic", sans-serif;
   font-weight: 700;
   font-size: 30px;
   line-height: 41px;
@@ -379,7 +419,7 @@ h1 {
 }
 
 h2 {
-  font-family: 'Plus Jakarta Sans', 'Noto Sans Arabic', sans-serif;
+  font-family: "Plus Jakarta Sans", "Noto Sans Arabic", sans-serif;
   font-weight: 700;
   font-size: 24px;
   line-height: 32px;
@@ -388,7 +428,7 @@ h2 {
 }
 
 h3 {
-  font-family: 'Plus Jakarta Sans', 'Noto Sans Arabic', sans-serif;
+  font-family: "Plus Jakarta Sans", "Noto Sans Arabic", sans-serif;
   font-weight: 700;
   font-size: 18px;
   line-height: 24px;
@@ -397,7 +437,7 @@ h3 {
 }
 
 h4 {
-  font-family: 'Plus Jakarta Sans', 'Noto Sans Arabic', sans-serif;
+  font-family: "Plus Jakarta Sans", "Noto Sans Arabic", sans-serif;
   font-weight: 700;
   font-size: 18px;
   line-height: 24px;
@@ -406,7 +446,7 @@ h4 {
 }
 
 h5 {
-  font-family: 'Plus Jakarta Sans', 'Noto Sans Arabic', sans-serif;
+  font-family: "Plus Jakarta Sans", "Noto Sans Arabic", sans-serif;
   font-weight: 700;
   font-size: 18px;
   line-height: 24px;
@@ -415,7 +455,7 @@ h5 {
 }
 
 h6 {
-  font-family: 'Plus Jakarta Sans', 'Noto Sans Arabic', sans-serif;
+  font-family: "Plus Jakarta Sans", "Noto Sans Arabic", sans-serif;
   font-weight: 700;
   font-size: 18px;
   line-height: 24px;
@@ -431,8 +471,49 @@ hr {
 }
 
 /* ── Chat shell interaction states ──────────────────────────────────────── */
-.uc-row { transition: background-color 0.12s ease-out; }
-.uc-row:hover { background: rgba(var(--app-foreground-rgb), 0.06) !important; }
+.uc-row {
+  transition: background-color 0.12s ease-out;
+}
+
+/* Deleting a conversation: collapse + fade instead of blinking out of the list.
+   The row stays mounted for this long before the delete request fires — keep the
+   duration in step with ROW_EXIT_MS in Sidebar.tsx. `grid-template-rows` is what
+   animates the height: `max-height` needs a magic number and janks on tall rows,
+   whereas 1fr → 0fr collapses whatever height the row actually has. */
+.uc-row-exit {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: none;
+  transition:
+    grid-template-rows 0.2s ease,
+    opacity 0.16s ease-out,
+    transform 0.2s ease;
+  animation: uc-row-collapse 0.2s ease forwards;
+}
+.uc-row-exit > * {
+  overflow: hidden;
+  min-height: 0;
+}
+@keyframes uc-row-collapse {
+  to {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+}
+/* Respect a reduced-motion preference: still remove the row, just without the
+   slide — an instant disappearance is the accessible behaviour here. */
+@media (prefers-reduced-motion: reduce) {
+  .uc-row-exit {
+    animation-duration: 0.01s;
+    transition: none;
+  }
+}
+.uc-row:hover {
+  background: rgba(var(--app-foreground-rgb), 0.06) !important;
+}
 
 /* Pin toggle: occupies the top-right meta cell (where the timestamp sits), so
    it never overlaps the time, the unread badge, or the preview text. Hidden
@@ -453,16 +534,33 @@ hr {
   color: var(--app-foreground);
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.12s ease-out, background-color 0.12s ease-out;
+  transition:
+    opacity 0.12s ease-out,
+    background-color 0.12s ease-out;
   z-index: 1;
 }
-.uc-convrow:hover .uc-pinbtn { opacity: 0.6; }
-.uc-convrow:hover .uc-rowtime { opacity: 0; }
-.uc-pinbtn:hover { opacity: 1 !important; background: var(--app-tertiary); }
-.uc-pinbtn--on { opacity: 0.9 !important; color: var(--app-primary); background: transparent; }
+.uc-convrow:hover .uc-pinbtn {
+  opacity: 0.6;
+}
+.uc-convrow:hover .uc-rowtime {
+  opacity: 0;
+}
+.uc-pinbtn:hover {
+  opacity: 1 !important;
+  background: var(--app-tertiary);
+}
+.uc-pinbtn--on {
+  opacity: 0.9 !important;
+  color: var(--app-primary);
+  background: transparent;
+}
 /* When pinned, the pin is always visible, so hide the timestamp beneath it. */
-.uc-convrow:has(.uc-pinbtn--on) .uc-rowtime { opacity: 0; }
-.uc-rowtime { transition: opacity 0.12s ease-out; }
+.uc-convrow:has(.uc-pinbtn--on) .uc-rowtime {
+  opacity: 0;
+}
+.uc-rowtime {
+  transition: opacity 0.12s ease-out;
+}
 
 /* Delete: a trash button sitting just left of the pin (right: 12px), hidden until
    row hover. Mirrors .uc-pinbtn but tints to the error color on hover. */
@@ -481,11 +579,20 @@ hr {
   color: var(--app-foreground);
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.12s ease-out, background-color 0.12s ease-out, color 0.12s ease-out;
+  transition:
+    opacity 0.12s ease-out,
+    background-color 0.12s ease-out,
+    color 0.12s ease-out;
   z-index: 1;
 }
-.uc-convrow:hover .uc-delbtn { opacity: 0.6; }
-.uc-delbtn:hover { opacity: 1 !important; color: var(--app-error); background: var(--app-tertiary); }
+.uc-convrow:hover .uc-delbtn {
+  opacity: 0.6;
+}
+.uc-delbtn:hover {
+  opacity: 1 !important;
+  color: var(--app-error);
+  background: var(--app-tertiary);
+}
 
 /* Inline confirm pair shown after clicking the trash button. Sits over the meta
    slot with a solid background so it reads cleanly over the timestamp/preview. */
@@ -515,28 +622,69 @@ hr {
   cursor: pointer;
   transition: background-color 0.12s ease-out;
 }
-.uc-delconfirm-yes { color: var(--app-error); }
-.uc-delconfirm-yes:hover { background: var(--app-error); color: #fff; }
-.uc-delconfirm-no { color: var(--app-foreground); }
-.uc-delconfirm-no:hover { background: var(--app-tertiary); }
-.uc-iconbtn { transition: background-color 0.12s ease-out; }
-.uc-iconbtn:hover { background: var(--app-tertiary) !important; }
-.uc-footbtn { transition: background-color 0.12s ease-out; }
-.uc-footbtn:hover { background: var(--app-tertiary) !important; }
-.uc-featured { transition: transform 0.1s ease-out, filter 0.12s ease-out; }
-.uc-featured:hover { filter: brightness(1.05); transform: translateY(-1px); }
+.uc-delconfirm-yes {
+  color: var(--app-error);
+}
+.uc-delconfirm-yes:hover {
+  background: var(--app-error);
+  color: #fff;
+}
+.uc-delconfirm-no {
+  color: var(--app-foreground);
+}
+.uc-delconfirm-no:hover {
+  background: var(--app-tertiary);
+}
+.uc-iconbtn {
+  transition: background-color 0.12s ease-out;
+}
+.uc-iconbtn:hover {
+  background: var(--app-tertiary) !important;
+}
+.uc-footbtn {
+  transition: background-color 0.12s ease-out;
+}
+.uc-footbtn:hover {
+  background: var(--app-tertiary) !important;
+}
+.uc-featured {
+  transition:
+    transform 0.1s ease-out,
+    filter 0.12s ease-out;
+}
+.uc-featured:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
 
 /* Composer attachment upload spinner. */
-@keyframes uc-spin { to { transform: rotate(360deg); } }
-.uc-spin { animation: uc-spin 0.7s linear infinite; }
+@keyframes uc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.uc-spin {
+  animation: uc-spin 0.7s linear infinite;
+}
 
 /* Tappable message buttons (bot starters / conversation buttons). */
-.uc-msgbtn { transition: background-color 0.12s ease, color 0.12s ease; }
-.uc-msgbtn:hover { background: var(--app-primary) !important; color: #fff !important; }
+.uc-msgbtn {
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+.uc-msgbtn:hover {
+  background: var(--app-primary) !important;
+  color: #fff !important;
+}
 
 /* Overflow-menu items (e.g. ⋯ → Clear chat). */
-.uc-menuitem { transition: background-color 0.12s ease; }
-.uc-menuitem:hover { background: rgba(var(--app-foreground-rgb), 0.07) !important; }
+.uc-menuitem {
+  transition: background-color 0.12s ease;
+}
+.uc-menuitem:hover {
+  background: rgba(var(--app-foreground-rgb), 0.07) !important;
+}
 
 /* Image attachments (rendered by ChatMedia → ChatImage, which owns per-image
    sizing for aspect ratio + width). A media bubble drops its padding so the
@@ -594,22 +742,48 @@ hr {
   background: var(--app-main);
   color: var(--app-foreground);
   text-decoration: none;
-  transition: border-color 0.12s ease, background 0.12s ease;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease;
   max-width: 100%;
   box-sizing: border-box;
 }
-.uc-file:hover { border-color: var(--app-primary); background: var(--app-tertiary); }
-.uc-file .ic { display: inline-flex; flex-shrink: 0; opacity: 0.75; }
-.uc-file .body { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.uc-file:hover {
+  border-color: var(--app-primary);
+  background: var(--app-tertiary);
+}
+.uc-file .ic {
+  display: inline-flex;
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+.uc-file .body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
 .uc-file .n {
-  font-size: 13px; font-weight: 600; line-height: 17px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 17px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .uc-file .m {
-  font-family: var(--app-font-mono); font-size: 10px; letter-spacing: 0.06em;
-  text-transform: uppercase; color: var(--app-foreground-muted);
+  font-family: var(--app-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--app-foreground-muted);
 }
-.uc-file .dl { display: inline-flex; flex-shrink: 0; color: var(--app-primary); }
+.uc-file .dl {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--app-primary);
+}
 
 /* Search citation cards — numbered [n] to mirror the inline [n] markers in the
    answer (a real sequence). Stark/mono to match the receipt + starter-button
@@ -631,7 +805,9 @@ hr {
   background: var(--app-main);
   color: var(--app-foreground);
   text-decoration: none;
-  transition: border-color 0.12s ease, background 0.12s ease;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease;
   max-width: 100%;
   box-sizing: border-box;
   overflow: hidden;
@@ -685,7 +861,9 @@ a.uc-src:hover {
 /* Hide the framework's floating feedback button — it overlaps the composer.
    ugly.bot puts Feedback in the sidebar footer; our Sidebar's "Feedback"
    button still triggers this (hidden) element via [data-id="feedback-button"]. */
-[data-id="feedback-button"] { display: none !important; }
+[data-id="feedback-button"] {
+  display: none !important;
+}
 
 /* ── Scrollbars: no background track, neutral always-visible thumb ──────────
    The thumb is a mid-grey (not foreground-black) so it reads on BOTH the white
@@ -722,7 +900,7 @@ a.uc-src:hover {
    pane's right edge) with the message list centered in a readable column,
    matching ugly.bot. Only the horizontal margins are set so ChatView's inline
    `margin-top: auto` (bottom-anchoring) is preserved. ───────────────────── */
-[data-testid='message-list-inner'] {
+[data-testid="message-list-inner"] {
   width: 100%;
   max-width: 820px;
   margin-left: auto;
@@ -742,7 +920,7 @@ a.uc-src:hover {
    the container height instead of growing with content, trapping the scroll
    inside the inner and leaving the outer container (the element the scroll code
    drives) with nothing to scroll. The inner MUST stay overflow: visible. */
-.uc-chat-scroll [data-testid='conversation-scroll-container'] {
+.uc-chat-scroll [data-testid="conversation-scroll-container"] {
   overflow-x: hidden;
 }
 
@@ -760,7 +938,7 @@ a.uc-src:hover {
 }
 /* Messages are centered in a max-width column while the scroll container stays
    full-width — so the scrollbar sits at the pane's right edge, not the column's. */
-.uc-chat-scroll [data-testid='message-list-inner'] {
+.uc-chat-scroll [data-testid="message-list-inner"] {
   width: 100%;
   max-width: 820px;
   margin-left: auto;
@@ -771,17 +949,40 @@ a.uc-src:hover {
    shifts the message list (the framework's in-flow indicator is suppressed via
    typingEntries={[]}). */
 /* Three-dot pulse for the bot-thinking row. Respects reduced motion. */
-.uc-dots { display: inline-flex; gap: 3px; margin-right: 6px; vertical-align: middle; }
+.uc-dots {
+  display: inline-flex;
+  gap: 3px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
 .uc-dots i {
-  width: 4px; height: 4px; border-radius: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
   background: var(--app-primary);
   animation: uc-dot 1s infinite ease-in-out;
 }
-.uc-dots i:nth-child(2) { animation-delay: 0.15s; }
-.uc-dots i:nth-child(3) { animation-delay: 0.3s; }
-@keyframes uc-dot { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+.uc-dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.uc-dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes uc-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
-  .uc-dots i { animation: none; opacity: 0.7; }
+  .uc-dots i {
+    animation: none;
+    opacity: 0.7;
+  }
 }
 
 .uc-typing-overlay {
@@ -834,7 +1035,14 @@ a.uc-src:hover {
 }
 
 /* ---- brand utilities (ported from mockups/brand.css) ---- */
-.uc-mono-label { font-family: var(--app-font-mono); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.22em; color: var(--app-foreground-muted); }
+.uc-mono-label {
+  font-family: var(--app-font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--app-foreground-muted);
+}
 /* Active-mode badge in the chat header — makes a non-default mode (Search /
    Image / Honest, and especially LIE) visible at a glance instead of hidden in
    the ⋯ menu. Lie gets a warning tint so satirical answers aren't mistaken for
@@ -873,13 +1081,47 @@ a.uc-src:hover {
   background: var(--app-warning, #d97706);
   border-radius: 0;
 }
-.uc-receipt { font-family: var(--app-font-mono); font-size: 10.5px; letter-spacing: 0.02em; color: var(--app-foreground-muted); display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap; white-space: normal; }
-.uc-receipt .cost { color: var(--app-primary); }
-.uc-receipt .dot { color: var(--app-border); }
-.uc-pill { display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border: 1.5px solid var(--app-primary); color: var(--app-primary); background: transparent; font-family: var(--app-font-mono); font-size: 11.5px; font-weight: 600; cursor: pointer; }
-.uc-pill:hover { background: var(--app-primary); color: var(--app-on-primary); }
-.uc-receipt b { color: var(--app-foreground); font-weight: 500; }
-.uc-receipt .late { color: var(--app-primary); }
+.uc-receipt {
+  font-family: var(--app-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  color: var(--app-foreground-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  white-space: normal;
+}
+.uc-receipt .cost {
+  color: var(--app-primary);
+}
+.uc-receipt .dot {
+  color: var(--app-border);
+}
+.uc-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border: 1.5px solid var(--app-primary);
+  color: var(--app-primary);
+  background: transparent;
+  font-family: var(--app-font-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.uc-pill:hover {
+  background: var(--app-primary);
+  color: var(--app-on-primary);
+}
+.uc-receipt b {
+  color: var(--app-foreground);
+  font-weight: 500;
+}
+.uc-receipt .late {
+  color: var(--app-primary);
+}
 
 /* ── Chat thread rows (mock parity) ──────────────────────────────────────────
    VirtualMessageList renders each row as `[data-message-id]` wrapping ChatPage's
@@ -895,53 +1137,173 @@ a.uc-src:hover {
 }
 
 /* One thread row, fully owned by us. */
-.uc-msg { display: flex; gap: 10px; max-width: 78%; }
+.uc-msg {
+  display: flex;
+  gap: 10px;
+  max-width: 78%;
+}
 /* On narrow/mobile viewports give bubbles more room. */
-@media (max-width: 820px) { .uc-msg { max-width: 92%; } }
-.uc-msg.me { margin-left: auto; flex-direction: row-reverse; }
-.uc-msg .uc-msgcol { display: flex; flex-direction: column; gap: 4px; min-width: 0; align-items: flex-start; }
-.uc-msg.me .uc-msgcol { align-items: flex-end; }
-.uc-msg .uc-avatar-slot { align-self: flex-end; flex: none; }
+@media (max-width: 820px) {
+  .uc-msg {
+    max-width: 92%;
+  }
+}
+.uc-msg.me {
+  margin-left: auto;
+  flex-direction: row-reverse;
+}
+.uc-msg .uc-msgcol {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  align-items: flex-start;
+}
+.uc-msg.me .uc-msgcol {
+  align-items: flex-end;
+}
+.uc-msg .uc-avatar-slot {
+  align-self: flex-end;
+  flex: none;
+}
 
-.uc-metarow { display: flex; align-items: center; gap: 8px; padding: 0 4px; }
-.uc-metarow .sender { font-family: var(--app-font-heading); font-weight: 700; font-size: 12px; color: var(--app-foreground); }
-.uc-metarow .sender.bot { color: var(--app-primary); }
-.uc-metarow .t { font-family: var(--app-font-mono); font-size: 9.5px; color: var(--app-foreground-muted); }
+.uc-metarow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+}
+.uc-metarow .sender {
+  font-family: var(--app-font-heading);
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--app-foreground);
+}
+.uc-metarow .sender.bot {
+  color: var(--app-primary);
+}
+.uc-metarow .t {
+  font-family: var(--app-font-mono);
+  font-size: 9.5px;
+  color: var(--app-foreground-muted);
+}
 
-.uc-bubble { padding: 9px 13px; font-size: var(--uc-msg-size, 16px); line-height: 1.5; word-break: break-word; max-width: 100%; }
-.uc-bubble.peer { background: var(--app-tertiary); border: 1px solid var(--app-border); color: var(--app-foreground); border-radius: 14px 14px 14px 3px; }
-.uc-bubble.own { background: var(--app-gradient-primary); color: var(--app-on-primary); border: none; border-radius: 14px 14px 3px 14px; }
-.uc-bubble.own.stack, .uc-bubble.peer.stack { border-radius: 14px; }
-.uc-bubble.err { background: var(--app-error); color: #fff; border: none; }
+.uc-bubble {
+  padding: 9px 13px;
+  font-size: var(--uc-msg-size, 16px);
+  line-height: 1.5;
+  word-break: break-word;
+  max-width: 100%;
+}
+.uc-bubble.peer {
+  background: var(--app-tertiary);
+  border: 1px solid var(--app-border);
+  color: var(--app-foreground);
+  border-radius: 14px 14px 14px 3px;
+}
+.uc-bubble.own {
+  background: var(--app-gradient-primary);
+  color: var(--app-on-primary);
+  border: none;
+  border-radius: 14px 14px 3px 14px;
+}
+.uc-bubble.own.stack,
+.uc-bubble.peer.stack {
+  border-radius: 14px;
+}
+.uc-bubble.err {
+  background: var(--app-error);
+  color: #fff;
+  border: none;
+}
 /* Selected message — subtle ring so the active row reads clearly while its
    metadata + action menu are revealed. */
-.uc-bubble.selected { box-shadow: 0 0 0 2px var(--app-primary); }
+.uc-bubble.selected {
+  box-shadow: 0 0 0 2px var(--app-primary);
+}
 /* Markdown inside the own (gradient) bubble inherits the on-primary color. */
-.uc-bubble.own, .uc-bubble.own * { color: var(--app-on-primary); }
+.uc-bubble.own,
+.uc-bubble.own * {
+  color: var(--app-on-primary);
+}
 
 /* Thread date separator (today · MON DD). */
-.uc-daysep { display: flex; align-items: center; gap: 12px; margin: 10px 0 14px; padding: 0 4px; }
-.uc-daysep::before, .uc-daysep::after { content: ''; height: 1px; background: var(--app-border); flex: 1; }
-.uc-daysep span { font-family: var(--app-font-mono); font-size: 9.5px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--app-foreground-muted); }
-
+.uc-daysep {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 10px 0 14px;
+  padding: 0 4px;
+}
+.uc-daysep::before,
+.uc-daysep::after {
+  content: "";
+  height: 1px;
+  background: var(--app-border);
+  flex: 1;
+}
+.uc-daysep span {
+  font-family: var(--app-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--app-foreground-muted);
+}
 
 /* ---- call transcript panel + subtitle overlay (ported from mockups
    call-bot.html / call-2p.html). The panel is themed with --app-* tokens; the
    video stage + subtitle overlay stay dark in ALL themes, so the overlay uses
    fixed light-on-dark values from the mockup. ---- */
-@keyframes uc-rec { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+@keyframes uc-rec {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
 
 /* Live "recording" dot on the transcript header. */
-.uc-tp-livedot { width: 6px; height: 6px; border-radius: 50%; background: var(--app-success); animation: uc-rec 1.4s ease-in-out infinite; }
+.uc-tp-livedot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--app-success);
+  animation: uc-rec 1.4s ease-in-out infinite;
+}
 
 /* Red "LIVE" dot on the immersive call HUD (fixed light-on-dark). */
-.uc-call-rec { animation: uc-rec 1.4s ease-in-out infinite; }
+.uc-call-rec {
+  animation: uc-rec 1.4s ease-in-out infinite;
+}
 
 /* Composer box (transcript footer). */
-.uc-tp-cbox { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 12px; border: 1px solid var(--app-border); border-radius: 10px; background: var(--app-input); transition: border-color 0.15s ease; }
-.uc-tp-cbox:focus-within { border-color: var(--app-primary); }
-.uc-tp-cbox input { flex: 1; border: none; background: none; outline: none; font-size: 13px; font-family: var(--app-font-body); color: var(--app-foreground); }
-.uc-tp-cbox input::placeholder { color: var(--app-foreground-muted); }
+.uc-tp-cbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 12px;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--app-input);
+  transition: border-color 0.15s ease;
+}
+.uc-tp-cbox:focus-within {
+  border-color: var(--app-primary);
+}
+.uc-tp-cbox input {
+  flex: 1;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 13px;
+  font-family: var(--app-font-body);
+  color: var(--app-foreground);
+}
+.uc-tp-cbox input::placeholder {
+  color: var(--app-foreground-muted);
+}
 
 /* Subtitle overlay — fixed light-on-dark (lives over the dark video stage). */
 /* One caption zone, anchored as a full-bleed band. These lines used to float
@@ -949,28 +1311,118 @@ a.uc-src:hover {
    and sliding under the self-PiP — desktop got a transcript rail, mobile got
    text thrown at the wall. Fixed to the stage bottom so it never reflows over
    a face, and stopping clear of the self-PiP. */
-.uc-subs { position: absolute; left: 0; right: 0; z-index: 4; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 12px; text-align: left; pointer-events: none; background: linear-gradient(to top, rgba(0,0,0,0.78), rgba(0,0,0,0.55) 62%, transparent); }
+.uc-subs {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 12px;
+  text-align: left;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.78),
+    rgba(0, 0, 0, 0.55) 62%,
+    transparent
+  );
+}
 /* Each line carries its own scrim. A text-shadow alone is no match for a bright
    camera frame — at 45% white the spoken line was simply unreadable over video. */
-.uc-sub-line { max-width: 100%; font-family: var(--app-font-heading); font-weight: 700; font-size: 15px; line-height: 1.35; color: rgba(255, 255, 255, 0.6); }
-.uc-sub-line .who { font-family: var(--app-font-mono); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--app-primary); margin-right: 7px; }
-.uc-sub-line.past { font-size: 13px; }
-@media (max-width: 640px) { .uc-subs { right: 104px; } .uc-sub-line { font-size: 14px; } }
-.uc-sub-line.active { color: #fff; }
+.uc-sub-line {
+  max-width: 100%;
+  font-family: var(--app-font-heading);
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.6);
+}
+.uc-sub-line .who {
+  font-family: var(--app-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--app-primary);
+  margin-right: 7px;
+}
+.uc-sub-line.past {
+  font-size: 13px;
+}
+@media (max-width: 640px) {
+  .uc-subs {
+    right: 104px;
+  }
+  .uc-sub-line {
+    font-size: 14px;
+  }
+}
+.uc-sub-line.active {
+  color: #fff;
+}
 
 /* Mobile compose bar overlaid on video — fixed light-on-dark. */
 
 /* ---- session telemetry strip (§9 receipts) ---- */
-.uc-telemetry { display: flex; align-items: stretch; border-bottom: 1px solid var(--app-border); background: var(--app-tertiary); overflow-x: auto; flex-shrink: 0; }
-.uc-tel-cell { padding: 7px 15px; border-right: 1px solid var(--app-border); display: flex; flex-direction: column; gap: 3px; white-space: nowrap; }
-.uc-tel-cell .k { font-family: var(--app-font-body); font-size: 9px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--app-foreground-muted); }
-.uc-tel-cell .v { font-family: var(--app-font-body); font-weight: 600; font-size: 13px; color: var(--app-foreground); font-variant-numeric: tabular-nums; }
-.uc-tel-cell .v.cost { color: var(--app-primary); }
-.uc-tel-note { align-self: center; margin-left: auto; padding: 0 14px; font-family: var(--app-font-body); font-size: 10px; color: var(--app-foreground-muted); letter-spacing: 0.04em; text-align: right; white-space: nowrap; }
+.uc-telemetry {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--app-border);
+  background: var(--app-tertiary);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+.uc-tel-cell {
+  padding: 7px 15px;
+  border-right: 1px solid var(--app-border);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  white-space: nowrap;
+}
+.uc-tel-cell .k {
+  font-family: var(--app-font-body);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--app-foreground-muted);
+}
+.uc-tel-cell .v {
+  font-family: var(--app-font-body);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--app-foreground);
+  font-variant-numeric: tabular-nums;
+}
+.uc-tel-cell .v.cost {
+  color: var(--app-primary);
+}
+.uc-tel-note {
+  align-self: center;
+  margin-left: auto;
+  padding: 0 14px;
+  font-family: var(--app-font-body);
+  font-size: 10px;
+  color: var(--app-foreground-muted);
+  letter-spacing: 0.04em;
+  text-align: right;
+  white-space: nowrap;
+}
 /* Keyboard focus. There was no focus indicator anywhere — every control returned
    outline:none with no replacement, so keyboard/AT users were flying blind. Use
    :focus-visible so pointer users never see a ring. */
-:where(button, a, input, textarea, select, [tabindex], [contenteditable="true"]):focus-visible {
+:where(
+  button,
+  a,
+  input,
+  textarea,
+  select,
+  [tabindex],
+  [contenteditable="true"]
+):focus-visible {
   outline: 2px solid var(--app-primary);
   outline-offset: 2px;
   border-radius: 2px;
@@ -1006,13 +1458,26 @@ a.uc-src:hover {
    shoved the SPENT column off-screen. Drop the note and tighten cells so all
    five (session/messages/tokens/model/spent) fit or scroll cleanly. */
 @media (max-width: 480px) {
-  .uc-tel-note { display: none; }
+  .uc-tel-note {
+    display: none;
+  }
   /* Fit all five cells inside 390px instead of relying on a scroll nobody can
      see: tighten the gutters, shrink the type a step, and let the one long value
      (the model name) ellipsis rather than shoving SPENT past the edge. */
-  .uc-tel-cell { padding: 6px 8px; min-width: 0; flex: 0 1 auto; }
-  .uc-tel-cell .k { font-size: 8px; letter-spacing: 0.08em; }
-  .uc-tel-cell .v { font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+  .uc-tel-cell {
+    padding: 6px 8px;
+    min-width: 0;
+    flex: 0 1 auto;
+  }
+  .uc-tel-cell .k {
+    font-size: 8px;
+    letter-spacing: 0.08em;
+  }
+  .uc-tel-cell .v {
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 /* ── video-call stage ────────────────────────────────────────────────────────
@@ -1035,12 +1500,21 @@ a.uc-src:hover {
   padding: 8px;
   z-index: 1;
 }
-.uc-stage.n1 { grid-template-columns: 1fr; }
-.uc-stage.n2 { grid-template-columns: 1fr 1fr; }
+.uc-stage.n1 {
+  grid-template-columns: 1fr;
+}
+.uc-stage.n2 {
+  grid-template-columns: 1fr 1fr;
+}
 .uc-stage.n3,
-.uc-stage.n4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+.uc-stage.n4 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
 /* Odd tile out spans both columns rather than leaving a hole. */
-.uc-stage.n3 > :nth-child(3) { grid-column: 1 / -1; }
+.uc-stage.n3 > :nth-child(3) {
+  grid-column: 1 / -1;
+}
 
 .uc-tile {
   position: relative;
@@ -1051,7 +1525,7 @@ a.uc-src:hover {
 }
 /* Speaking ring is inset so it reads on a tile whose video bleeds to the edge. */
 .uc-tile.speaking::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   border: 3px solid var(--app-primary);
@@ -1107,15 +1581,23 @@ a.uc-src:hover {
   overflow-x: auto;
   scrollbar-width: none;
 }
-.uc-strip::-webkit-scrollbar { display: none; }
+.uc-strip::-webkit-scrollbar {
+  display: none;
+}
 .uc-strip .uc-tile {
   flex: 0 0 auto;
   width: 132px;
   height: 92px;
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
-.uc-strip .uc-tile-label { left: 4px; bottom: 4px; padding: 2px 5px; }
-.uc-strip .uc-tile-label .n { font-size: 10px; }
+.uc-strip .uc-tile-label {
+  left: 4px;
+  bottom: 4px;
+  padding: 2px 5px;
+}
+.uc-strip .uc-tile-label .n {
+  font-size: 10px;
+}
 
 .uc-waiting {
   position: absolute;
@@ -1138,11 +1620,19 @@ a.uc-src:hover {
   animation: uc-ring 1.8s ease-out infinite;
 }
 @keyframes uc-ring {
-  0% { transform: scale(0.8); opacity: 0.7; }
-  100% { transform: scale(1.35); opacity: 0; }
+  0% {
+    transform: scale(0.8);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .uc-waiting .ring { animation: none; }
+  .uc-waiting .ring {
+    animation: none;
+  }
 }
 .uc-waiting .t {
   font-family: var(--app-font-heading);
@@ -1160,10 +1650,21 @@ a.uc-src:hover {
 
 @media (max-width: 640px) {
   /* Four side-by-side tiles at 390px are unreadable — stack to one column. */
-  .uc-stage.n2 { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
-  .uc-stage.n3 { grid-template-rows: repeat(3, 1fr); grid-template-columns: 1fr; }
-  .uc-stage.n3 > :nth-child(3) { grid-column: auto; }
-  .uc-strip .uc-tile { width: 96px; height: 68px; }
+  .uc-stage.n2 {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+  .uc-stage.n3 {
+    grid-template-rows: repeat(3, 1fr);
+    grid-template-columns: 1fr;
+  }
+  .uc-stage.n3 > :nth-child(3) {
+    grid-column: auto;
+  }
+  .uc-strip .uc-tile {
+    width: 96px;
+    height: 68px;
+  }
 }
 
 /* ── video-call chrome ───────────────────────────────────────────────────────
@@ -1174,16 +1675,18 @@ a.uc-src:hover {
 /* Height of the band the control bar owns; the stage ends here. Includes the
    safe-area inset so the bar clears the iOS home indicator. */
 .uc-call-root {
-  --uc-band: calc(84px + env(safe-area-inset-bottom, 0px));
+  --uc-band: calc(84px + var(--safe-area-inset-bottom, 0px));
 }
 @media (max-width: 640px) {
-  .uc-call-root { --uc-band: calc(66px + env(safe-area-inset-bottom, 0px)); }
+  .uc-call-root {
+    --uc-band: calc(66px + var(--safe-area-inset-bottom, 0px));
+  }
 }
 
 .uc-ctrlbar {
   position: absolute;
   left: 50%;
-  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(18px + var(--safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
   z-index: 5;
   display: flex;
@@ -1202,7 +1705,10 @@ a.uc-src:hover {
   cursor: pointer;
 }
 /* Mic + camera are pressed constantly; captions/bot are not. Rank by size. */
-.uc-ctrl.primary { width: 54px; height: 54px; }
+.uc-ctrl.primary {
+  width: 54px;
+  height: 54px;
+}
 /* End call is wider as well as red — rank by size and colour, not colour alone —
    and set well clear of the cluster so a reach for mute can't hang up the call. */
 .uc-ctrl-end {
@@ -1230,7 +1736,11 @@ a.uc-src:hover {
   color: rgba(255, 255, 255, 0.75);
 }
 @media (max-width: 640px) {
-  .uc-self-state { font-size: 7.5px; letter-spacing: 0; padding: 5px 3px; }
+  .uc-self-state {
+    font-size: 7.5px;
+    letter-spacing: 0;
+    padding: 5px 3px;
+  }
 }
 
 .uc-self {
@@ -1244,15 +1754,34 @@ a.uc-src:hover {
   z-index: 4;
 }
 /* The filmstrip must stop where the self-PiP starts rather than slide under it. */
-.uc-strip { right: 164px; }
+.uc-strip {
+  right: 164px;
+}
 
 @media (max-width: 640px) {
   /* Shrink the controls to fit rather than overflow the viewport. */
-  .uc-ctrlbar { gap: 5px; padding: 6px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
-  .uc-ctrl { width: 40px; height: 40px; }
-  .uc-ctrl-end { height: 40px; padding: 0 16px; }
-  .uc-self { right: 10px; width: 84px; height: 60px; }
-  .uc-strip { left: 10px; right: 104px; }
+  .uc-ctrlbar {
+    gap: 5px;
+    padding: 6px;
+    bottom: calc(10px + var(--safe-area-inset-bottom, 0px));
+  }
+  .uc-ctrl {
+    width: 40px;
+    height: 40px;
+  }
+  .uc-ctrl-end {
+    height: 40px;
+    padding: 0 16px;
+  }
+  .uc-self {
+    right: 10px;
+    width: 84px;
+    height: 60px;
+  }
+  .uc-strip {
+    left: 10px;
+    right: 104px;
+  }
 }
 
 /* A gradient wash is no match for a bright frame — over the fake feed's own
@@ -1274,13 +1803,19 @@ a.uc-src:hover {
 /* Composer mode/model control (bot chats) — the mode switch, moved from the
    header ⋯ menu to where it's actually used. Mono uppercase + orange, square,
    to read as a deliberate control rather than a text field. */
+/* The composer's mode chip ("CHAT ⌄"). Measured from the report's element map at
+   360px wide, the 30px chip left ~6px above and ~5.5px below it inside a 42px
+   row while sitting 8px in from the frame — visibly uneven, and with the three
+   action icons it squeezed the input until its placeholder clipped. 28px tall
+   with a small right margin centres cleanly and returns width to the input. */
 .uc-composer-mode {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   flex-shrink: 0;
-  height: 30px;
-  padding: 0 9px;
+  height: 28px;
+  margin-right: 2px;
+  padding: 0 10px;
   border: 1px solid var(--app-primary);
   background: transparent;
   color: var(--app-primary);
@@ -1292,4 +1827,22 @@ a.uc-src:hover {
   cursor: pointer;
   white-space: nowrap;
 }
-.uc-composer-mode:hover { background: var(--app-primary-20); }
+.uc-composer-mode:hover {
+  background: var(--app-primary-20);
+}
+/* Narrow phones: a long mode name ("RESEARCH", "IMAGE") plus attach/mic/send
+   leaves the input too little room to show its placeholder. Cap the label rather
+   than let it push the input to nothing — the chevron still marks it as a menu,
+   and the full name is in the popover and the aria-label. */
+@media (max-width: 430px) {
+  .uc-composer-mode {
+    padding: 0 8px;
+    gap: 4px;
+    max-width: 96px;
+  }
+  .uc-composer-mode > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

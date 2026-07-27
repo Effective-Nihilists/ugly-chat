@@ -28,12 +28,18 @@ export function ConversationRow(props: {
   onClick: () => void;
   onTogglePin?: () => void;
   onDelete?: () => void;
+  /** True while this row is being deleted — plays the collapse/fade exit. */
+  exiting?: boolean;
 }): React.ReactElement {
-  const { row, selected, onClick, onTogglePin, onDelete } = props;
+  const { row, selected, onClick, onTogglePin, onDelete, exiting } = props;
   const time = relativeTime(row.lastActivity);
   const [confirming, setConfirming] = useState(false);
   return (
-    <div className="uc-convrow" style={{ position: 'relative' }}>
+    <div
+      className={`uc-convrow${exiting ? ' uc-row-exit' : ''}`}
+      style={{ position: 'relative' }}
+      aria-hidden={exiting ? true : undefined}
+    >
     <button
       type="button"
       onClick={onClick}
