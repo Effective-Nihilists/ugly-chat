@@ -32,7 +32,7 @@ export type StaticAssetPath = keyof typeof staticAssets;
  * Origin the assets are served from — the R2 bucket's custom domain, which
  * Cloudflare's CDN edge-caches directly. Empty means same-origin.
  */
-export const staticBaseUrl = '';
+export const staticBaseUrl = 'https://static.ugly.chat';
 
 /**
  * Dev serves the files off disk from the vite middleware at same-origin, so an
