@@ -18,6 +18,7 @@ import { collections } from '../shared/collections';
 import { cronTasks } from '../shared/cron';
 import { createChatHandlers, cronHandlers, type DbSurface } from './handlers';
 import { wireEngineDeps } from './configure';
+import { d1Migrations } from './migrations-d1/001_repair_id_only_fields';
 import { registerAppApi } from './appApi';
 import { withUserPublic } from './userPublic';
 
@@ -36,6 +37,10 @@ const app = createWorkersApp(
   withUserPublic(collections),
   (cfg) => {
     cfg.setWorkers(cronTasks, cronHandlers);
+    // Versioned D1 data migrations, applied by `/_init` after each deploy.
+    // `server/migrations/*.ts` + `ugly-app migrate` is the POSTGRES path and has
+    // not run since this app moved to D1; these are the D1 equivalent.
+    cfg.setD1Migrations(d1Migrations);
     wireEngineDeps(getFullDb);
     // Cross-app chat API (/app/*) — authenticated by ugly.bot chat tokens.
     // `setRawRoutes` hands back a `Hono<{ Bindings: WorkersEnv }>`, but the
