@@ -54,9 +54,7 @@ function origin(): string {
  * referenced asset is a tsc error here, not a 404 in production.
  */
 export function staticUrl(p: StaticAssetPath): string {
-  return (
-    origin() + '/' + (staticAssets as Record<string, StaticAssetRecord>)[p]!.key
-  );
+  return origin() + '/' + lookup(p)!.key;
 }
 
 /**
@@ -64,6 +62,18 @@ export function staticUrl(p: StaticAssetPath): string {
  * Returns null for an unknown path rather than building a URL that would 404.
  */
 export function resolveStaticUrl(p: string): string | null {
-  const rec = (staticAssets as Record<string, StaticAssetRecord>)[p];
+  const rec = lookup(p);
   return rec ? origin() + '/' + rec.key : null;
+}
+
+/**
+ * The value type says `| undefined` deliberately. Without it the `!` and the
+ * truthiness check above are dead code in a project that does NOT enable
+ * `noUncheckedIndexedAccess`, and `no-unnecessary-type-assertion` /
+ * `no-unnecessary-condition` fail the lint gate on this generated file —
+ * blocking the deploy of an app that never wrote it. With it, both reads are
+ * honest under either compiler setting.
+ */
+function lookup(p: string): StaticAssetRecord | undefined {
+  return (staticAssets as Record<string, StaticAssetRecord | undefined>)[p];
 }
