@@ -76,6 +76,21 @@ export interface BotDoc {
   model?: string;
   firstMessage?: string | null;
   buttons?: { label: string; prompt: string }[];
+  characterId?: string | null;
+  characterThumbnail?: string | null;
+}
+
+/**
+ * The bot's preferred 2D image: the linked character's WEBP thumbnail when
+ * present, else the avatar object's image, else a legacy `avatarUrl` string.
+ */
+export function botImageUri(bot: BotDoc): string | null {
+  return (
+    bot.characterThumbnail ??
+    bot.avatar?.image.uri ??
+    (bot as { avatarUrl?: string | null }).avatarUrl ??
+    null
+  );
 }
 
 /**
@@ -99,7 +114,7 @@ export async function startBotChat(
         mode: 'public',
         ownerIds: [userId],
         bots: { [bot._id]: {} },
-        image: bot.avatar?.image.uri ?? null,
+        image: botImageUri(bot),
       });
     }
     navigate(id);

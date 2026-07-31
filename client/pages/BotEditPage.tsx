@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ImagePlus, X, Plus, Trash2, ArrowLeft, Loader2, ChevronDown } from 'lucide-react';
-import { useApp, uploadBlob, promoteBlob, downscaleImage } from 'ugly-app/client';
+import { ImagePlus, X, Plus, Trash2, ArrowLeft, Loader2, ChevronDown, Bot as BotIcon } from 'lucide-react';
+import { useApp, uploadBlob, promoteBlob, downscaleImage, crossOriginProps } from 'ugly-app/client';
 import { defaultAvatar, type Avatar } from 'ugly-app/shared';
 import { useRouter } from '../router';
 import { BOT_MODELS, startBotChat, type BotDoc } from '../lib/bots';
+import { openUglyBotCharacterCreator } from '../lib/uglyBot';
 
 interface ButtonRow {
   label: string;
@@ -27,6 +28,27 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
   const [loaded, setLoaded] = useState(!editing);
   const [saving, setSaving] = useState(false);
 
+  // Deep-link return from ugly.bot's character creator: it redirects back to
+  // this editor URL with `?characterId=…&thumb=…` appended. Capture them once
+  // (pure read), absorb them into the form state below, then strip them from
+  // the URL so a refresh doesn't resurrect a stale link. Works on `bot/new`
+  // too — the values just sit in the fresh form until the bot is created.
+  const [linked] = useState((): { characterId: string; thumbnail: string | null } | null => {
+    const q = new URLSearchParams(window.location.search);
+    const characterId = q.get('characterId');
+    return characterId ? { characterId, thumbnail: q.get('thumb') } : null;
+  });
+  const [characterId, setCharacterId] = useState<string | null>(linked?.characterId ?? null);
+  const [characterThumbnail, setCharacterThumbnail] = useState<string | null>(linked?.thumbnail ?? null);
+
+  useEffect(() => {
+    if (!linked) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('characterId');
+    url.searchParams.delete('thumb');
+    window.history.replaceState({}, '', url.pathname + url.search);
+  }, [linked]);
+
   useEffect(() => {
     if (!editId) return;
     void socket
@@ -40,6 +62,9 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
         setAvatar(b.avatar ?? defaultAvatar);
         setFirstMessage(b.firstMessage ?? '');
         setButtons(b.buttons ?? []);
+        // A deep-linked character (already in state) wins over the stored one.
+        setCharacterId((cur) => cur ?? b.characterId ?? null);
+        setCharacterThumbnail((cur) => cur ?? b.characterThumbnail ?? null);
       })
       .catch((err: unknown) => { console.error('[BotEdit] load failed', err); })
       .finally(() => { setLoaded(true); });
@@ -56,6 +81,8 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
         avatar,
         firstMessage: firstMessage.trim() || null,
         buttons: buttons.filter((b) => b.label.trim() && b.prompt.trim()),
+        characterId,
+        characterThumbnail,
       };
       try {
         let id = editId;
@@ -77,7 +104,7 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
         setSaving(false);
       }
     },
-    [name, instruction, model, avatar, firstMessage, buttons, saving, editId, socket, userId, router],
+    [name, instruction, model, avatar, firstMessage, buttons, characterId, characterThumbnail, saving, editId, socket, userId, router],
   );
 
   if (!loaded) {
@@ -113,6 +140,33 @@ export default function BotEditPage({ botId }: { botId?: string }): React.ReactE
             socket={socket}
           />
         </div>
+
+        {/* Character (ugly.bot character creator, deep-link handoff) */}
+        <Field label="Character" hint="A 3D character made on ugly.bot. Its thumbnail becomes this bot's picture in chat lists.">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            {/* Plain <img>, like every list surface — no 3D here. The
+                character/client barrel is not tree-shakeable (ugly-app has no
+                sideEffects map), so CharacterThumbnail stays out of this chunk. */}
+            {characterThumbnail ? (
+              <img {...crossOriginProps(characterThumbnail)} src={characterThumbnail} alt="" style={{ width: 48, height: 48, borderRadius: 0, border: '1px solid var(--app-border)', objectFit: 'cover', flexShrink: 0 }} />
+            ) : (
+              <div style={{ width: 48, height: 48, borderRadius: 0, border: '1px solid var(--app-border)', background: 'var(--app-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <BotIcon size={22} style={{ opacity: 0.6 }} />
+              </div>
+            )}
+            <span style={{ flex: 1, minWidth: 120, fontSize: 14, color: 'var(--app-foreground)', opacity: characterId ? 1 : 0.5 }}>
+              {characterId ? `${name.trim() || 'Bot'} — character linked` : 'No character linked'}
+            </span>
+            <button
+              type="button"
+              onClick={() => { openUglyBotCharacterCreator(window.location.href, characterId); }}
+              style={ghostBtnSmall}
+              data-id="character-edit"
+            >
+              {characterId ? 'Edit character' : 'Create character'}
+            </button>
+          </div>
+        </Field>
 
         <Field label="Name">
           <input value={name} onChange={(e) => { setName(e.target.value); }} placeholder="My Bot" maxLength={60} style={input} data-id="my-bot" />
@@ -357,3 +411,4 @@ const ghostBtn: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', padding: '12px 22px', borderRadius: 0,
   border: '1px solid var(--app-border)', background: 'transparent', color: 'var(--app-foreground)', fontSize: 15, fontWeight: 600, cursor: 'pointer',
 };
+const ghostBtnSmall: React.CSSProperties = { ...ghostBtn, padding: '8px 14px', fontSize: 14 };

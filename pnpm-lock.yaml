@@ -30,8 +30,8 @@ importers:
         specifier: ^0.183.2
         version: 0.183.2
       ugly-app:
-        specifier: ^0.1.947
-        version: 0.1.947(@types/react@19.2.17)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.183.2)(typescript@5.9.3)(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)(y-protocols@1.0.7(yjs@13.6.31))(yjs@13.6.31)
+        specifier: ^0.1.948
+        version: 0.1.948(@types/react@19.2.17)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.183.2)(typescript@5.9.3)(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)(y-protocols@1.0.7(yjs@13.6.31))(yjs@13.6.31)
       yjs:
         specifier: ^13.6.30
         version: 13.6.31
@@ -2967,6 +2967,9 @@ packages:
   meshoptimizer@1.0.1:
     resolution: {integrity: sha512-Vix+QlA1YYT3FwmBBZ+49cE5y/b+pRrcXKqGpS5ouh33d3lSp2PoTpCw19E0cKDFWalembrHnIaZetf27a+W2g==}
 
+  meshoptimizer@1.2.0:
+    resolution: {integrity: sha512-davRZeIJbxJrE24cwQle7ZDsxjdk/OphNOV83oX+efQinyoHY9Jcyz3MHbaoG0qySZajldGztNZ1RN/T19PZsg==}
+
   methods@1.1.2:
     resolution: {integrity: sha512-iclAHeNqNm68zFtnZ0e+1L2yUIdvzNoauKU4WBA3VvH/vPFieF7qfRlwUZU+DA9P9bPXIS90ulxoUoCH23sV2w==}
     engines: {node: '>= 0.6'}
@@ -3923,8 +3926,8 @@ packages:
     engines: {node: '>=0.8.0'}
     hasBin: true
 
-  ugly-app@0.1.947:
-    resolution: {integrity: sha512-7s4lvf3DNyOCFZj4NKQ90iOrJBJTkF6bWgETYI3wOaQbQvlkP2FRHDRBnUXiieC/6buHP+ioeGDIB5+PbqmhNg==}
+  ugly-app@0.1.948:
+    resolution: {integrity: sha512-XenWE3n6YkL3ZBhvuv3ofNuJXtDprNHprf99Q8clMFty7pBQc7kfL9lM/MOZKMZmeA7kWGRnxLDOlRyS/p6EHA==}
     hasBin: true
     peerDependencies:
       '@types/react': '>=18.0.0'
@@ -3945,6 +3948,11 @@ packages:
         optional: true
       yjs:
         optional: true
+
+  ugly-game@0.15.3:
+    resolution: {integrity: sha512-fjWjRcbDP4jwe6uy/SSBtp0wdASuvxQHWGV38RaDJQtKnatdxFdvYzai+hyOVqjsPZftLjtllwCFc5V6ku8+Gw==}
+    peerDependencies:
+      react: '>=18'
 
   unbox-primitive@1.1.0:
     resolution: {integrity: sha512-nWJ91DjeOkej/TA8pXQ3myruKpKEYgqvpw9lz4OPHj/NWFNluYrjbz9j01CJ8yKQd2g4jFoOkINCTW2I5LEEyw==}
@@ -7749,6 +7757,8 @@ snapshots:
 
   meshoptimizer@1.0.1: {}
 
+  meshoptimizer@1.2.0: {}
+
   methods@1.1.2: {}
 
   micromark-core-commonmark@2.0.3:
@@ -8897,7 +8907,7 @@ snapshots:
   uglify-js@3.19.3:
     optional: true
 
-  ugly-app@0.1.947(@types/react@19.2.17)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.183.2)(typescript@5.9.3)(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)(y-protocols@1.0.7(yjs@13.6.31))(yjs@13.6.31):
+  ugly-app@0.1.948(@types/react@19.2.17)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.183.2)(typescript@5.9.3)(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)(y-protocols@1.0.7(yjs@13.6.31))(yjs@13.6.31):
     dependencies:
       '@aws-sdk/client-s3': 3.1097.0
       '@aws-sdk/s3-request-presigner': 3.1097.0
@@ -8970,6 +8980,7 @@ snapshots:
       sprintf-js: 1.1.3
       turndown: 7.2.4
       typescript-eslint: 8.65.0(eslint@8.57.1)(typescript@5.9.3)
+      ugly-game: 0.15.3(react@18.3.1)
       url-parse: 1.5.10
       vega-embed: 7.1.0(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)
       ws: 8.21.1
@@ -8989,6 +9000,11 @@ snapshots:
       - vega
       - vega-lite
       - y-protocols
+
+  ugly-game@0.15.3(react@18.3.1):
+    dependencies:
+      meshoptimizer: 1.2.0
+      react: 18.3.1
 
   unbox-primitive@1.1.0:
     dependencies:

@@ -886,6 +886,8 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
         avatar: input.avatar ?? defaultAvatar,
         firstMessage: input.firstMessage ?? null,
         buttons: input.buttons ?? [],
+        characterId: input.characterId ?? null,
+        characterThumbnail: input.characterThumbnail ?? null,
         ...dbDefaults(),
       });
       return { botId };
@@ -895,7 +897,7 @@ export function createChatHandlers(getDb: () => DbSurface): RequestHandlers<type
       const existing = await getDb().getDoc(collections.bot, input.botId);
       if (existing?.ownerId !== userId) throw new Error('Bot not found');
       const patch: Record<string, unknown> = {};
-      for (const k of ['name', 'instruction', 'model', 'avatar', 'firstMessage', 'buttons'] as const) {
+      for (const k of ['name', 'instruction', 'model', 'avatar', 'firstMessage', 'buttons', 'characterId', 'characterThumbnail'] as const) {
         if (input[k] !== undefined) patch[k] = input[k];
       }
       await getDb().setDoc(collections.bot, { ...existing, ...patch, ...dbDefaults() });

@@ -161,8 +161,8 @@ export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPo
                   background: 'var(--app-tertiary)',
                 }}
               >
-                {b.avatar?.image.uri ? (
-                  <img {...crossOriginProps(b.avatar.image.uri)} src={b.avatar.image.uri} alt="" style={{ width: 48, height: 48, borderRadius: 0, border: '1px solid var(--app-border)', objectFit: 'cover', flexShrink: 0 }} />
+                {botAvatarUri(b) ? (
+                  <img {...crossOriginProps(botAvatarUri(b) ?? '')} src={botAvatarUri(b)} alt="" style={{ width: 48, height: 48, borderRadius: 0, border: '1px solid var(--app-border)', objectFit: 'cover', flexShrink: 0 }} />
                 ) : (
                   <div style={{ width: 48, height: 48, borderRadius: 0, border: '1px solid var(--app-border)', background: 'var(--app-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <BotIcon size={22} style={{ opacity: 0.6 }} />
@@ -221,10 +221,11 @@ function Hint({ text }: { text: string }): React.ReactElement {
   return <div style={{ padding: '40px 8px', textAlign: 'center', fontSize: 14, color: 'var(--app-foreground)', opacity: 0.45 }}>{text}</div>;
 }
 
-// Built-in bots carry `avatarUrl` (string); custom bots carry an `avatar` object.
-// Resolve whichever is present for display.
+// Built-in bots carry `avatarUrl` (string); custom bots carry an `avatar`
+// object; either may link a character whose WEBP thumbnail wins. Resolve
+// whichever is present for display, character thumbnail first.
 function botAvatarUri(b: BotDoc): string | undefined {
-  return b.avatar?.image.uri ?? (b as { avatarUrl?: string | null }).avatarUrl ?? undefined;
+  return b.characterThumbnail ?? b.avatar?.image.uri ?? (b as { avatarUrl?: string | null }).avatarUrl ?? undefined;
 }
 
 const sectionLabel: React.CSSProperties = {

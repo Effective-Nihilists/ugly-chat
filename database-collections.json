@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-19T21:08:19.699Z",
+  "generatedAt": "2026-07-31T06:51:04.773Z",
   "source": "shared/collections.ts",
   "collections": {
     "authMagicLink": {
@@ -1030,6 +1030,16 @@
               "required": true
             },
             "required": false
+          },
+          "characterId": {
+            "type": "string",
+            "required": false,
+            "nullable": true
+          },
+          "characterThumbnail": {
+            "type": "string",
+            "required": false,
+            "nullable": true
           },
           "firstMessage": {
             "type": "string",

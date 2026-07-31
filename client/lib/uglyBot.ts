@@ -14,3 +14,19 @@ function uglyBotUrl(): string {
 export function openUglyBotSettings(): void {
   window.open(`${uglyBotUrl()}/settings`, '_blank', 'noopener');
 }
+
+/**
+ * Open ugly.bot's character creator in a new tab, deep-linked back here:
+ * after the character is saved, ugly.bot redirects the tab to `returnUrl`
+ * with `?characterId=…&thumb=…` appended (the bot editor absorbs those into
+ * its form state). With `characterId` set it edits that character, otherwise
+ * it starts a new one.
+ */
+export function openUglyBotCharacterCreator(returnUrl: string, characterId?: string | null): void {
+  const page = characterId ? `characters/${characterId}` : 'characters/new';
+  window.open(
+    `${uglyBotUrl()}/${page}?return=${encodeURIComponent(returnUrl)}&for=ugly-chat`,
+    '_blank',
+    'noopener',
+  );
+}

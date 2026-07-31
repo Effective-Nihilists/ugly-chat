@@ -178,6 +178,11 @@ export const BotSchema = ProfileFieldsSchema.extend({
   model: z.string().default('deepseek_v4_flash'),
   firstMessage: z.string().nullable().optional(),
   buttons: z.array(BotButtonSchema).optional(),
+  // Linked ugly.bot character: id + saved WEBP thumbnail URL (set via the
+  // character-creator deep-link handoff from the bot editor). The thumbnail is
+  // the preferred 2D avatar everywhere bots render as plain images.
+  characterId: z.string().nullish(),
+  characterThumbnail: z.string().nullish(),
   // App-registered bots: the owning app + a webhook that receives message events
   // for conversations this bot is in (the app generates the reply). When
   // `webhookUrl` is set, Ugly Chat does NOT run textGen for this bot.
