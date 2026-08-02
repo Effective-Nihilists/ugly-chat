@@ -30,8 +30,8 @@ importers:
         specifier: ^0.183.2
         version: 0.183.2
       ugly-app:
-        specifier: ^0.1.952
-        version: 0.1.952(@types/react@19.2.17)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.183.2)(typescript@5.9.3)(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)(y-protocols@1.0.7(yjs@13.6.31))(yjs@13.6.31)
+        specifier: ^0.1.966
+        version: 0.1.966(@types/react@19.2.17)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.183.2)(typescript@5.9.3)(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)(y-protocols@1.0.7(yjs@13.6.31))(yjs@13.6.31)
       yjs:
         specifier: ^13.6.30
         version: 13.6.31
@@ -3935,8 +3935,8 @@ packages:
     engines: {node: '>=0.8.0'}
     hasBin: true
 
-  ugly-app@0.1.952:
-    resolution: {integrity: sha512-4MA6TSIjd4JNvNkOgqfhrQQQpnEbbsjIgi8fxEWBvQIH4w3QuC/irze/eU6ib+hlZ2aCJBpXYGDOnRtcAs8/Gw==}
+  ugly-app@0.1.966:
+    resolution: {integrity: sha512-vxfr+KGkO622aUSjViLVomZfT8byOb7pbv0Kg6qgqirUdtmSYkzvjtrM82hoz8RXAsRTMI56iSsKX5GZQCMSBQ==}
     hasBin: true
     peerDependencies:
       '@types/react': '>=18.0.0'
@@ -3958,8 +3958,8 @@ packages:
       yjs:
         optional: true
 
-  ugly-game@0.15.3:
-    resolution: {integrity: sha512-fjWjRcbDP4jwe6uy/SSBtp0wdASuvxQHWGV38RaDJQtKnatdxFdvYzai+hyOVqjsPZftLjtllwCFc5V6ku8+Gw==}
+  ugly-game@0.15.4:
+    resolution: {integrity: sha512-K46noVV+7bhoSiQtIWVEzTib/+XW+SKyCMnOftTBqXlf+Hbnfnc3IBTOrAm1xDB8YUOmRUN8/35YgsqcFHkNdA==}
     peerDependencies:
       react: '>=18'
 
@@ -8925,7 +8925,7 @@ snapshots:
   uglify-js@3.19.3:
     optional: true
 
-  ugly-app@0.1.952(@types/react@19.2.17)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.183.2)(typescript@5.9.3)(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)(y-protocols@1.0.7(yjs@13.6.31))(yjs@13.6.31):
+  ugly-app@0.1.966(@types/react@19.2.17)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.183.2)(typescript@5.9.3)(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)(y-protocols@1.0.7(yjs@13.6.31))(yjs@13.6.31):
     dependencies:
       '@aws-sdk/client-s3': 3.1100.0
       '@aws-sdk/s3-request-presigner': 3.1100.0
@@ -8998,7 +8998,7 @@ snapshots:
       sprintf-js: 1.1.3
       turndown: 7.2.4
       typescript-eslint: 8.65.0(eslint@8.57.1)(typescript@5.9.3)
-      ugly-game: 0.15.3(react@18.3.1)
+      ugly-game: 0.15.4(react@18.3.1)
       url-parse: 1.5.10
       vega-embed: 7.1.0(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)
       ws: 8.21.1
@@ -9019,7 +9019,7 @@ snapshots:
       - vega-lite
       - y-protocols
 
-  ugly-game@0.15.3(react@18.3.1):
+  ugly-game@0.15.4(react@18.3.1):
     dependencies:
       meshoptimizer: 1.2.0
       react: 18.3.1
@@ -9300,14 +9300,14 @@ snapshots:
       d3-array: 3.2.4
       vega-dataflow: 6.1.2
       vega-statistics: 2.0.0
-      vega-time: 3.1.0
+      vega-time: 3.2.1
       vega-util: 2.1.2
 
   vega-typings@2.1.0:
     dependencies:
       '@types/geojson': 7946.0.16
       vega-event-selector: 4.0.0
-      vega-expression: 6.1.0
+      vega-expression: 6.2.1
       vega-util: 2.1.2
 
   vega-util@2.1.2: {}
@@ -9315,7 +9315,7 @@ snapshots:
   vega-view-transforms@5.1.0:
     dependencies:
       vega-dataflow: 6.1.2
-      vega-scenegraph: 5.1.0
+      vega-scenegraph: 5.2.1
       vega-util: 2.1.2
 
   vega-view@6.1.2:
