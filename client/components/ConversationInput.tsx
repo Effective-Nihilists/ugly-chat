@@ -231,9 +231,15 @@ function DictationButton({
   );
 }
 
+// Centre every rail item (mode chip, editor, attach/mic/send) in the row. The
+// tallest child is the 32px action button, so bottom-aligning left the 28px mode
+// chip sitting low against the frame. When the editor grows multi-line it
+// becomes the tallest child and centring is a no-op, so growth still reads
+// correctly. (This used to be forced by a `.uc-composer > div` CSS override,
+// which stopped reaching this row once ChatPage wrapped it in a bordered div.)
 const containerStyle: CSSProperties = {
   display: 'flex',
-  alignItems: 'flex-end',
+  alignItems: 'center',
   gap: 6,
   padding: '4px 6px 4px 10px',
   borderRadius: 0,

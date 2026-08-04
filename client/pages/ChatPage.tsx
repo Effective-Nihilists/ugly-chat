@@ -1459,10 +1459,9 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   // buried this frequent action in an unlabeled overflow next to Delete. The
   // popover opens UPWARD (the composer sits at the bottom). Reuses `menuOpen`.
   const modeControl = botId ? (
-    // display:flex + center so the chip is vertically centred in the composer
-    // row. `.uc-composer > div { align-items: center }` only reaches the
-    // composer's DIRECT child, and this wrapper is nested below it — so without
-    // this the chip sat a pixel low against the frame ("padding is off").
+    // position:relative anchors the upward popover. The composer row centres its
+    // own children (ConversationInput's containerStyle), so this wrapper just
+    // needs to not stretch away from the chip's own 28px height.
     <div
       style={{
         position: 'relative',

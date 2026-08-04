@@ -907,8 +907,8 @@ a.uc-src:hover {
   margin-right: auto;
   padding-left: 16px;
   padding-right: 16px;
-  /* Breathing room so the last message isn't flush against the composer. */
-  padding-bottom: 24px;
+  /* No padding-bottom here — the virtualizer's inline height makes it inert.
+     The gap above the composer comes from `.uc-composer`'s padding-top. */
   box-sizing: border-box;
 }
 
@@ -932,8 +932,15 @@ a.uc-src:hover {
 .uc-chat-scroll {
   position: relative;
 }
+/* The gap between the last message and the input frame lives HERE, not as
+   padding-bottom on the message list: the virtualizer sets an inline
+   `height: <totalSize>` on `[data-testid="message-list-inner"]`, and with
+   box-sizing: border-box that bottom padding is swallowed inside the fixed
+   height — zero visible space, which is exactly how the last bubble ended up
+   flush against the composer. Padding on the composer itself can't be eaten. */
 .uc-composer {
   flex-shrink: 0;
+  padding-top: 16px;
   background: var(--app-main);
 }
 /* Messages are centered in a max-width column while the scroll container stays
@@ -943,7 +950,6 @@ a.uc-src:hover {
   max-width: 820px;
   margin-left: auto;
   margin-right: auto;
-  padding-bottom: 24px;
 }
 /* Typing-indicator overlay pill — pinned at the top of the chat area, never
    shifts the message list (the framework's in-flow indicator is suppressed via
@@ -1006,14 +1012,11 @@ a.uc-src:hover {
 }
 
 /* ── Composer (chat input) ──────────────────────────────────────────────────
-   The framework composer container bottom-aligns its children (align-items:
-   flex-end) for multi-line growth; for our single-line chat input that left the
-   placeholder and the send (paperplane) icon sitting low. Center them, and
-   strip the global <p> margins inside the editor so the text/placeholder is
-   truly vertically centered in the rounded input. */
-.uc-composer > div {
-  align-items: center !important;
-}
+   Row alignment lives in ConversationInput's `containerStyle` (align-items:
+   center) — a CSS override here can't reach that row, which sits one level below
+   ChatPage's bordered wrapper div. What's left is stripping the global <p>
+   margins inside the editor so the text/placeholder is truly vertically centered
+   in the input. */
 .uc-composer .ProseMirror {
   /* No extra left padding: the framework's placeholder overlay sits at the
      wrapper's left edge, so adding inset here desynced the placeholder from the
@@ -1807,7 +1810,10 @@ a.uc-src:hover {
    360px wide, the 30px chip left ~6px above and ~5.5px below it inside a 42px
    row while sitting 8px in from the frame — visibly uneven, and with the three
    action icons it squeezed the input until its placeholder clipped. 28px tall
-   with a small right margin centres cleanly and returns width to the input. */
+   with a small right margin centres cleanly and returns width to the input.
+   The border is foreground (black in light, white in dark) rather than orange:
+   an orange chip inside the orange composer frame read as one nested outline
+   with no separation between the two controls. */
 .uc-composer-mode {
   display: inline-flex;
   align-items: center;
@@ -1816,7 +1822,7 @@ a.uc-src:hover {
   height: 28px;
   margin-right: 2px;
   padding: 0 10px;
-  border: 1px solid var(--app-primary);
+  border: 1px solid var(--app-foreground);
   background: transparent;
   color: var(--app-primary);
   font-family: var(--app-font-mono);
