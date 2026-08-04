@@ -11,6 +11,21 @@ import {
   ArrowRight,
   Send,
 } from "lucide-react";
+import {
+  BG,
+  BG_ELEV,
+  BORDER,
+  BORDER_STRONG,
+  BRAND,
+  BRAND_GRAD,
+  FONT_BODY,
+  FONT_DISPLAY,
+  FONT_MONO,
+  ON_BRAND,
+  TEXT,
+  TEXT_FAINT,
+  TEXT_MUTED,
+} from "../landing/landingBrandTokens";
 
 // "Open chat" CTAs: if a session already exists, go straight to the app;
 // otherwise open the ugly.bot login directly from this click (a user gesture,
@@ -25,19 +40,18 @@ function openChat(e?: React.MouseEvent): void {
   startUglyBotLogin({ redirectTo: "/" });
 }
 
-// ── Brand tokens (fixed dark marketing palette; matches ugly.bot's landing) ──
-const BRAND = "#FF5500";
-const BRAND_GRAD =
-  "linear-gradient(135deg, #FF8041 0%, #FF5500 50%, #E63900 100%)";
-const BG = "#0b0b0d";
-const ELEV = "#141417";
-const BORDER = "rgba(255,255,255,0.10)";
-const TEXT = "#ffffff";
-const MUTED = "rgba(255,255,255,0.62)";
-const FAINT = "rgba(255,255,255,0.40)";
-const FONT_DISPLAY = "var(--app-font-heading), 'Plus Jakarta Sans', sans-serif";
-const FONT_BODY = "var(--app-font-body), 'Inter', sans-serif";
-const FONT_MONO = "'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace";
+// ── Brand tokens ────────────────────────────────────────────────────────────
+// Imported at the top of the file from ../landing/landingBrandTokens, shared
+// with ugly.bot's landing page and theme-portable: every neutral derives from
+// --app-background / --app-foreground, so this page follows the reader's theme
+// (light, dark, cosmic-latte, vim) instead of insisting on the dark one it used
+// to hardcode.
+//
+// These are this page's existing names for three of the tokens, so the markup
+// below doesn't need a rename sweep.
+const ELEV = BG_ELEV;
+const MUTED = TEXT_MUTED;
+const FAINT = TEXT_FAINT;
 
 function useDesktop(): boolean {
   const [d, setD] = useState(() =>
@@ -96,7 +110,7 @@ function Nav(): React.ReactElement {
   return (
     <div
       style={{
-        maxWidth: 1180,
+        maxWidth: 1240,
         margin: "0 auto",
         padding: "20px 24px",
         display: "flex",
@@ -142,7 +156,7 @@ function Hero({ desktop }: { desktop: boolean }): React.ReactElement {
     <section
       style={{
         position: "relative",
-        maxWidth: 1180,
+        maxWidth: 1240,
         margin: "0 auto",
         padding: desktop ? "64px 24px 40px" : "36px 24px 24px",
       }}
@@ -254,9 +268,10 @@ function ChatPreview(): React.ReactElement {
       style={{
         border: `1px solid ${BORDER}`,
         background: ELEV,
-        borderRadius: 16,
         overflow: "hidden",
-        boxShadow: "0 30px 80px rgba(0,0,0,0.5)",
+        // Softer than the old 0.5: that was tuned against a near-black page and
+        // reads as a smudge on a light one.
+        boxShadow: "0 30px 80px rgba(0,0,0,0.22)",
       }}
     >
       <div
@@ -279,7 +294,8 @@ function ChatPreview(): React.ReactElement {
             justifyContent: "center",
           }}
         >
-          <Bot size={15} color="#fff" />
+          {/* Sits on the brand gradient, so it stays white in every theme. */}
+          <Bot size={15} color={ON_BRAND} />
         </span>
         <span style={{ fontWeight: 700, fontSize: 14 }}>Ugly Bot</span>
         <span
@@ -380,8 +396,10 @@ function Bubble({
           borderRadius: 12,
           fontSize: 13.5,
           lineHeight: 1.5,
-          background: isYou ? BRAND : "rgba(255,255,255,0.06)",
-          color: isYou ? "#fff" : "rgba(255,255,255,0.92)",
+          // Your own bubble is brand-filled (white text in every theme); the
+          // other party's is a plain elevated surface that follows the theme.
+          background: isYou ? BRAND : ELEV,
+          color: isYou ? ON_BRAND : TEXT,
           border: isYou ? "none" : `1px solid ${BORDER}`,
         }}
       >
@@ -429,7 +447,7 @@ function Features({ desktop }: { desktop: boolean }): React.ReactElement {
   return (
     <section
       style={{
-        maxWidth: 1180,
+        maxWidth: 1240,
         margin: "0 auto",
         padding: desktop ? "56px 24px" : "36px 24px",
       }}
@@ -440,6 +458,10 @@ function Features({ desktop }: { desktop: boolean }): React.ReactElement {
           fontFamily: FONT_DISPLAY,
           fontWeight: 800,
           fontSize: desktop ? "clamp(30px, 4vw, 44px)" : 28,
+          // styles.css sets a FIXED `h2 { line-height: 32px }` for a 24px
+          // heading. At 44px the lines collide. The kit's SectionHead sets 1;
+          // match it.
+          lineHeight: 1.05,
           letterSpacing: -1,
           margin: "12px 0 28px",
           maxWidth: 640,
@@ -506,7 +528,7 @@ function Manifesto({ desktop }: { desktop: boolean }): React.ReactElement {
   return (
     <section
       style={{
-        maxWidth: 1180,
+        maxWidth: 1240,
         margin: "0 auto",
         padding: desktop ? "40px 24px 64px" : "24px 24px 40px",
       }}
@@ -514,7 +536,6 @@ function Manifesto({ desktop }: { desktop: boolean }): React.ReactElement {
       <div
         style={{
           border: `1px solid ${BORDER}`,
-          borderRadius: 18,
           background: ELEV,
           padding: desktop ? "40px 44px" : "28px 24px",
           display: "grid",
@@ -543,6 +564,9 @@ function Manifesto({ desktop }: { desktop: boolean }): React.ReactElement {
               fontFamily: FONT_DISPLAY,
               fontWeight: 800,
               fontSize: desktop ? 30 : 24,
+              // Same fixed-line-height trap as the h2 above: styles.css sets
+              // `h3 { line-height: 24px }` for an 18px heading.
+              lineHeight: 1.15,
               letterSpacing: -0.8,
               margin: "12px 0 0",
               maxWidth: 620,
@@ -584,7 +608,7 @@ function Footer(): React.ReactElement {
     <footer style={{ borderTop: `1px solid ${BORDER}`, marginTop: 8 }}>
       <div
         style={{
-          maxWidth: 1180,
+          maxWidth: 1240,
           margin: "0 auto",
           padding: "28px 24px",
           display: "flex",
@@ -640,67 +664,77 @@ function SectionLabel({
         display: "inline-flex",
         alignItems: "center",
         gap: 10,
+        // The kit's section label: mono, wide-tracked, brand-coloured.
         fontFamily: FONT_MONO,
-        fontSize: 12,
-        letterSpacing: 1.5,
-        color: FAINT,
+        fontSize: 11,
+        letterSpacing: "0.26em",
+        fontWeight: 700,
+        color: BRAND,
         textTransform: "uppercase",
       }}
     >
-      <span style={{ color: BRAND }}>{n}</span>
-      <span style={{ width: 24, height: 1, background: BORDER }} />
+      <span>{n}</span>
+      <span style={{ width: 24, height: 1, background: BORDER_STRONG }} />
       {label}
     </div>
   );
 }
 
+// Square, mono, wide-tracked — the kit's vocabulary, not a pill.
 const eyebrow: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   gap: 9,
   fontFamily: FONT_MONO,
-  fontSize: 12,
-  letterSpacing: 0.5,
+  fontSize: 11,
+  letterSpacing: "0.18em",
+  fontWeight: 700,
   color: MUTED,
   textTransform: "uppercase",
   border: `1px solid ${BORDER}`,
-  borderRadius: 999,
-  padding: "6px 12px",
+  padding: "7px 13px",
 };
 
+// Mirrors landingKit's PrimaryButton so the two sites' CTAs are the same object.
 const primaryCta: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
-  gap: 8,
-  padding: "14px 26px",
-  borderRadius: 999,
+  gap: 10,
+  padding: "18px 32px",
+  fontFamily: FONT_MONO,
+  fontSize: 15,
+  letterSpacing: "0.18em",
+  textTransform: "uppercase",
+  border: `1px solid ${BRAND}`,
   background: BRAND,
-  color: "#fff",
+  color: ON_BRAND,
   fontWeight: 700,
-  fontSize: 16,
   textDecoration: "none",
 };
 
+// Mirrors landingKit's GhostButton.
 const ghostCta: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
-  gap: 8,
-  padding: "9px 18px",
-  borderRadius: 999,
-  border: `1px solid ${BORDER}`,
+  gap: 10,
+  padding: "14px 24px",
+  fontFamily: FONT_MONO,
+  fontSize: 13,
+  letterSpacing: "0.18em",
+  textTransform: "uppercase",
+  border: `1px solid ${BORDER_STRONG}`,
   color: TEXT,
-  fontWeight: 600,
-  fontSize: 14,
+  fontWeight: 700,
   textDecoration: "none",
   background: "transparent",
 };
 
+// Square 1px card on an elevated surface — the kit's card, everywhere.
 const featureCard: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
   alignItems: "flex-start",
-  padding: 22,
-  borderRadius: 16,
+  padding: "28px 26px",
   border: `1px solid ${BORDER}`,
   background: ELEV,
 };
@@ -714,7 +748,7 @@ function StyleOnce(): React.ReactElement {
       .lp-cta { transition: transform .14s ease, box-shadow .14s ease; }
       .lp-cta:hover { transform: translateY(-1px); box-shadow: 0 0 28px rgba(255,85,0,0.45); }
       .lp-cta-ghost { transition: border-color .14s ease, color .14s ease; }
-      .lp-cta-ghost:hover { border-color: ${BRAND}; color: #fff; }
+      .lp-cta-ghost:hover { border-color: ${BRAND}; color: ${TEXT}; }
       .lp-feature { transition: border-color .14s ease, transform .14s ease; }
       .lp-feature:hover { border-color: ${BRAND}; transform: translateY(-2px); }
       .lp-link:hover { color: ${BRAND} !important; }
