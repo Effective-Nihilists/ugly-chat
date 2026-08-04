@@ -9,6 +9,12 @@
   --app-sidebar: #ebebed;
   --app-main: #ffffff;
   --app-main-rgb: 255, 255, 255;
+
+  /* ugly-bot's landing brand tokens derive every neutral from --app-background,
+     which this app names --app-main. One alias covers all five themes: var()
+     resolves at use time, so it picks up whichever --app-main is active
+     (light, dark, cosmic-latte, vim). Do NOT duplicate this per theme block. */
+  --app-background: var(--app-main);
   --app-border: #d4d4d8;
   --app-border-rgb: 212, 212, 216;
   --app-foreground: #000000;
