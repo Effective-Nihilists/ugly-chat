@@ -2,11 +2,11 @@
 :root {
   --app-primary: #ff5500;
   --app-primary-rgb: 255, 85, 0;
-  --app-secondary: #f4f4f5;
-  --app-secondary-rgb: 244, 244, 245;
-  --app-tertiary: #fafafa;
-  --app-tertiary-rgb: 250, 250, 250;
-  --app-sidebar: #ebebed;
+  --app-secondary: #e4e4e8;
+  --app-secondary-rgb: 228, 228, 232;
+  --app-tertiary: #ececef;
+  --app-tertiary-rgb: 236, 236, 239;
+  --app-sidebar: #f2f2f4;
   --app-main: #ffffff;
   --app-main-rgb: 255, 255, 255;
 
@@ -15,10 +15,10 @@
      resolves at use time, so it picks up whichever --app-main is active
      (light, dark, cosmic-latte, vim). Do NOT duplicate this per theme block. */
   --app-background: var(--app-main);
-  --app-border: #d4d4d8;
-  --app-border-rgb: 212, 212, 216;
-  --app-foreground: #000000;
-  --app-foreground-rgb: 0, 0, 0;
+  --app-border: rgba(0, 0, 0, 0.1);
+  --app-border-rgb: 0, 0, 0;
+  --app-foreground: #0b0a0d;
+  --app-foreground-rgb: 11, 10, 13;
   --app-input: #ffffff;
   --app-error: #e3120b;
   --app-error-rgb: 227, 18, 11;
@@ -110,18 +110,18 @@
   :root:not([data-theme]) {
     --app-primary: #ff5500;
     --app-primary-rgb: 255, 85, 0;
-    --app-secondary: #1a1d23;
-    --app-secondary-rgb: 26, 29, 35;
-    --app-tertiary: #141720;
-    --app-tertiary-rgb: 20, 23, 32;
-    --app-sidebar: #1e2128;
-    --app-main: #0f1115;
-    --app-main-rgb: 15, 17, 21;
-    --app-border: #2a2d35;
-    --app-border-rgb: 42, 45, 53;
+    --app-secondary: #1b191f;
+    --app-secondary-rgb: 27, 25, 31;
+    --app-tertiary: #1c191f;
+    --app-tertiary-rgb: 28, 25, 31;
+    --app-sidebar: #08070a;
+    --app-main: #151318;
+    --app-main-rgb: 21, 19, 24;
+    --app-border: rgba(255, 255, 255, 0.09);
+    --app-border-rgb: 255, 255, 255;
     --app-foreground: #ffffff;
     --app-foreground-rgb: 255, 255, 255;
-    --app-input: #12141a;
+    --app-input: #151318;
     --app-error: #e3120b;
     --app-error-rgb: 227, 18, 11;
     --app-foreground-10: rgba(255, 255, 255, 0.1);
@@ -140,18 +140,18 @@
 :root[data-theme="dark"] {
   --app-primary: #ff5500;
   --app-primary-rgb: 255, 85, 0;
-  --app-secondary: #1a1d23;
-  --app-secondary-rgb: 26, 29, 35;
-  --app-tertiary: #141720;
-  --app-tertiary-rgb: 20, 23, 32;
-  --app-sidebar: #1e2128;
-  --app-main: #0f1115;
-  --app-main-rgb: 15, 17, 21;
-  --app-border: #2a2d35;
-  --app-border-rgb: 42, 45, 53;
+  --app-secondary: #1b191f;
+  --app-secondary-rgb: 27, 25, 31;
+  --app-tertiary: #1c191f;
+  --app-tertiary-rgb: 28, 25, 31;
+  --app-sidebar: #08070a;
+  --app-main: #151318;
+  --app-main-rgb: 21, 19, 24;
+  --app-border: rgba(255, 255, 255, 0.09);
+  --app-border-rgb: 255, 255, 255;
   --app-foreground: #ffffff;
   --app-foreground-rgb: 255, 255, 255;
-  --app-input: #12141a;
+  --app-input: #151318;
   --app-error: #e3120b;
   --app-error-rgb: 227, 18, 11;
   --app-foreground-10: rgba(255, 255, 255, 0.1);
@@ -1858,3 +1858,26 @@ a.uc-src:hover {
     white-space: nowrap;
   }
 }
+/* Browser companion handoff: an explicit conversation-targeting prompt. It is
+   fixed so it does not resize either the conversation list or active thread. */
+.uc-browser-share {
+  position: fixed;
+  z-index: 1000;
+  top: calc(var(--safe-area-inset-top, 0px) + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100vw - 24px);
+  padding: 8px 9px 8px 11px;
+  border: 1px solid var(--app-primary);
+  border-radius: 0;
+  background: var(--app-main);
+  color: var(--app-foreground);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  font-size: 12px;
+}
+.uc-browser-share > svg { flex: none; color: var(--app-primary); }
+.uc-browser-share > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.uc-browser-share button { display: grid; place-items: center; flex: none; width: 24px; height: 24px; padding: 0; border: 0; background: transparent; color: var(--app-foreground-muted); cursor: pointer; }

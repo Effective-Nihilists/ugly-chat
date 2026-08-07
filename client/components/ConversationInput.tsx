@@ -26,6 +26,8 @@ export interface ConversationInputProps {
   mentionSearch?: (query: string) => Promise<{ id: string; name: string }[]>;
   leftActions?: ReactNode;
   rightActions?: ReactNode;
+  /** A browser handoff to append to the local editor without sending it. */
+  draftRequest?: { id: string; text: string } | null;
 }
 
 function imageAspectRatio(file: File): Promise<number> {
@@ -48,6 +50,7 @@ export function ConversationInput({
   mentionSearch,
   leftActions,
   rightActions,
+  draftRequest,
 }: ConversationInputProps): React.ReactElement {
   const { socket, uglyBotSocket } = useApp();
   const editorRef = useRef<MarkdownEditorFunctions>(null);
@@ -63,6 +66,12 @@ export function ConversationInput({
     valueRef.current = text;
     editorRef.current?.setValue(text);
   }, []);
+
+  useEffect(() => {
+    if (!draftRequest) return;
+    const current = valueRef.current.trimEnd();
+    applyText(current ? `${current}\n\n${draftRequest.text}` : draftRequest.text);
+  }, [applyText, draftRequest]);
 
   // Track the editor width (image embeds + the floating toolbar need it).
   useEffect(() => {

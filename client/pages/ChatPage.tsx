@@ -16,6 +16,7 @@ import { CallLayout } from '../components/CallLayout';
 import { VoiceProvider, useVoice } from '../components/VoiceProvider';
 import { useRouter } from '../router';
 import { Avatar, pingConversationActivity } from '../lib/conversations';
+import { browserShareMarkdown, clearBrowserShare, useBrowserShare } from '../lib/browserShare';
 import { modelLabel, BOT_MODELS, BOT_MODES, IMAGE_MODELS, IMAGE_SIZES } from '../lib/bots';
 import { UGLY_BOT_ID } from '../../shared/bots';
 import type { MsgTelemetry } from '../../shared/telemetry';
@@ -659,6 +660,8 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const { socket, userId, uglyBotSocket } = useApp();
   const router = useRouter();
   const narrow = useNarrow();
+  const browserShare = useBrowserShare();
+  const [browserDraft, setBrowserDraft] = useState<{ id: string; text: string } | null>(null);
   // Keyboard-inclusive bottom inset (home-indicator when closed, keyboard height
   // when open). The framework's KeyboardProvider derives the keyboard height from
   // visual-viewport occlusion (window.innerHeight - visualViewport.height), so the
@@ -1081,7 +1084,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
 
   // Stage picked files: instant local preview + temp-bucket upload in the
   // background. Image-only messages are allowed (allowEmpty on the composer).
-  const onFiles = useCallback((files: FileList | null) => {
+  const onFiles = useCallback((files: FileList | File[] | null) => {
     if (!files) return;
     const MAX_BYTES = 25 * 1024 * 1024; // 25 MB — well under the 100 MB Worker limit
     setAttachError(null);
@@ -1113,6 +1116,24 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       })();
     }
   }, []);
+
+  useEffect(() => {
+    if (!browserShare) return;
+    setBrowserDraft({ id: browserShare.id, text: browserShareMarkdown(browserShare) });
+    if (browserShare.screenshot) {
+      try {
+        const encoded = browserShare.screenshot.dataUrl.split(',')[1] ?? '';
+        const binary = atob(encoded);
+        const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+        onFiles([
+          new File([bytes], browserShare.screenshot.name, { type: 'image/jpeg' }),
+        ]);
+      } catch {
+        setAttachError('The shared page screenshot could not be staged. The link draft is still available.');
+      }
+    }
+    clearBrowserShare();
+  }, [browserShare, onFiles]);
 
   const removePending = useCallback((id: string) => {
     setPending((p) => {
@@ -1758,6 +1779,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
             />
             <div style={{ border: '1px solid var(--app-primary)', borderRadius: 0, background: 'var(--app-main)' }}>
               <ConversationInput
+                draftRequest={browserDraft}
                 placeholder={
                   !botId ? 'Message · ↩ send · ⇧↩ new line'
                     : botMode === 'image' ? 'Describe an image to generate · ↩ send'

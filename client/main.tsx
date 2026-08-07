@@ -7,6 +7,7 @@ import { RouterProvider, RouterView } from './router';
 import './styles.css';
 import { loadTheme, applyTheme } from './lib/theme';
 import { loadTextSize, applyTextSize } from './lib/textSize';
+import { installBrowserShareBridge } from './lib/browserShare';
 
 // Initialize the client logger so console.error/warn + uncaught errors are
 // forwarded to our Postgres errorLog. Importing+calling this is required to keep
@@ -20,6 +21,11 @@ applyTheme(loadTheme());
 // Apply persisted message text-size so `.uc-bubble` (which reads --uc-msg-size)
 // renders at the chosen size from first paint, before any conversation mounts.
 applyTextSize(loadTextSize());
+
+// The Electron browser preload may already be holding a page handoff by the
+// time React starts. Subscribe before bootstrap so it becomes a local draft,
+// never an automatically posted message.
+installBrowserShareBridge();
 
 bootstrapApp({
   requests,

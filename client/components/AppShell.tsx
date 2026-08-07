@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useAppOptional } from "ugly-app/client";
 import { useRouter } from "../router";
 import { Sidebar } from "./Sidebar";
+import { clearBrowserShare, useBrowserShare } from "../lib/browserShare";
+import { MessageSquare, X } from "lucide-react";
 
 const SIDEBAR_MIN_WIDTH = 820;
 
@@ -26,6 +28,7 @@ export function AppShell({
   // landing) bypasses the shell so HomePage renders full-width/scrollable.
   const rn = router.current.routeName;
   const isChat = rn === ":conversationId" || (rn === "" && authed);
+  const browserShare = useBrowserShare();
 
   const [wide, setWide] = useState(() =>
     typeof window === "undefined"
@@ -85,6 +88,17 @@ export function AppShell({
         paddingRight: "var(--safe-area-inset-right, 0px)",
       }}
     >
+      {browserShare ? (
+        <div className="uc-browser-share" role="status" data-id="browser-share-notice">
+          <MessageSquare size={15} />
+          <span>
+            Choose a conversation for <strong>{browserShare.title}</strong>
+          </span>
+          <button type="button" aria-label="Cancel page share" onClick={clearBrowserShare} data-id="cancel-browser-share">
+            <X size={14} />
+          </button>
+        </div>
+      ) : null}
       {wide && authed ? <Sidebar /> : null}
       <main
         style={{ flex: 1, minWidth: 0, height: "100%", overflow: "hidden" }}
