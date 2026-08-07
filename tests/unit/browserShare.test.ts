@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  browserShareFromHash,
   browserShareMarkdown,
   normalizeBrowserShare,
 } from '../../client/lib/browserShare';
@@ -70,5 +71,19 @@ describe('browser share', () => {
         },
       }),
     ).not.toHaveProperty('screenshot');
+  });
+
+  it('accepts the server-private native mobile fragment', () => {
+    expect(
+      browserShareFromHash(
+        '#ugly-browser-share?id=m1&title=Page&url=https%3A%2F%2Fexample.com%2Fa&excerpt=quote',
+      ),
+    ).toEqual({
+      id: 'm1',
+      title: 'Page',
+      url: 'https://example.com/a',
+      excerpt: 'quote',
+    });
+    expect(browserShareFromHash('#not-a-share')).toBeNull();
   });
 });

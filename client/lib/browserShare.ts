@@ -13,6 +13,7 @@ export interface BrowserShare {
 
 const STORAGE_KEY = 'ugly-chat:browser-share';
 const LAST_ACCEPTED_KEY = 'ugly-chat:last-browser-share-id';
+const MOBILE_SHARE_PREFIX = '#ugly-browser-share?';
 const listeners = new Set<() => void>();
 let pending: BrowserShare | null = null;
 let installed = false;
@@ -84,6 +85,17 @@ export function browserShareMarkdown(share: BrowserShare): string {
   return `${link}\n\n${quote}`;
 }
 
+export function browserShareFromHash(hash: string): BrowserShare | null {
+  if (!hash.startsWith(MOBILE_SHARE_PREFIX)) return null;
+  const params = new URLSearchParams(hash.slice(MOBILE_SHARE_PREFIX.length));
+  return normalizeBrowserShare({
+    id: params.get('id'),
+    title: params.get('title'),
+    url: params.get('url'),
+    excerpt: params.get('excerpt') ?? undefined,
+  });
+}
+
 function publish(value: BrowserShare | null): void {
   pending = value;
   try {
@@ -111,7 +123,7 @@ export function installBrowserShareBridge(): void {
   } catch {
     // Continue with in-memory duplicate protection.
   }
-  window.uglyBrowser?.onShare((raw) => {
+  const accept = (raw: unknown) => {
     const share = normalizeBrowserShare(raw);
     if (!share || share.id === lastAccepted) return;
     lastAccepted = share.id;
@@ -121,7 +133,20 @@ export function installBrowserShareBridge(): void {
       // The in-memory id still prevents duplicates for this document lifetime.
     }
     publish(share);
-  });
+  };
+  const consumeMobileHash = () => {
+    const share = browserShareFromHash(location.hash);
+    if (!share) return;
+    history.replaceState(
+      history.state,
+      '',
+      `${location.pathname}${location.search}`,
+    );
+    accept(share);
+  };
+  consumeMobileHash();
+  window.addEventListener('hashchange', consumeMobileHash);
+  window.uglyBrowser?.onShare(accept);
 }
 
 export function clearBrowserShare(): void {
