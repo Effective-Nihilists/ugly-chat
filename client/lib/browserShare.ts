@@ -11,10 +11,16 @@ export interface BrowserShare {
   };
 }
 
+export interface BrowserDraftSource {
+  title: string;
+  url: string;
+}
+
 const STORAGE_KEY = 'ugly-chat:browser-share';
 const LAST_ACCEPTED_KEY = 'ugly-chat:last-browser-share-id';
 const MOBILE_SHARE_PREFIX = '#ugly-browser-share?';
 const listeners = new Set<() => void>();
+const SENSITIVE_QUERY_KEY = /^(?:(?:access|refresh|id|oauth)?[_-]?token|auth|authorization|client[_-]?secret|code|credential|(?:api[_-]?)?key|jwt|password|secret|session|sig|signature|state|ticket)$/i;
 let pending: BrowserShare | null = null;
 let installed = false;
 
@@ -22,6 +28,11 @@ declare global {
   interface Window {
     uglyBrowser?: {
       onShare(callback: (share: BrowserShare) => void): () => void;
+      onContext?(callback: (context: unknown) => void): () => void;
+      onSelectConversation?(
+        callback: (conversationId: string) => void,
+      ): () => void;
+      publishConversations?(metadata: unknown): void;
     };
   }
 }
@@ -83,6 +94,60 @@ export function browserShareMarkdown(share: BrowserShare): string {
     .map((line) => `> ${line}`)
     .join('\n');
   return `${link}\n\n${quote}`;
+}
+
+function normalizedSourceUrl(raw: string): string | null {
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    url.username = '';
+    url.password = '';
+    url.hash = '';
+    for (const key of [...url.searchParams.keys()]) {
+      if (SENSITIVE_QUERY_KEY.test(key)) url.searchParams.delete(key);
+    }
+    return url.href.slice(0, 2048);
+  } catch {
+    return null;
+  }
+}
+
+function normalizedSourceTitle(raw: string): string {
+  return Array.from(raw)
+    .filter((character) => {
+      const code = character.charCodeAt(0);
+      return code > 31 && code !== 127 && !(code >= 0x202a && code <= 0x202e)
+        && !(code >= 0x2066 && code <= 0x2069);
+    })
+    .join('')
+    .trim()
+    .slice(0, 200);
+}
+
+/**
+ * Recognize Studio's selected-tab list grammar without treating ordinary shared
+ * excerpts as page sources. The first page plus 1–7 strict `title — URL` lines
+ * are presentation metadata only; the original draft remains unsent/editable.
+ */
+export function browserDraftSources(
+  share: BrowserShare,
+): BrowserDraftSource[] {
+  const lines = share.excerpt?.split(/\r?\n/) ?? [];
+  if (lines.length < 1 || lines.length > 7) return [];
+  const firstUrl = normalizedSourceUrl(share.url);
+  if (!firstUrl) return [];
+  const sources: BrowserDraftSource[] = [
+    { title: normalizedSourceTitle(share.title) || new URL(firstUrl).hostname, url: firstUrl },
+  ];
+  for (const line of lines) {
+    const separator = line.lastIndexOf(' — ');
+    if (separator <= 0) return [];
+    const title = normalizedSourceTitle(line.slice(0, separator));
+    const url = normalizedSourceUrl(line.slice(separator + 3).trim());
+    if (!title || !url) return [];
+    sources.push({ title, url });
+  }
+  return sources;
 }
 
 export function browserShareFromHash(hash: string): BrowserShare | null {

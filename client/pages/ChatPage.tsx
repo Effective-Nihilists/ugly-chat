@@ -16,7 +16,8 @@ import { CallLayout } from '../components/CallLayout';
 import { VoiceProvider, useVoice } from '../components/VoiceProvider';
 import { useRouter } from '../router';
 import { Avatar, pingConversationActivity } from '../lib/conversations';
-import { browserShareMarkdown, clearBrowserShare, useBrowserShare } from '../lib/browserShare';
+import { browserDraftSources, browserShareMarkdown, clearBrowserShare, useBrowserShare, type BrowserDraftSource } from '../lib/browserShare';
+import { BrowserDraftSources } from '../components/BrowserDraftSources';
 import { modelLabel, BOT_MODELS, BOT_MODES, IMAGE_MODELS, IMAGE_SIZES } from '../lib/bots';
 import { UGLY_BOT_ID } from '../../shared/bots';
 import type { MsgTelemetry } from '../../shared/telemetry';
@@ -26,6 +27,7 @@ import { HumanTelemetryStrip } from '../components/HumanTelemetryStrip';
 import { openThemeMenu } from '../components/ThemeMenu';
 import { type StatMsg, replyLatencyMs } from '../../shared/humanStats';
 import { formatDuration } from '../../shared/duration';
+import { useBrowserEmbed } from '../lib/browserEmbed';
 
 // Open a markdown link. MdastViewer's default link handler calls
 // `global.open(...)` for non-mention links, which throws in the browser
@@ -660,8 +662,10 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const { socket, userId, uglyBotSocket } = useApp();
   const router = useRouter();
   const narrow = useNarrow();
+  const embed = useBrowserEmbed();
   const browserShare = useBrowserShare();
   const [browserDraft, setBrowserDraft] = useState<{ id: string; text: string } | null>(null);
+  const [browserSources, setBrowserSources] = useState<BrowserDraftSource[]>([]);
   // Keyboard-inclusive bottom inset (home-indicator when closed, keyboard height
   // when open). The framework's KeyboardProvider derives the keyboard height from
   // visual-viewport occlusion (window.innerHeight - visualViewport.height), so the
@@ -1120,6 +1124,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   useEffect(() => {
     if (!browserShare) return;
     setBrowserDraft({ id: browserShare.id, text: browserShareMarkdown(browserShare) });
+    setBrowserSources(browserDraftSources(browserShare));
     if (browserShare.screenshot) {
       try {
         const encoded = browserShare.screenshot.dataUrl.split(',')[1] ?? '';
@@ -1159,6 +1164,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       }
       const ready = pending.filter((p) => p.key);
       if (ready.length === 0) {
+        setBrowserSources([]);
         handleSend(text);
         return;
       }
@@ -1183,7 +1189,10 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           setAttachError(`Couldn't attach ${dropped.join(', ')} — left out of the message.`);
         }
         const markdown = parts.join('\n\n');
-        if (markdown.trim()) handleSend(markdown);
+        if (markdown.trim()) {
+          setBrowserSources([]);
+          handleSend(markdown);
+        }
       })();
     },
     [pending, socket, handleSend],
@@ -1537,8 +1546,8 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       }}
     >
       {/* Conversation header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderBottom: '1px solid var(--app-border)', flexShrink: 0, background: 'transparent' }}>
-        {narrow ? (
+      <div className="uc-conversation-header" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderBottom: '1px solid var(--app-border)', flexShrink: 0, background: 'transparent' }}>
+        {narrow && !embed.embedded ? (
           <button
             type="button"
             onClick={() => { router.push('', {}); }}
@@ -1565,7 +1574,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           </div>
         </div>
         {/* Theme picker — mobile only (desktop has it in the sidebar header). */}
-        {narrow ? (
+        {narrow && !embed.embedded ? (
           <button
             type="button"
             onClick={() => { openThemeMenu(router); }}
@@ -1778,6 +1787,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
               }} data-id="input"
             />
             <div style={{ border: '1px solid var(--app-primary)', borderRadius: 0, background: 'var(--app-main)' }}>
+              <BrowserDraftSources sources={browserSources} />
               <ConversationInput
                 draftRequest={browserDraft}
                 placeholder={

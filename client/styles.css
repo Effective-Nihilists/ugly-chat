@@ -277,6 +277,29 @@ html[data-mode="embed"] {
   min-height: 100%;
 }
 
+/* The browser companion is a presentation mode, not a second Chat client.
+   Studio supplies light/dark context through its isolated guest preload; no
+   conversation content or browser URL is exposed to page JavaScript. */
+html[data-browser-embedded] {
+  --app-font-heading: "Plus Jakarta Sans", -apple-system, sans-serif;
+  --app-font-body: "Plus Jakarta Sans", -apple-system, sans-serif;
+  --app-font-mono: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+  height: 100%;
+  min-height: 100%;
+}
+
+html[data-browser-embedded] *,
+html[data-browser-embedded] *::before,
+html[data-browser-embedded] *::after {
+  border-radius: 0 !important;
+}
+
+html[data-browser-embedded] .uc-conversation-header {
+  min-height: 44px;
+  box-sizing: border-box;
+  padding-right: 44px !important;
+}
+
 body {
   display: flex;
   overflow-x: hidden;
@@ -1881,3 +1904,9 @@ a.uc-src:hover {
 .uc-browser-share > svg { flex: none; color: var(--app-primary); }
 .uc-browser-share > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .uc-browser-share button { display: grid; place-items: center; flex: none; width: 24px; height: 24px; padding: 0; border: 0; background: transparent; color: var(--app-foreground-muted); cursor: pointer; }
+.uc-browser-draft-sources { padding: 8px 10px; border-bottom: 1px solid var(--app-border); background: var(--app-tertiary); display: grid; gap: 5px; }
+.uc-browser-draft-sources > span { font-size: 11px; opacity: .7; }
+.uc-browser-draft-sources > div { display: flex; gap: 6px; overflow-x: auto; }
+.uc-browser-draft-sources a { min-width: 120px; max-width: 190px; padding: 6px; border: 1px solid var(--app-border); color: var(--app-foreground); text-decoration: none; display: flex; gap: 6px; align-items: center; }
+.uc-browser-draft-sources a span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.uc-browser-draft-sources a small { opacity: .65; }

@@ -10,6 +10,7 @@ import { UGLY_BOT_ID } from "../../shared/bots";
 import { openThemeMenu } from "../components/ThemeMenu";
 import { openUglyBotSettings } from "../lib/uglyBot";
 import { ConversationListBody } from "../components/ConversationListBody";
+import { useBrowserEmbed } from "../lib/browserEmbed";
 
 // True when the viewport is narrow enough that AppShell hides the sidebar
 // (<820px). Mirrors ChatPage's useNarrow.
@@ -38,6 +39,7 @@ export default function ChatHomePage(): React.ReactElement {
   const { socket, userId } = useApp();
   const { conversations, loading } = useConversations();
   const narrow = useNarrow();
+  const embed = useBrowserEmbed();
 
   const navigate = useCallback(
     (conversationId: string) => {
@@ -102,16 +104,18 @@ export default function ChatHomePage(): React.ReactElement {
       >
         <Bot size={18} />
       </button>
-      <button
-        type="button"
-        title="Theme"
-        onClick={openTheme}
-        className="uc-iconbtn"
-        style={topIconBtn}
-        data-id="button-3"
-      >
-        <Palette size={18} />
-      </button>
+      {!embed.embedded ? (
+        <button
+          type="button"
+          title="Theme"
+          onClick={openTheme}
+          className="uc-iconbtn"
+          style={topIconBtn}
+          data-id="button-3"
+        >
+          <Palette size={18} />
+        </button>
+      ) : null}
     </div>
   );
 

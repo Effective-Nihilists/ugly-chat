@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   browserShareFromHash,
   browserShareMarkdown,
+  browserDraftSources,
   normalizeBrowserShare,
 } from '../../client/lib/browserShare';
 
@@ -71,6 +72,18 @@ describe('browser share', () => {
         },
       }),
     ).not.toHaveProperty('screenshot');
+  });
+
+  it('renders only strict sanitized selected-tab metadata as attributed sources', () => {
+    expect(browserDraftSources({
+      id: 'tabs', title: 'First', url: 'https://one.test/?q=kept&token=drop#hidden',
+      excerpt: 'Sec\u202eond — https://user:pass@two.test/path?state=drop&q=kept#hidden\nThird — https://three.test/',
+    })).toEqual([
+      { title: 'First', url: 'https://one.test/?q=kept' },
+      { title: 'Second', url: 'https://two.test/path?q=kept' },
+      { title: 'Third', url: 'https://three.test/' },
+    ]);
+    expect(browserDraftSources({ id: 'quote', title: 'Page', url: 'https://one.test/', excerpt: 'ordinary selected text' })).toEqual([]);
   });
 
   it('accepts the server-private native mobile fragment', () => {

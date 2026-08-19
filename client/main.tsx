@@ -8,6 +8,7 @@ import './styles.css';
 import { loadTheme, applyTheme } from './lib/theme';
 import { loadTextSize, applyTextSize } from './lib/textSize';
 import { installBrowserShareBridge } from './lib/browserShare';
+import { installBrowserEmbedBridge } from './lib/browserEmbed';
 
 // Initialize the client logger so console.error/warn + uncaught errors are
 // forwarded to our Postgres errorLog. Importing+calling this is required to keep
@@ -26,6 +27,7 @@ applyTextSize(loadTextSize());
 // time React starts. Subscribe before bootstrap so it becomes a local draft,
 // never an automatically posted message.
 installBrowserShareBridge();
+installBrowserEmbedBridge();
 
 bootstrapApp({
   requests,

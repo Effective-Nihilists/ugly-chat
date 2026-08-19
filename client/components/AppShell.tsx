@@ -4,6 +4,12 @@ import { useRouter } from "../router";
 import { Sidebar } from "./Sidebar";
 import { clearBrowserShare, useBrowserShare } from "../lib/browserShare";
 import { MessageSquare, X } from "lucide-react";
+import { useConversations } from "../lib/conversations";
+import {
+  onBrowserConversationSelection,
+  publishBrowserConversations,
+  useBrowserEmbed,
+} from "../lib/browserEmbed";
 
 const SIDEBAR_MIN_WIDTH = 820;
 
@@ -29,21 +35,23 @@ export function AppShell({
   const rn = router.current.routeName;
   const isChat = rn === ":conversationId" || (rn === "" && authed);
   const browserShare = useBrowserShare();
+  const embed = useBrowserEmbed();
 
   const [wide, setWide] = useState(() =>
     typeof window === "undefined"
       ? true
-      : window.innerWidth >= SIDEBAR_MIN_WIDTH,
+      : !embed.embedded && window.innerWidth >= SIDEBAR_MIN_WIDTH,
   );
   useEffect(() => {
     const onResize = (): void => {
-      setWide(window.innerWidth >= SIDEBAR_MIN_WIDTH);
+      setWide(!embed.embedded && window.innerWidth >= SIDEBAR_MIN_WIDTH);
     };
+    onResize();
     window.addEventListener("resize", onResize);
     return () => {
       window.removeEventListener("resize", onResize);
     };
-  }, []);
+  }, [embed.embedded]);
 
   if (!isChat) {
     // The landing ('' when logged out) is full-bleed (its dark bg fills behind
@@ -99,6 +107,7 @@ export function AppShell({
           </button>
         </div>
       ) : null}
+      {authed ? <BrowserConversationBridge /> : null}
       {wide && authed ? <Sidebar /> : null}
       <main
         style={{ flex: 1, minWidth: 0, height: "100%", overflow: "hidden" }}
@@ -107,4 +116,33 @@ export function AppShell({
       </main>
     </div>
   );
+}
+
+function BrowserConversationBridge(): React.ReactElement | null {
+  const router = useRouter();
+  const embed = useBrowserEmbed();
+  const { conversations } = useConversations();
+  const activeConversationId =
+    router.current.routeName === ":conversationId"
+      ? router.current.params.conversationId
+      : null;
+
+  useEffect(() => {
+    if (!embed.embedded) return;
+    publishBrowserConversations(
+      conversations.map((row) => ({
+        id: row.conversationId,
+        title: row.title,
+        unread: row.unread,
+      })),
+      activeConversationId,
+    );
+  }, [activeConversationId, conversations, embed.embedded]);
+
+  useEffect(() =>
+    onBrowserConversationSelection((conversationId) => {
+      router.push(":conversationId", { conversationId });
+    }), [router]);
+
+  return null;
 }
