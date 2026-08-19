@@ -10,8 +10,10 @@ Full API reference: https://www.npmjs.com/package/ugly-app
 - CLI: see `package.json` scripts
 
 ## Commands
-- `npm run dev` — Start everything (Docker, server, Vite, tsc watch, eslint watch)
+- `npm run dev` — Start everything (local Postgres/MinIO, server, Vite, tsc watch, + a one-shot eslint summary)
+- `npm run lint` — Lint the project (`npm run lint:fix` to auto-fix)
 - `npm run build` — Production build
+- `npm run deploy` — Deploy to Cloudflare Workers (runs an eslint gate first)
 - `npm run db:migrate` — Run pending migrations
 - `npm run db:schema-gen` — Generate migration files for schema changes
 - `npm run db:schema-status` — Show current schema drift status
@@ -87,6 +89,19 @@ Every endpoint is accessible via both WebSocket (`socket.request(name, input)`) 
 - Only add new pages for secondary navigation the user explicitly asks for (settings, detail views, multi-screen flows). One screen ⇒ home page edit. Multiple screens ⇒ home page + extra routes.
 - Demo/test pages under `client/pages/` (`AuthDemoPage`, `TodoDemoPage`, `*TestPage`, etc.) are scaffolding — delete the ones you don't need as you build the real app.
 
+### Mobile & safe area
+`client/index.html` ships `viewport-fit=cover`, so the viewport extends **under the notch, status bar, and home indicator**. Any content at the screen edges WILL be clipped on phones unless it accounts for the safe area.
+- `PageLayout` applies the insets automatically (`safeArea="auto"` is the default) — prefer it for normal pages and you get this for free.
+- A **custom full-height / full-bleed page** (its own `height: 100%` scroll container, edge-to-edge bands, a fixed header/footer — e.g. a marketing `HomePage`) does NOT get this automatically and **must apply the insets itself.** Add the ready-made `.safe-area` class (from `client/styles.css`) to the scroll container, or pad it manually with the `--safe-area-inset-*` vars / `env(safe-area-inset-*)`:
+  ```css
+  box-sizing: border-box;
+  padding-top: var(--safe-area-inset-top);
+  padding-left: var(--safe-area-inset-left);
+  padding-right: var(--safe-area-inset-right);
+  /* a bottom-anchored footer/bar also needs padding-bottom: var(--safe-area-inset-bottom) */
+  ```
+- Verify with `window.__uglyInspect()` — any `safeAreaViolations` is a build failure (see UX inspection below).
+
 ## Critical rules
 - **Never** change a collection schema without running `npm run db:schema-gen` and fixing the generated migration
 - **Always** include a `schema: ZodSchema` when defining a collection — it's required
@@ -95,7 +110,9 @@ Every endpoint is accessible via both WebSocket (`socket.request(name, input)`) 
 - **Never** read `process.env` in client code — use `import.meta.env.VITE_*`
 - **Always** call `unsub()` on NATS subscriptions
 - **Always** declare `rateLimit` in the endpoint def for expensive operations (AI, storage, email)
-- **Never** add `any` types — `noExplicitAny` is enforced
+- **Never** add `any` types — `@typescript-eslint/no-explicit-any` is an error, and `ugly-app publish` blocks on lint failures
+- **Never** use `as` to type external/unknown JSON (fetch/`res.json()`, `JSON.parse`, third-party API payloads) — define a zod schema and `safeParse` it into the strict type. `as` is a compile-time lie that silently breaks when the upstream schema drifts; zod catches it at runtime. On parse failure `console.error(...)` (captured into `errorLog`), then throw/fall back. Use a non-strict `z.object` (extra keys OK); mark optional fields `.optional()/.nullable()`.
+- **Always** honor the device safe area on custom full-bleed pages (`viewport-fit=cover` is set) — use `PageLayout`, or add the `.safe-area` class / `env(safe-area-inset-*)` padding to the scroll container. See **Mobile & safe area** above.
 
 ## Element identification rules
 - **Always** use framework components (Button, Pressable, TabPicker, Pager, ScrollView,
@@ -105,6 +122,20 @@ Every endpoint is accessible via both WebSocket (`socket.request(name, input)`) 
 - **Never** build custom tab, carousel, scroll, or modal components — use the framework
   versions which include accessibility attributes and element map support
 - **Always** set `aria-label` on icon-only buttons and non-text interactive elements
+
+## Verify UI changes by actually running them
+
+A clean `tsc` and passing unit tests do NOT prove a page works — the #1 failure is
+an app that compiles but crashes or does nothing when you open it. For any UI or
+interactive work (a game, canvas, animation, form flow), run the Playwright e2e:
+
+- `npm run test:e2e` (or `npx playwright test`) — runs `tests/e2e/`. The shipped
+  `smoke.spec.ts` loads the home route and FAILS on any console/page error, so a
+  runtime crash is caught immediately.
+- For interactive pages, adapt `tests/e2e/example-interactive.spec.ts` (a skipped
+  template): it loads your page, drives real keyboard/pointer input for several
+  frames, and fails on any runtime error — the only way to catch gameplay/render
+  bugs a unit test on your engine logic will miss.
 
 ## UX inspection (`window.__uglyInspect()`)
 
@@ -123,8 +154,8 @@ Every page exposes a runtime inspection API installed by `bootstrapApp` at boot.
 - The expensive scans (overlap, safe-area) only run when `__uglyInspect()` is called — observers themselves are essentially free
 
 ## Feedback system
-Feedback button is always at `[data-id="feedback-button"]` (bottom-right).
-User feedback history: `GET /my_feedback` (requires auth cookie).
+User feedback is collected by the Ugly Studio host (not by your app — do not add a
+feedback UI). User feedback history: `GET /my_feedback` (requires auth cookie).
 
 ## Handling "needs images" feedback
 When user feedback mentions missing or needed images:

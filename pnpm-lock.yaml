@@ -30,8 +30,8 @@ importers:
         specifier: ^0.183.2
         version: 0.183.2
       ugly-app:
-        specifier: ^0.1.986
-        version: 0.1.986(@types/react@19.2.17)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.183.2)(typescript@5.9.3)(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)(y-protocols@1.0.7(yjs@13.6.31))(yjs@13.6.31)
+        specifier: ^0.1.1020
+        version: 0.1.1020(@types/react@19.2.17)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.183.2)(typescript@5.9.3)(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)(y-protocols@1.0.7(yjs@13.6.31))(yjs@13.6.31)
       yjs:
         specifier: ^13.6.30
         version: 13.6.31
@@ -78,6 +78,9 @@ importers:
       playwright:
         specifier: ^1.58.2
         version: 1.60.0
+      prettier:
+        specifier: ^3.9.5
+        version: 3.9.6
       tsx:
         specifier: ^4.19.0
         version: 4.22.4
@@ -3408,6 +3411,11 @@ packages:
     resolution: {integrity: sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==}
     engines: {node: '>= 0.8.0'}
 
+  prettier@3.9.6:
+    resolution: {integrity: sha512-OpN0zzVdiaiAhxpuuj5efpIS4sY9j7bY6uR5mnj5yPzGkdkjNKSJeUThPb60Jw29QuAZgA4o+/iB49kFiaBX6g==}
+    engines: {node: '>=14'}
+    hasBin: true
+
   prismjs@1.30.0:
     resolution: {integrity: sha512-DEvV2ZF2r2/63V+tK8hQvrR2ZGn10srHbXviTlcv7Kpzw8jWiNTqbVgjO3IY8RxrrOUF8VPMQQFysYYYv0YZxw==}
     engines: {node: '>=6'}
@@ -3935,8 +3943,8 @@ packages:
     engines: {node: '>=0.8.0'}
     hasBin: true
 
-  ugly-app@0.1.986:
-    resolution: {integrity: sha512-Z9hyDJQvSoKfyrl1f6B3GHE9nsak1db3jeRTQwavPihtXZZ2ltRPkxh58vymU/GahIOU0jaCs47baGHG2cQLFg==}
+  ugly-app@0.1.1020:
+    resolution: {integrity: sha512-RC6bTwwEa0XEGPwpV8C0es6GoNfTpCjNH7YrmtDO69yrjWM1UTe8eTDJKhhgycHNWl5cvCkm1q4PsioJP3bRRA==}
     hasBin: true
     peerDependencies:
       '@types/react': '>=18.0.0'
@@ -3958,8 +3966,8 @@ packages:
       yjs:
         optional: true
 
-  ugly-game@0.15.18:
-    resolution: {integrity: sha512-njdUPlWUUW1Y2WLP1MF5m7X+61ReFyaV0CjPXkm89SnE5ozf8u4u4e3MN4LuLKKZn72P7DwuVRZoWkDw6ZxeKw==}
+  ugly-game@0.15.45:
+    resolution: {integrity: sha512-rjMC9RMmy/tlfkd/RP8mTFpWzUwfAVzbJya1v8BUPnTreqRLXPleCNPqC4Ie1CaD21Qf/oEuePx28Q4n36Dkbg==}
     peerDependencies:
       react: '>=18'
 
@@ -8283,6 +8291,8 @@ snapshots:
 
   prelude-ls@1.2.1: {}
 
+  prettier@3.9.6: {}
+
   prismjs@1.30.0: {}
 
   prop-types@15.8.1:
@@ -8925,7 +8935,7 @@ snapshots:
   uglify-js@3.19.3:
     optional: true
 
-  ugly-app@0.1.986(@types/react@19.2.17)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.183.2)(typescript@5.9.3)(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)(y-protocols@1.0.7(yjs@13.6.31))(yjs@13.6.31):
+  ugly-app@0.1.1020(@types/react@19.2.17)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.183.2)(typescript@5.9.3)(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)(y-protocols@1.0.7(yjs@13.6.31))(yjs@13.6.31):
     dependencies:
       '@aws-sdk/client-s3': 3.1105.0
       '@aws-sdk/s3-request-presigner': 3.1105.0
@@ -8998,7 +9008,7 @@ snapshots:
       sprintf-js: 1.1.3
       turndown: 7.2.4
       typescript-eslint: 8.66.0(eslint@8.57.1)(typescript@5.9.3)
-      ugly-game: 0.15.18(react@18.3.1)
+      ugly-game: 0.15.45(react@18.3.1)
       url-parse: 1.5.10
       vega-embed: 7.1.0(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)
       ws: 8.21.3
@@ -9019,8 +9029,9 @@ snapshots:
       - vega-lite
       - y-protocols
 
-  ugly-game@0.15.18(react@18.3.1):
+  ugly-game@0.15.45(react@18.3.1):
     dependencies:
+      '@webgpu/types': 0.1.70
       meshoptimizer: 1.2.0
       react: 18.3.1
 
@@ -9300,14 +9311,14 @@ snapshots:
       d3-array: 3.2.4
       vega-dataflow: 6.1.2
       vega-statistics: 2.0.0
-      vega-time: 3.1.0
+      vega-time: 3.2.1
       vega-util: 2.1.2
 
   vega-typings@2.1.0:
     dependencies:
       '@types/geojson': 7946.0.16
       vega-event-selector: 4.0.0
-      vega-expression: 6.1.0
+      vega-expression: 6.2.1
       vega-util: 2.1.2
 
   vega-util@2.1.2: {}
@@ -9315,7 +9326,7 @@ snapshots:
   vega-view-transforms@5.1.0:
     dependencies:
       vega-dataflow: 6.1.2
-      vega-scenegraph: 5.1.0
+      vega-scenegraph: 5.2.1
       vega-util: 2.1.2
 
   vega-view@6.1.2:
