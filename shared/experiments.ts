@@ -1,8 +1,8 @@
-import type { Experiment } from 'ugly-app/shared';
+import type { Experiment } from "ugly-app/shared";
 
 // ─── Event names ──────────────────────────────────────────────────────────────
 // Extend this union as you add more trackable events. Use ALL_CAPS convention.
-export type AppEventName = 'SESSION_START' | 'CTA_CLICK';
+export type AppEventName = "SESSION_START" | "CTA_CLICK";
 
 // ─── Experiments ──────────────────────────────────────────────────────────────
 // Define A/B experiments here. Set active: false to pause an experiment.
@@ -13,14 +13,14 @@ export type AppEventName = 'SESSION_START' | 'CTA_CLICK';
 //   - client pages (initSession return value)
 export const experiments: Experiment<AppEventName>[] = [
   {
-    id: 'cta-test',
-    name: 'CTA Button Copy',
-    description: 'Tests two versions of the homepage CTA button label',
+    id: "cta-test",
+    name: "CTA Button Copy",
+    description: "Tests two versions of the homepage CTA button label",
     branches: [
-      { id: 'control',   name: 'Control',   weight: 1 },
-      { id: 'treatment', name: 'Treatment', weight: 1 },
+      { id: "control", name: "Control", weight: 1 },
+      { id: "treatment", name: "Treatment", weight: 1 },
     ],
-    events: ['SESSION_START', 'CTA_CLICK'],
+    events: ["SESSION_START", "CTA_CLICK"],
     active: true,
   },
 ];

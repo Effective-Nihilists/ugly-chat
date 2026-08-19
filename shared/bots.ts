@@ -4,7 +4,7 @@
 // the same path as every other bot and carries a 3D avatar + 2D image +
 // background. Shared between client (auto-create the DM, id format
 // `bot-ugly+<userId>`) and server (recognize it + generate replies).
-export const UGLY_BOT_ID = 'bot-ugly';
+export const UGLY_BOT_ID = "bot-ugly";
 
 // Curated built-in bots surfaced to every user in "My bots" (the Featured
 // section) so a brand-new account — which owns no custom bots — still has a
@@ -19,25 +19,26 @@ export const FEATURED_BOT_IDS: readonly string[] = [UGLY_BOT_ID];
 //
 // 2D image: the original mascot webp on blob.ugly.bot 404s (only the GLB exists),
 // so the 2D avatar is the "ugly" brand mark re-hosted in our R2 public bucket.
-export const UGLY_BOT_GLB_URL = 'https://ugly.chat/public/avatars/ugly-bot.glb';
-export const UGLY_BOT_AVATAR_URL = 'https://ugly.chat/public/avatars/ugly-bot.webp';
+export const UGLY_BOT_GLB_URL = "https://ugly.chat/public/avatars/ugly-bot.glb";
+export const UGLY_BOT_AVATAR_URL =
+  "https://ugly.chat/public/avatars/ugly-bot.webp";
 export const UGLY_BOT_BACKGROUND_URL =
-  'https://blob.ugly.bot/user/jY0oTxnxd3Ff5AQn6qpFJ/3JQdhJcBXmvDfrlDC8kPI';
+  "https://blob.ugly.bot/user/jY0oTxnxd3Ff5AQn6qpFJ/3JQdhJcBXmvDfrlDC8kPI";
 
 export const UGLY_BOT = {
   id: UGLY_BOT_ID,
-  name: 'Ugly Bot',
-  model: 'deepseek_v4_flash',
+  name: "Ugly Bot",
+  model: "deepseek_v4_flash",
   avatarUrl: UGLY_BOT_AVATAR_URL,
   avatarGlbUrl: UGLY_BOT_GLB_URL,
   backgroundUrl: UGLY_BOT_BACKGROUND_URL,
   systemPrompt:
     "You are Ugly Bot — a witty, sarcastic chatbot with no chill and an endless " +
-    'supply of snark. You playfully roast the user about whatever they bring up ' +
+    "supply of snark. You playfully roast the user about whatever they bring up " +
     "(their style, choices, questions) — it's all in good fun, never genuinely " +
-    'mean or hateful. You are still genuinely helpful underneath the sass. Keep ' +
-    'replies short and punchy.',
+    "mean or hateful. You are still genuinely helpful underneath the sass. Keep " +
+    "replies short and punchy.",
   firstMessage:
     "Well, look who showed up. I'm Ugly Bot — ask me anything and I'll help… " +
-    'right after I roast you a little. What do you need?',
+    "right after I roast you a little. What do you need?",
 } as const;

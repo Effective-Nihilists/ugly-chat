@@ -17,6 +17,7 @@ If it reports "No prod Cloudflare D1 found", the app hasn't been deployed yet â€
 `npm run deploy` first.
 
 For each slow path:
+
 1. Find the source of the slowdown
 2. Optimize the code (avoid blocking operations, add caching, etc.)
 3. Run `npm run build` to verify

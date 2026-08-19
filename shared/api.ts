@@ -1,4 +1,12 @@
-import { authReq, defineMessages, defineRequests, frameworkMessages, frameworkRequests, z, AvatarSchema } from 'ugly-app/shared';
+import {
+  authReq,
+  defineMessages,
+  defineRequests,
+  frameworkMessages,
+  frameworkRequests,
+  z,
+  AvatarSchema,
+} from "ugly-app/shared";
 
 export const requests = defineRequests({
   // Todo demo — CRUD requests
@@ -49,7 +57,7 @@ export const requests = defineRequests({
         id: z.string().optional(),
         type: z.string().optional(),
         title: z.string().optional(),
-        mode: z.enum(['public', 'private', 'restricted']).optional(),
+        mode: z.enum(["public", "private", "restricted"]).optional(),
         ownerIds: z.array(z.string()).optional(),
       })
       .catchall(z.unknown()),
@@ -84,7 +92,9 @@ export const requests = defineRequests({
   // Pin/unpin a conversation in the caller's list (sets their userConversation
   // visibility to 'pinned' or 'visible'; conversationListMine sorts pinned first).
   conversationSetPinned: authReq({
-    input: z.object({ conversationId: z.string(), pinned: z.boolean() }).catchall(z.unknown()),
+    input: z
+      .object({ conversationId: z.string(), pinned: z.boolean() })
+      .catchall(z.unknown()),
     output: z.object({ ok: z.boolean() }),
   }),
 
@@ -108,16 +118,25 @@ export const requests = defineRequests({
   // The caller's own federated profile (name + avatar), for the settings editor.
   userProfileGet: authReq({
     input: z.object({}).catchall(z.unknown()),
-    output: z.object({ name: z.string().nullable(), avatarUrl: z.string().nullable() }).catchall(z.unknown()),
+    output: z
+      .object({ name: z.string().nullable(), avatarUrl: z.string().nullable() })
+      .catchall(z.unknown()),
   }),
 
   // Update the caller's own name/avatar. Writes through to ugly.bot (federated
   // profile) and refreshes the local cache so it shows in-session immediately.
   userProfileUpdate: authReq({
     input: z
-      .object({ name: z.string().max(80).optional(), avatarUrl: z.string().nullable().optional() })
+      .object({
+        name: z.string().max(80).optional(),
+        avatarUrl: z.string().nullable().optional(),
+      })
       .catchall(z.unknown()),
-    output: z.object({ ok: z.boolean(), name: z.string().nullable(), avatarUrl: z.string().nullable() }),
+    output: z.object({
+      ok: z.boolean(),
+      name: z.string().nullable(),
+      avatarUrl: z.string().nullable(),
+    }),
   }),
 
   // Each other member's single last-read timestamp for a conversation (the
@@ -181,7 +200,7 @@ export const requests = defineRequests({
   emailLookup: authReq({
     input: z.object({ email: z.string() }),
     output: z.object({
-      status: z.enum(['found', 'invite', 'invalid']),
+      status: z.enum(["found", "invite", "invalid"]),
       userId: z.string().optional(),
       name: z.string().optional(),
       avatarUrl: z.string().nullable().optional(),
@@ -210,7 +229,7 @@ export const requests = defineRequests({
       .object({
         conversationId: z.string(),
         userId: z.string(),
-        role: z.enum(['owner', 'member', 'viewer']).optional(),
+        role: z.enum(["owner", "member", "viewer"]).optional(),
       })
       .catchall(z.unknown()),
     output: z.any(),
@@ -218,7 +237,9 @@ export const requests = defineRequests({
   // Remove a member — or leave (userId === self). Engine enforces owner/self +
   // last-owner protection.
   conversationMemberRemove: authReq({
-    input: z.object({ conversationId: z.string(), userId: z.string() }).catchall(z.unknown()),
+    input: z
+      .object({ conversationId: z.string(), userId: z.string() })
+      .catchall(z.unknown()),
     output: z.any(),
   }),
   // Change a member's role (owner only, enforced by the engine).
@@ -227,7 +248,7 @@ export const requests = defineRequests({
       .object({
         conversationId: z.string(),
         userId: z.string(),
-        role: z.enum(['owner', 'member', 'viewer']),
+        role: z.enum(["owner", "member", "viewer"]),
       })
       .catchall(z.unknown()),
     output: z.any(),
@@ -245,8 +266,12 @@ export const requests = defineRequests({
   resolveEmail: authReq({
     input: z.object({ email: z.string() }),
     output: z.union([
-      z.object({ status: z.literal('found'), userId: z.string(), name: z.string() }),
-      z.object({ status: z.literal('invite'), email: z.string() }),
+      z.object({
+        status: z.literal("found"),
+        userId: z.string(),
+        name: z.string(),
+      }),
+      z.object({ status: z.literal("invite"), email: z.string() }),
     ]),
     rateLimit: { max: 30, window: 60 },
   }),
@@ -262,7 +287,10 @@ export const requests = defineRequests({
       title: z.string().max(80).optional(),
       emails: z.array(z.string()).max(50),
     }),
-    output: z.object({ conversationId: z.string(), invited: z.array(z.string()) }),
+    output: z.object({
+      conversationId: z.string(),
+      invited: z.array(z.string()),
+    }),
     rateLimit: { max: 10, window: 60 },
   }),
 
@@ -275,7 +303,10 @@ export const requests = defineRequests({
       emails: z.array(z.string()).max(50).optional(),
       title: z.string().max(80).optional(),
     }),
-    output: z.object({ conversationId: z.string(), invited: z.array(z.string()) }),
+    output: z.object({
+      conversationId: z.string(),
+      invited: z.array(z.string()),
+    }),
     rateLimit: { max: 20, window: 60 },
   }),
 
@@ -344,7 +375,11 @@ export const requests = defineRequests({
   // call roster / typing indicator already use. Not persisted as a message.
   conversationCaption: authReq({
     input: z
-      .object({ conversationId: z.string(), text: z.string(), final: z.boolean() })
+      .object({
+        conversationId: z.string(),
+        text: z.string(),
+        final: z.boolean(),
+      })
       .catchall(z.unknown()),
     output: z.object({ ok: z.boolean() }),
     rateLimit: { max: 240, window: 60 },
@@ -378,7 +413,9 @@ export const requests = defineRequests({
     output: z.any(),
   }),
   conversationVideoBotJoin: authReq({
-    input: z.object({ conversationId: z.string(), botId: z.string() }).catchall(z.unknown()),
+    input: z
+      .object({ conversationId: z.string(), botId: z.string() })
+      .catchall(z.unknown()),
     output: z.any(),
   }),
   // Advertise the caller's SFU session + published track names on the call
@@ -397,7 +434,11 @@ export const requests = defineRequests({
   // Publish mic/cam state so peers can show a muted / camera-off badge.
   conversationVideoMedia: authReq({
     input: z
-      .object({ conversationId: z.string(), micOn: z.boolean(), camOn: z.boolean() })
+      .object({
+        conversationId: z.string(),
+        micOn: z.boolean(),
+        camOn: z.boolean(),
+      })
       .catchall(z.unknown()),
     output: z.any(),
   }),
@@ -409,15 +450,25 @@ export const requests = defineRequests({
   }),
 
   // ── Cloudflare Realtime (Calls) SFU/TURN broker (secret stays server-side) ─
-  realtimeIceServers: authReq({ input: z.object({}).catchall(z.unknown()), output: z.any() }),
-  realtimeNewSession: authReq({ input: z.object({}).catchall(z.unknown()), output: z.any() }),
+  realtimeIceServers: authReq({
+    input: z.object({}).catchall(z.unknown()),
+    output: z.any(),
+  }),
+  realtimeNewSession: authReq({
+    input: z.object({}).catchall(z.unknown()),
+    output: z.any(),
+  }),
   // `body` is the WebRTC SDP + track descriptors the client built; relayed as-is.
   realtimeTracks: authReq({
-    input: z.object({ sessionId: z.string(), body: z.any() }).catchall(z.unknown()),
+    input: z
+      .object({ sessionId: z.string(), body: z.any() })
+      .catchall(z.unknown()),
     output: z.any(),
   }),
   realtimeRenegotiate: authReq({
-    input: z.object({ sessionId: z.string(), body: z.any() }).catchall(z.unknown()),
+    input: z
+      .object({ sessionId: z.string(), body: z.any() })
+      .catchall(z.unknown()),
     output: z.any(),
   }),
 
@@ -435,7 +486,11 @@ export const requests = defineRequests({
       model: z.string().optional(),
       avatar: AvatarSchema.optional(),
       firstMessage: z.string().max(2000).nullable().optional(),
-      buttons: z.array(z.object({ label: z.string().max(40), prompt: z.string().max(2000) })).optional(),
+      buttons: z
+        .array(
+          z.object({ label: z.string().max(40), prompt: z.string().max(2000) }),
+        )
+        .optional(),
       characterId: z.string().nullish(),
       characterThumbnail: z.string().nullish(),
     }),
@@ -449,7 +504,11 @@ export const requests = defineRequests({
       model: z.string().optional(),
       avatar: AvatarSchema.optional(),
       firstMessage: z.string().max(2000).nullable().optional(),
-      buttons: z.array(z.object({ label: z.string().max(40), prompt: z.string().max(2000) })).optional(),
+      buttons: z
+        .array(
+          z.object({ label: z.string().max(40), prompt: z.string().max(2000) }),
+        )
+        .optional(),
       characterId: z.string().nullish(),
       characterThumbnail: z.string().nullish(),
     }),

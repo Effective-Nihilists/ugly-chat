@@ -1,4 +1,4 @@
-import type { query as pgQuery } from 'ugly-app/server';
+import type { query as pgQuery } from "ugly-app/server";
 
 // Schema migration: create collection "debugLogStream"
 
@@ -10,6 +10,10 @@ export async function up(query: typeof pgQuery): Promise<void> {
     updated  TIMESTAMPTZ NOT NULL DEFAULT now(),
     version  INTEGER NOT NULL DEFAULT 1
   )`);
-  await query(`CREATE INDEX IF NOT EXISTS "idx_debugLogStream_data" ON "debugLogStream" USING GIN (data)`);
-  await query(`CREATE INDEX IF NOT EXISTS "idx_debugLogStream_userId" ON "debugLogStream" ((data->>'userId'))`);
+  await query(
+    `CREATE INDEX IF NOT EXISTS "idx_debugLogStream_data" ON "debugLogStream" USING GIN (data)`,
+  );
+  await query(
+    `CREATE INDEX IF NOT EXISTS "idx_debugLogStream_userId" ON "debugLogStream" ((data->>'userId'))`,
+  );
 }

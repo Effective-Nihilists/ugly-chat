@@ -1,4 +1,4 @@
-import { crossOriginProps } from 'ugly-app/client';
+import { crossOriginProps } from "ugly-app/client";
 /**
  * ChatMedia — image attachment rendering + fullscreen pan/zoom viewer.
  *
@@ -17,8 +17,8 @@ import { crossOriginProps } from 'ugly-app/client';
  * pointer-event pan/zoom: mouse wheel + drag + double-click, and touch pinch
  * (two fingers) + drag + double-tap.
  */
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { X, Maximize2, FileText, Download } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { X, Maximize2, FileText, Download } from "lucide-react";
 
 export const MEDIA_MAX = 480; // desktop cap for an edge-to-edge media bubble
 const TALL_MAX_H = 480; // an image never renders taller than this
@@ -27,18 +27,24 @@ const CENTERED_MAX = 320; // modest width when the message is text-dominant
 /** Markdown image: ![alt](url "title") — global so we can extract every match. */
 const IMG_RE = /!\[([^\]]*)\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)/g;
 
-export interface ExtractedImage { alt: string; url: string }
+export interface ExtractedImage {
+  alt: string;
+  url: string;
+}
 
 /** Pull every markdown image out of `md`, returning the images + the leftover text. */
-export function extractImages(md: string): { images: ExtractedImage[]; text: string } {
+export function extractImages(md: string): {
+  images: ExtractedImage[];
+  text: string;
+} {
   const images: ExtractedImage[] = [];
   const text = md
     .replace(IMG_RE, (_m, alt: string, url: string) => {
       images.push({ alt, url });
-      return '';
+      return "";
     })
     // collapse the blank lines left where images used to be
-    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
   return { images, text };
 }
@@ -48,23 +54,30 @@ export function extractImages(md: string): { images: ExtractedImage[]; text: str
  * AFTER extractImages (so `![…]` are already gone). Anything else the user typed
  * stays an ordinary inline link.
  */
-const FILE_RE = /\[([^\]]*)\]\(\s*<?((?:https?:)?\/\/[^)\s>]*\/public\/[^)\s>]+|\/public\/[^)\s>]+)>?\s*\)/g;
+const FILE_RE =
+  /\[([^\]]*)\]\(\s*<?((?:https?:)?\/\/[^)\s>]*\/public\/[^)\s>]+|\/public\/[^)\s>]+)>?\s*\)/g;
 
-export interface ExtractedFile { name: string; url: string }
+export interface ExtractedFile {
+  name: string;
+  url: string;
+}
 
 /**
  * Pull attachment links out of `md` so they can render as real file cards.
  * They used to fall through to the markdown viewer as bare underlined text —
  * no icon, no size, no download affordance, while images got full treatment.
  */
-export function extractFiles(md: string): { files: ExtractedFile[]; text: string } {
+export function extractFiles(md: string): {
+  files: ExtractedFile[];
+  text: string;
+} {
   const files: ExtractedFile[] = [];
   const text = md
     .replace(FILE_RE, (_m, name: string, url: string) => {
       files.push({ name, url });
-      return '';
+      return "";
     })
-    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
   return { files, text };
 }
@@ -87,15 +100,17 @@ export function ChatFile({ name, url }: ExtractedFile): React.ReactElement {
   useEffect(() => {
     let off = false;
     // Tell the recipient how big it is BEFORE they click a 20MB download.
-    void fetch(url, { method: 'HEAD' })
+    void fetch(url, { method: "HEAD" })
       .then((r) => {
-        const len = Number(r.headers.get('content-length') ?? 0);
+        const len = Number(r.headers.get("content-length") ?? 0);
         if (!off && Number.isFinite(len) && len > 0) setSize(len);
       })
       .catch(() => undefined);
-    return () => { off = true; };
+    return () => {
+      off = true;
+    };
   }, [url]);
-  const ext = (/\.([a-z0-9]{1,8})$/i.exec(name)?.[1] ?? 'file').toUpperCase();
+  const ext = (/\.([a-z0-9]{1,8})$/i.exec(name)?.[1] ?? "file").toUpperCase();
   return (
     <a
       href={url}
@@ -103,15 +118,24 @@ export function ChatFile({ name, url }: ExtractedFile): React.ReactElement {
       target="_blank"
       rel="noopener noreferrer"
       className="uc-file"
-      onClick={(e) => { e.stopPropagation(); }}
+      onClick={(e) => {
+        e.stopPropagation();
+      }}
       data-id="file-attachment"
     >
-      <span className="ic"><FileText size={18} /></span>
+      <span className="ic">
+        <FileText size={18} />
+      </span>
       <span className="body">
         <span className="n">{name}</span>
-        <span className="m">{ext}{size == null ? '' : ` · ${fmtBytes(size)}`}</span>
+        <span className="m">
+          {ext}
+          {size == null ? "" : ` · ${fmtBytes(size)}`}
+        </span>
       </span>
-      <span className="dl"><Download size={16} /></span>
+      <span className="dl">
+        <Download size={16} />
+      </span>
     </a>
   );
 }
@@ -135,49 +159,61 @@ export function ChatImage({
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longFiredRef = useRef(false);
   const startRef = useRef<{ x: number; y: number } | null>(null);
-  const pointerTypeRef = useRef<string>('mouse');
+  const pointerTypeRef = useRef<string>("mouse");
 
   const cancelPress = useCallback(() => {
-    if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; }
+    if (pressTimer.current) {
+      clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
   }, []);
 
-  const onPointerDown = useCallback((e: React.PointerEvent) => {
-    longFiredRef.current = false;
-    pointerTypeRef.current = e.pointerType;
-    startRef.current = { x: e.clientX, y: e.clientY };
-    cancelPress();
-    // Touch: long-press opens the viewer (a tap still selects the message).
-    // Mouse: handled on click below — a 450ms hold to open an image is a
-    // mobile gesture nobody discovers with a desktop cursor.
-    if (e.pointerType === 'mouse') return;
-    pressTimer.current = setTimeout(() => {
-      longFiredRef.current = true;
-      onOpen(src, alt);
-    }, 450);
-  }, [cancelPress, onOpen, src, alt]);
-
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
-    const s = startRef.current;
-    if (s && Math.hypot(e.clientX - s.x, e.clientY - s.y) > 10) cancelPress();
-  }, [cancelPress]);
-
-  const onClickCapture = useCallback((e: React.MouseEvent) => {
-    // If a long-press already opened the viewer, swallow the trailing click so
-    // it doesn't also select the message.
-    if (longFiredRef.current) {
-      e.preventDefault();
-      e.stopPropagation();
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent) => {
       longFiredRef.current = false;
-      return;
-    }
-    // Desktop: a click on an image opens it, which is what cursor:pointer has
-    // been promising. Previously it just selected the message.
-    if (pointerTypeRef.current === 'mouse') {
-      e.preventDefault();
-      e.stopPropagation();
-      onOpen(src, alt);
-    }
-  }, [onOpen, src, alt]);
+      pointerTypeRef.current = e.pointerType;
+      startRef.current = { x: e.clientX, y: e.clientY };
+      cancelPress();
+      // Touch: long-press opens the viewer (a tap still selects the message).
+      // Mouse: handled on click below — a 450ms hold to open an image is a
+      // mobile gesture nobody discovers with a desktop cursor.
+      if (e.pointerType === "mouse") return;
+      pressTimer.current = setTimeout(() => {
+        longFiredRef.current = true;
+        onOpen(src, alt);
+      }, 450);
+    },
+    [cancelPress, onOpen, src, alt],
+  );
+
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      const s = startRef.current;
+      if (s && Math.hypot(e.clientX - s.x, e.clientY - s.y) > 10) cancelPress();
+    },
+    [cancelPress],
+  );
+
+  const onClickCapture = useCallback(
+    (e: React.MouseEvent) => {
+      // If a long-press already opened the viewer, swallow the trailing click so
+      // it doesn't also select the message.
+      if (longFiredRef.current) {
+        e.preventDefault();
+        e.stopPropagation();
+        longFiredRef.current = false;
+        return;
+      }
+      // Desktop: a click on an image opens it, which is what cursor:pointer has
+      // been promising. Previously it just selected the message.
+      if (pointerTypeRef.current === "mouse") {
+        e.preventDefault();
+        e.stopPropagation();
+        onOpen(src, alt);
+      }
+    },
+    [onOpen, src, alt],
+  );
 
   // Wrapper width policy:
   //  - text-dominant  → modest, centered column.
@@ -186,16 +222,21 @@ export function ChatImage({
   //    wrapper to height*ar and center it so height === TALL_MAX_H, no letterbox.
   let wrap: React.CSSProperties;
   if (!edgeToEdge) {
-    wrap = { maxWidth: CENTERED_MAX, width: '100%', margin: '6px auto 0' };
+    wrap = { maxWidth: CENTERED_MAX, width: "100%", margin: "6px auto 0" };
   } else if (ar !== null && ar < MEDIA_MAX / TALL_MAX_H) {
-    wrap = { maxWidth: Math.round(TALL_MAX_H * ar), width: '100%', margin: '0 auto' };
+    wrap = {
+      maxWidth: Math.round(TALL_MAX_H * ar),
+      width: "100%",
+      margin: "0 auto",
+    };
   } else {
-    wrap = { width: '100%' };
+    wrap = { width: "100%" };
   }
 
   return (
-    <div style={{ ...wrap, position: 'relative' }}>
-      <img {...crossOriginProps(src)}
+    <div style={{ ...wrap, position: "relative" }}>
+      <img
+        {...crossOriginProps(src)}
         src={src}
         alt={alt}
         loading="lazy"
@@ -210,38 +251,42 @@ export function ChatImage({
         onPointerCancel={cancelPress}
         onClickCapture={onClickCapture}
         style={{
-          display: 'block',
-          width: '100%',
-          height: 'auto',
+          display: "block",
+          width: "100%",
+          height: "auto",
           maxHeight: TALL_MAX_H,
-          objectFit: 'contain',
-          cursor: 'pointer',
+          objectFit: "contain",
+          cursor: "pointer",
           borderRadius: edgeToEdge ? 0 : 8,
-          touchAction: 'manipulation',
+          touchAction: "manipulation",
         }}
       />
       {isSelected ? (
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); onOpen(src, alt); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpen(src, alt);
+          }}
           style={{
-            position: 'absolute',
+            position: "absolute",
             top: 8,
             right: 8,
-            display: 'inline-flex',
-            alignItems: 'center',
+            display: "inline-flex",
+            alignItems: "center",
             gap: 5,
-            fontFamily: 'var(--app-font-mono)',
+            fontFamily: "var(--app-font-mono)",
             fontSize: 11,
             fontWeight: 600,
-            padding: '5px 9px',
-            border: '1px solid var(--app-border)',
+            padding: "5px 9px",
+            border: "1px solid var(--app-border)",
             borderRadius: 6,
-            background: 'var(--app-main)',
-            color: 'var(--app-foreground)',
-            cursor: 'pointer',
-            boxShadow: 'var(--app-shadow-button-default)',
-          }} data-id="open"
+            background: "var(--app-main)",
+            color: "var(--app-foreground)",
+            cursor: "pointer",
+            boxShadow: "var(--app-shadow-button-default)",
+          }}
+          data-id="open"
         >
           <Maximize2 size={13} /> Open
         </button>
@@ -252,7 +297,8 @@ export function ChatImage({
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 6;
-const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
+const clamp = (v: number, lo: number, hi: number): number =>
+  Math.min(hi, Math.max(lo, v));
 
 /** Fullscreen image viewer with mouse + two-finger-touch pan/zoom. */
 export function ImageZoomViewer({
@@ -272,7 +318,9 @@ export function ImageZoomViewer({
   tfRef.current = tf;
   const baseRef = useRef({ x: 0, y: 0 }); // centered position at scale 1
   const pointers = useRef(new Map<number, { x: number; y: number }>());
-  const pinch = useRef<{ dist: number; mid: { x: number; y: number } } | null>(null);
+  const pinch = useRef<{ dist: number; mid: { x: number; y: number } } | null>(
+    null,
+  );
 
   const local = useCallback((cx: number, cy: number) => {
     const r = wrapRef.current?.getBoundingClientRect();
@@ -291,13 +339,17 @@ export function ImageZoomViewer({
   }, []);
 
   useEffect(() => {
-    const onResize = (): void => { if (tfRef.current.s === 1) center(); };
-    window.addEventListener('resize', onResize);
-    const onKey = (e: KeyboardEvent): void => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
+    const onResize = (): void => {
+      if (tfRef.current.s === 1) center();
+    };
+    window.addEventListener("resize", onResize);
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
     return () => {
-      window.removeEventListener('resize', onResize);
-      window.removeEventListener('keydown', onKey);
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("keydown", onKey);
     };
   }, [center, onClose]);
 
@@ -320,58 +372,80 @@ export function ImageZoomViewer({
       const p = local(e.clientX, e.clientY);
       zoomAt(e.deltaY < 0 ? 1.15 : 1 / 1.15, p.x, p.y);
     };
-    el.addEventListener('wheel', handler, { passive: false });
-    return () => { el.removeEventListener('wheel', handler); };
+    el.addEventListener("wheel", handler, { passive: false });
+    return () => {
+      el.removeEventListener("wheel", handler);
+    };
   }, [local, zoomAt]);
 
-  const onPointerDown = useCallback((e: React.PointerEvent) => {
-    (e.target as Element).setPointerCapture(e.pointerId);
-    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pointers.current.size === 2) {
-      const [a, b] = [...pointers.current.values()];
-      pinch.current = {
-        dist: Math.hypot(a!.x - b!.x, a!.y - b!.y),
-        mid: local((a!.x + b!.x) / 2, (a!.y + b!.y) / 2),
-      };
-    }
-  }, [local]);
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      (e.target as Element).setPointerCapture(e.pointerId);
+      pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pointers.current.size === 2) {
+        const [a, b] = [...pointers.current.values()];
+        pinch.current = {
+          dist: Math.hypot(a!.x - b!.x, a!.y - b!.y),
+          mid: local((a!.x + b!.x) / 2, (a!.y + b!.y) / 2),
+        };
+      }
+    },
+    [local],
+  );
 
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
-    const prev = pointers.current.get(e.pointerId);
-    if (!prev) return;
-    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pointers.current.size >= 2 && pinch.current) {
-      const [a, b] = [...pointers.current.values()];
-      const dist = Math.hypot(a!.x - b!.x, a!.y - b!.y);
-      const mid = local((a!.x + b!.x) / 2, (a!.y + b!.y) / 2);
-      const factor = dist / (pinch.current.dist || dist);
-      const dx = mid.x - pinch.current.mid.x;
-      const dy = mid.y - pinch.current.mid.y;
-      setTf((t) => {
-        const s = clamp(t.s * factor, MIN_SCALE, MAX_SCALE);
-        const k = s / t.s;
-        return { s, x: mid.x - (mid.x - t.x) * k + dx, y: mid.y - (mid.y - t.y) * k + dy };
-      });
-      pinch.current = { dist, mid };
-    } else if (pointers.current.size === 1) {
-      setTf((t) => ({ ...t, x: t.x + (e.clientX - prev.x), y: t.y + (e.clientY - prev.y) }));
-    }
-  }, [local]);
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      const prev = pointers.current.get(e.pointerId);
+      if (!prev) return;
+      pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pointers.current.size >= 2 && pinch.current) {
+        const [a, b] = [...pointers.current.values()];
+        const dist = Math.hypot(a!.x - b!.x, a!.y - b!.y);
+        const mid = local((a!.x + b!.x) / 2, (a!.y + b!.y) / 2);
+        const factor = dist / (pinch.current.dist || dist);
+        const dx = mid.x - pinch.current.mid.x;
+        const dy = mid.y - pinch.current.mid.y;
+        setTf((t) => {
+          const s = clamp(t.s * factor, MIN_SCALE, MAX_SCALE);
+          const k = s / t.s;
+          return {
+            s,
+            x: mid.x - (mid.x - t.x) * k + dx,
+            y: mid.y - (mid.y - t.y) * k + dy,
+          };
+        });
+        pinch.current = { dist, mid };
+      } else if (pointers.current.size === 1) {
+        setTf((t) => ({
+          ...t,
+          x: t.x + (e.clientX - prev.x),
+          y: t.y + (e.clientY - prev.y),
+        }));
+      }
+    },
+    [local],
+  );
 
-  const onPointerUp = useCallback((e: React.PointerEvent) => {
-    pointers.current.delete(e.pointerId);
-    if (pointers.current.size < 2) pinch.current = null;
-    // Snap back to a clean centered fit when fully zoomed out.
-    if (pointers.current.size === 0 && tfRef.current.s <= 1.001) center();
-  }, [center]);
+  const onPointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      pointers.current.delete(e.pointerId);
+      if (pointers.current.size < 2) pinch.current = null;
+      // Snap back to a clean centered fit when fully zoomed out.
+      if (pointers.current.size === 0 && tfRef.current.s <= 1.001) center();
+    },
+    [center],
+  );
 
-  const onDouble = useCallback((e: React.MouseEvent) => {
-    if (tfRef.current.s > 1) center();
-    else {
-      const p = local(e.clientX, e.clientY);
-      zoomAt(2.5, p.x, p.y);
-    }
-  }, [center, local, zoomAt]);
+  const onDouble = useCallback(
+    (e: React.MouseEvent) => {
+      if (tfRef.current.s > 1) center();
+      else {
+        const p = local(e.clientX, e.clientY);
+        zoomAt(2.5, p.x, p.y);
+      }
+    },
+    [center, local, zoomAt],
+  );
 
   return (
     <div
@@ -381,33 +455,37 @@ export function ImageZoomViewer({
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
       onDoubleClick={onDouble}
-      onClick={(e) => { if (e.target === wrapRef.current && tfRef.current.s <= 1.001) onClose(); }}
+      onClick={(e) => {
+        if (e.target === wrapRef.current && tfRef.current.s <= 1.001) onClose();
+      }}
       style={{
-        position: 'fixed',
+        position: "fixed",
         inset: 0,
         zIndex: 60,
-        background: 'rgba(0,0,0,0.93)',
-        overflow: 'hidden',
-        touchAction: 'none',
-        userSelect: 'none',
-        cursor: tf.s > 1 ? 'grab' : 'default',
-      }} data-id="div"
+        background: "rgba(0,0,0,0.93)",
+        overflow: "hidden",
+        touchAction: "none",
+        userSelect: "none",
+        cursor: tf.s > 1 ? "grab" : "default",
+      }}
+      data-id="div"
     >
-      <img {...crossOriginProps(src)}
+      <img
+        {...crossOriginProps(src)}
         ref={imgRef}
         src={src}
         alt={alt}
         draggable={false}
         onLoad={center}
         style={{
-          position: 'absolute',
+          position: "absolute",
           top: 0,
           left: 0,
-          maxWidth: '100vw',
-          maxHeight: '100vh',
-          transformOrigin: '0 0',
+          maxWidth: "100vw",
+          maxHeight: "100vh",
+          transformOrigin: "0 0",
           transform: `translate(${tf.x}px, ${tf.y}px) scale(${tf.s})`,
-          willChange: 'transform',
+          willChange: "transform",
         }}
       />
       <button
@@ -415,21 +493,22 @@ export function ImageZoomViewer({
         onClick={onClose}
         aria-label="Close"
         style={{
-          position: 'fixed',
+          position: "fixed",
           top: 14,
           right: 14,
           width: 40,
           height: 40,
-          borderRadius: '50%',
-          border: 'none',
-          background: 'rgba(255,255,255,0.14)',
-          color: '#fff',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
+          borderRadius: "50%",
+          border: "none",
+          background: "rgba(255,255,255,0.14)",
+          color: "#fff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
           zIndex: 61,
-        }} data-id="close"
+        }}
+        data-id="close"
       >
         <X size={22} />
       </button>

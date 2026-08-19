@@ -1,89 +1,195 @@
 // Build a self-contained design-review page (images inlined as data URIs — the
 // Artifact CSP blocks every external host).
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync, writeFileSync } from "fs";
 
-const OUT = '/private/tmp/claude-502/-Users-admin-Documents-GitHub-app/d5977315-1b83-4ef5-afd1-79c6b2779812/scratchpad/video-call-review.html';
-const dir = '/Users/admin/Documents/GitHub/ugly-chat/.shots';
-const img = (f) => `data:image/png;base64,${readFileSync(`${dir}/${f}`).toString('base64')}`;
+const OUT =
+  "/private/tmp/claude-502/-Users-admin-Documents-GitHub-app/d5977315-1b83-4ef5-afd1-79c6b2779812/scratchpad/video-call-review.html";
+const dir = "/Users/admin/Documents/GitHub/ugly-chat/.shots";
+const img = (f) =>
+  `data:image/png;base64,${readFileSync(`${dir}/${f}`).toString("base64")}`;
 
 const shots = {
-  botD: img('bot-desktop.png'),
-  botM: img('bot-mobile.png'),
-  oneD: img('1to1-desktop.png'),
-  oneP: img('1to1-peer-desktop.png'),
-  oneM: img('1to1-mobile.png'),
-  grpD: img('group3-desktop.png'),
-  grpM: img('group3-mobile.png'),
+  botD: img("bot-desktop.png"),
+  botM: img("bot-mobile.png"),
+  oneD: img("1to1-desktop.png"),
+  oneP: img("1to1-peer-desktop.png"),
+  oneM: img("1to1-mobile.png"),
+  grpD: img("group3-desktop.png"),
+  grpM: img("group3-mobile.png"),
 };
 
 const F = (sev, area, text) => ({ sev, area, text });
 const sections = [
   {
-    id: 'group',
-    kicker: 'Scenario 03',
-    title: 'Group call — three people',
+    id: "group",
+    kicker: "Scenario 03",
+    title: "Group call — three people",
     thesis:
-      'A genuine three-way call — the server roster confirms all three publishing (<code>session=yes tracks=2</code> each). The transcript rail names <b>YOU · ANA SILVA · BEN OKAFOR</b>. The stage shows <b>one of them</b>. The app knows Ben is there, lists him talking, and renders him nowhere: it composes <code>participants.find(p =&gt; p.userId !== userId)</code> — exactly one peer, forever.',
+      "A genuine three-way call — the server roster confirms all three publishing (<code>session=yes tracks=2</code> each). The transcript rail names <b>YOU · ANA SILVA · BEN OKAFOR</b>. The stage shows <b>one of them</b>. The app knows Ben is there, lists him talking, and renders him nowhere: it composes <code>participants.find(p =&gt; p.userId !== userId)</code> — exactly one peer, forever.",
     shots: [
-      { src: shots.grpD, cap: 'Desktop · all three publishing. Transcript names three. Stage renders one.', w: 'wide' },
-      { src: shots.grpM, cap: 'Mobile · avatar fallback (the best-looking thing here)', w: 'narrow' },
+      {
+        src: shots.grpD,
+        cap: "Desktop · all three publishing. Transcript names three. Stage renders one.",
+        w: "wide",
+      },
+      {
+        src: shots.grpM,
+        cap: "Mobile · avatar fallback (the best-looking thing here)",
+        w: "narrow",
+      },
     ],
     findings: [
-      F('blocker', 'Stage', '“A group call surface that cannot compose more than two tiles is not a design — it’s a 1:1 view with a different title.” <span class="who">Dana</span>'),
-      F('blocker', 'Roster', '“I cannot answer <i>who is here</i> — the most basic question a call must answer.” <span class="who">Vera</span>'),
-      F('high', 'Labels', 'The one visible peer is named <b>twice</b> — chip top-right and plate bottom-left — “wasting the exact real estate a grid would need, while a third participant goes unnamed.”'),
-      F('high', 'Self-view', 'The self-PiP renders as a flat black rectangle labelled “you” — “I cannot confirm my own camera is working, which is the reason self-view exists.” <span class="who">Vera</span>'),
-      F('low', 'Asset', '“The 3D character over the painted backdrop is the only element in these seven shots with any craft.” It’s reachable only by accident, unlabelled, and cropped at the chin.'),
+      F(
+        "blocker",
+        "Stage",
+        '“A group call surface that cannot compose more than two tiles is not a design — it’s a 1:1 view with a different title.” <span class="who">Dana</span>',
+      ),
+      F(
+        "blocker",
+        "Roster",
+        '“I cannot answer <i>who is here</i> — the most basic question a call must answer.” <span class="who">Vera</span>',
+      ),
+      F(
+        "high",
+        "Labels",
+        "The one visible peer is named <b>twice</b> — chip top-right and plate bottom-left — “wasting the exact real estate a grid would need, while a third participant goes unnamed.”",
+      ),
+      F(
+        "high",
+        "Self-view",
+        'The self-PiP renders as a flat black rectangle labelled “you” — “I cannot confirm my own camera is working, which is the reason self-view exists.” <span class="who">Vera</span>',
+      ),
+      F(
+        "low",
+        "Asset",
+        "“The 3D character over the painted backdrop is the only element in these seven shots with any craft.” It’s reachable only by accident, unlabelled, and cropped at the chin.",
+      ),
     ],
   },
   {
-    id: 'bot',
-    kicker: 'Scenario 01',
-    title: 'Bot call — the AI with a face',
+    id: "bot",
+    kicker: "Scenario 01",
+    title: "Bot call — the AI with a face",
     thesis:
       'Calling a bot is a real feature: it joins as an avatar and speaks its replies. What ships instead is a grey disc reading <b>“WF”</b> — which is literally <code>initials("Waiting for others…")</code>, the placeholder label rendered as a human monogram. This is the “WF” nobody could explain.',
     shots: [
-      { src: shots.botD, cap: 'Desktop · “ringing · nobody has joined yet” — beside a chip saying the bot IS in call', w: 'wide' },
-      { src: shots.botM, cap: 'Mobile · captions collide with the PiP and the composer', w: 'narrow' },
+      {
+        src: shots.botD,
+        cap: "Desktop · “ringing · nobody has joined yet” — beside a chip saying the bot IS in call",
+        w: "wide",
+      },
+      {
+        src: shots.botM,
+        cap: "Mobile · captions collide with the PiP and the composer",
+        w: "narrow",
+      },
     ],
     findings: [
-      F('blocker', 'Identity', '“The call with an AI has no AI presence at all: no bot name, no avatar, no speaking state. It reads as a human participant named WF.” <span class="who">Vera</span>'),
-      F('high', 'Honesty', '“Three widgets, three different stories about whether I am in a call” — LIVE timer counting, ‘ringing · nobody has joined yet’, and ‘ugly-bot / in call’, all within 100px.'),
-      F('medium', 'Brand', '“A soft radial-gradient perfect circle with a diffuse glow — the single most off-brand element in the shots,” in a product where every primitive is 0-radius and flat.'),
-      F('medium', 'Empty state', '“600px of dead charcoal with one small disc floating dead-center. The most common first 10 seconds of a call is designed as a void.”'),
+      F(
+        "blocker",
+        "Identity",
+        '“The call with an AI has no AI presence at all: no bot name, no avatar, no speaking state. It reads as a human participant named WF.” <span class="who">Vera</span>',
+      ),
+      F(
+        "high",
+        "Honesty",
+        "“Three widgets, three different stories about whether I am in a call” — LIVE timer counting, ‘ringing · nobody has joined yet’, and ‘ugly-bot / in call’, all within 100px.",
+      ),
+      F(
+        "medium",
+        "Brand",
+        "“A soft radial-gradient perfect circle with a diffuse glow — the single most off-brand element in the shots,” in a product where every primitive is 0-radius and flat.",
+      ),
+      F(
+        "medium",
+        "Empty state",
+        "“600px of dead charcoal with one small disc floating dead-center. The most common first 10 seconds of a call is designed as a void.”",
+      ),
     ],
   },
   {
-    id: 'onetoone',
-    kicker: 'Scenario 02',
-    title: '1:1 human — the one that works',
+    id: "onetoone",
+    kicker: "Scenario 02",
+    title: "1:1 human — the one that works",
     thesis:
-      'Real two-way WebRTC, sub-second ring, both sides live. Peers are named correctly now (“Tom Reyes”, previously the raw id <code>yG1edFUS</code>). This is the baseline worth protecting — and even here the header reads <code>dm-G7QvP</code>, a raw conversation id where a person’s name belongs.',
+      "Real two-way WebRTC, sub-second ring, both sides live. Peers are named correctly now (“Tom Reyes”, previously the raw id <code>yG1edFUS</code>). This is the baseline worth protecting — and even here the header reads <code>dm-G7QvP</code>, a raw conversation id where a person’s name belongs.",
     shots: [
-      { src: shots.oneD, cap: 'Desktop · caller’s view', w: 'wide' },
-      { src: shots.oneP, cap: 'Desktop · the same call, other side', w: 'wide' },
-      { src: shots.oneM, cap: 'Mobile · composer sits on the control bar', w: 'narrow' },
+      { src: shots.oneD, cap: "Desktop · caller’s view", w: "wide" },
+      {
+        src: shots.oneP,
+        cap: "Desktop · the same call, other side",
+        w: "wide",
+      },
+      {
+        src: shots.oneM,
+        cap: "Mobile · composer sits on the control bar",
+        w: "narrow",
+      },
     ],
     findings: [
-      F('high', 'Chrome', 'The chat stats strip stays mounted over a live call — <span class="mono">LEFT ON READ 2× · YOUR SHARE 100% · “the data doesn’t lie”</span> — and the two sides disagree (100% vs 0%). “Actively hostile to the person on it.”'),
-      F('high', 'Controls', '“End-call is the same orange as the captions toggle. The one irreversible action has zero visual privilege over a toggle.”'),
-      F('medium', 'Video', 'Peer video is cropped edge-to-edge rather than fit — “on a real call this crops faces and shared content.”'),
-      F('medium', 'Title', 'Header shows <code>dm-G7QvP</code>: the DM-partner parse splits <code>dm-A+B</code> on “+” without stripping the <code>dm-</code> prefix, so it resolves a bogus id and falls back to the raw one.'),
+      F(
+        "high",
+        "Chrome",
+        'The chat stats strip stays mounted over a live call — <span class="mono">LEFT ON READ 2× · YOUR SHARE 100% · “the data doesn’t lie”</span> — and the two sides disagree (100% vs 0%). “Actively hostile to the person on it.”',
+      ),
+      F(
+        "high",
+        "Controls",
+        "“End-call is the same orange as the captions toggle. The one irreversible action has zero visual privilege over a toggle.”",
+      ),
+      F(
+        "medium",
+        "Video",
+        "Peer video is cropped edge-to-edge rather than fit — “on a real call this crops faces and shared content.”",
+      ),
+      F(
+        "medium",
+        "Title",
+        "Header shows <code>dm-G7QvP</code>: the DM-partner parse splits <code>dm-A+B</code> on “+” without stripping the <code>dm-</code> prefix, so it resolves a bogus id and falls back to the raw one.",
+      ),
     ],
   },
 ];
 
 const decisions = [
-  ['Stage', 'Adaptive grid + active speaker', '1 peer full-bleed → 2–4 equal grid → 5+ active speaker with a filmstrip. Every participant gets a tile, a name, a mute badge and a speaking ring. Self stays a PiP.'],
-  ['Bot', 'Lean in — make it an avatar call', 'Full-bleed 3D avatar over its backdrop, badged “AI · voice call”, HUD says “Ugly Bot is listening” — not “ringing”. The renderer already exists; make it the point.'],
-  ['Mobile', 'A real mobile layout', 'Composer behind a toggle instead of stacked under the controls, self-PiP inside the viewport with its label, safe areas respected, tap targets sized.'],
+  [
+    "Stage",
+    "Adaptive grid + active speaker",
+    "1 peer full-bleed → 2–4 equal grid → 5+ active speaker with a filmstrip. Every participant gets a tile, a name, a mute badge and a speaking ring. Self stays a PiP.",
+  ],
+  [
+    "Bot",
+    "Lean in — make it an avatar call",
+    "Full-bleed 3D avatar over its backdrop, badged “AI · voice call”, HUD says “Ugly Bot is listening” — not “ringing”. The renderer already exists; make it the point.",
+  ],
+  [
+    "Mobile",
+    "A real mobile layout",
+    "Composer behind a toggle instead of stacked under the controls, self-PiP inside the viewport with its label, safe areas respected, tap targets sized.",
+  ],
 ];
 
 const extra = [
-  ['high', 'Rank the controls', 'End-call becomes the only red object and is separated; mic/cam go full-contrast with a visible on/off state; the dashed bot button — “reads as a broken asset” — becomes a solid chip.'],
-  ['high', 'Answer the four questions', 'Who’s here · who’s talking · am I muted · is my camera on. Per-tile name + mute badge + speaking ring, and a self-view that isn’t a black rectangle.'],
-  ['medium', 'Kill the stats strip during calls', 'Async message-latency snark is the wrong context — and wrong data — inside a synchronous call.'],
-  ['medium', 'De-dupe the peer label + scrim the HUD', 'One authoritative name per tile. Grey mono on a live video plate is unreadable; give it a scrim.'],
+  [
+    "high",
+    "Rank the controls",
+    "End-call becomes the only red object and is separated; mic/cam go full-contrast with a visible on/off state; the dashed bot button — “reads as a broken asset” — becomes a solid chip.",
+  ],
+  [
+    "high",
+    "Answer the four questions",
+    "Who’s here · who’s talking · am I muted · is my camera on. Per-tile name + mute badge + speaking ring, and a self-view that isn’t a black rectangle.",
+  ],
+  [
+    "medium",
+    "Kill the stats strip during calls",
+    "Async message-latency snark is the wrong context — and wrong data — inside a synchronous call.",
+  ],
+  [
+    "medium",
+    "De-dupe the peer label + scrim the HUD",
+    "One authoritative name per tile. Grey mono on a live video plate is unreadable; give it a scrim.",
+  ],
 ];
 
 const sevRow = (s) => `<span class="sev ${s}">${s}</span>`;
@@ -99,9 +205,9 @@ const section = (s) => `
     <div class="skicker">${s.kicker}</div>
     <h2>${s.title}</h2>
     <p class="thesis">${s.thesis}</p>
-    <div class="shots">${s.shots.map(shotBlock).join('')}</div>
+    <div class="shots">${s.shots.map(shotBlock).join("")}</div>
     <ul class="findings">
-      ${s.findings.map((f) => `<li>${sevRow(f.sev)}<span class="area">${f.area}</span><span class="ftext">${f.text}</span></li>`).join('')}
+      ${s.findings.map((f) => `<li>${sevRow(f.sev)}<span class="area">${f.area}</span><span class="ftext">${f.text}</span></li>`).join("")}
     </ul>
   </section>`;
 
@@ -219,20 +325,20 @@ const html = `<title>Video call — design review · ugly.chat</title>
     </div>
   </header>
 
-  ${sections.map(section).join('')}
+  ${sections.map(section).join("")}
 
   <section class="plan">
     <div class="skicker">The pass</div>
     <h2>What we’re changing</h2>
     <div class="dgrid">
-      ${decisions.map(([k, h, p]) => `<div class="dcard"><div class="k">${k}</div><h4>${h}</h4><p>${p}</p></div>`).join('')}
+      ${decisions.map(([k, h, p]) => `<div class="dcard"><div class="k">${k}</div><h4>${h}</h4><p>${p}</p></div>`).join("")}
     </div>
     <table>
-      ${extra.map(([s, t, d]) => `<tr><td>${sevRow(s)}</td><td>${t}</td><td>${d}</td></tr>`).join('')}
+      ${extra.map(([s, t, d]) => `<tr><td>${sevRow(s)}</td><td>${t}</td><td>${d}</td></tr>`).join("")}
     </table>
     <footer>ugly.chat · captured at 1280×800 and 390×844 · Vera drove both sides of every human call.</footer>
   </section>
 </div>`;
 
 writeFileSync(OUT, html);
-console.log('wrote', OUT, (html.length / 1024 / 1024).toFixed(2), 'MB');
+console.log("wrote", OUT, (html.length / 1024 / 1024).toFixed(2), "MB");

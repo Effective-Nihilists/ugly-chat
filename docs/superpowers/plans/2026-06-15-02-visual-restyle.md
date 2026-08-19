@@ -15,12 +15,14 @@
 ### Task 1: Add mono token + shared brand utility classes
 
 **Files:**
+
 - Modify: `client/styles.css` (`:root` block ~line 60, and append utility classes at end)
 
 - [ ] **Step 1: Add the mono font token** to `:root` (after `--app-font-body`), and to each theme block from Plan 01 where it differs (vim/cosmic-latte already set heading/body; add mono there too — vim mono = JetBrains Mono, latte mono = JetBrains Mono):
 
 ```css
---app-font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', ui-monospace, monospace;
+--app-font-mono:
+  "JetBrains Mono", "SF Mono", "Fira Code", ui-monospace, monospace;
 ```
 
 Ensure `JetBrains Mono` is in the font import (Plan 01 added the others). Append `JetBrains+Mono:wght@400;500;600;700` to the Google Fonts link if absent.
@@ -29,12 +31,47 @@ Ensure `JetBrains Mono` is in the font import (Plan 01 added the others). Append
 
 ```css
 /* ---- brand utilities (ported from mockups/brand.css) ---- */
-.uc-mono-label { font-family: var(--app-font-mono); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.22em; color: var(--app-foreground-muted); }
-.uc-receipt { font-family: var(--app-font-mono); font-size: 10.5px; letter-spacing: 0.02em; color: var(--app-foreground-muted); display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
-.uc-receipt .cost { color: var(--app-primary); }
-.uc-receipt .dot { color: var(--app-border); }
-.uc-pill { display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border: 1.5px solid var(--app-primary); color: var(--app-primary); background: transparent; font-family: var(--app-font-mono); font-size: 11.5px; font-weight: 600; cursor: pointer; }
-.uc-pill:hover { background: var(--app-primary); color: var(--app-on-primary); }
+.uc-mono-label {
+  font-family: var(--app-font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--app-foreground-muted);
+}
+.uc-receipt {
+  font-family: var(--app-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  color: var(--app-foreground-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+.uc-receipt .cost {
+  color: var(--app-primary);
+}
+.uc-receipt .dot {
+  color: var(--app-border);
+}
+.uc-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border: 1.5px solid var(--app-primary);
+  color: var(--app-primary);
+  background: transparent;
+  font-family: var(--app-font-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.uc-pill:hover {
+  background: var(--app-primary);
+  color: var(--app-on-primary);
+}
 ```
 
 - [ ] **Step 3: Verify build**
@@ -53,6 +90,7 @@ git commit -m "feat(restyle): add mono token + brand utility classes"
 ### Task 2: Neutralize avatar color (TDD)
 
 **Files:**
+
 - Modify: `client/lib/conversations.tsx:70-123` (`avatarColor` + `Avatar`)
 - Test: `tests/unit/avatar.test.ts`
 
@@ -62,13 +100,13 @@ The mockups use a single neutral gray for avatar initials (no rainbow, no orange
 
 ```ts
 // tests/unit/avatar.test.ts
-import { describe, it, expect } from 'vitest';
-import { avatarColor } from '../../client/lib/conversations';
+import { describe, it, expect } from "vitest";
+import { avatarColor } from "../../client/lib/conversations";
 
-describe('avatarColor', () => {
-  it('returns the neutral elevated-surface token for every seed', () => {
-    expect(avatarColor('anything')).toBe('var(--app-tertiary)');
-    expect(avatarColor('bot-ugly')).toBe('var(--app-tertiary)');
+describe("avatarColor", () => {
+  it("returns the neutral elevated-surface token for every seed", () => {
+    expect(avatarColor("anything")).toBe("var(--app-tertiary)");
+    expect(avatarColor("bot-ugly")).toBe("var(--app-tertiary)");
   });
 });
 ```
@@ -83,7 +121,7 @@ Run: `npx vitest run tests/unit/avatar.test.ts`
 // Avatars are neutral gray (brand: no rainbow, no orange bot badge). Identity
 // comes from the initial + the name beside it, not color.
 export function avatarColor(_seed: string): string {
-  return 'var(--app-tertiary)';
+  return "var(--app-tertiary)";
 }
 ```
 
@@ -105,6 +143,7 @@ git commit -m "feat(restyle): neutral gray avatars"
 ### Task 3: Remove per-chat backgrounds — schema + API + bot config
 
 **Files:**
+
 - Modify: `shared/collections.ts` (`ConversationSchema:22` drop `background`; `BotSchema:163` drop `backgroundUrl`; `UserConversationSchema:117` drop `background`)
 - Modify: `shared/api.ts` (`botCreate` input ~line 327 drop `backgroundUrl`; any `botUpdate` similarly)
 - Modify: `client/lib/bots.ts` (`BotDoc:20` drop `backgroundUrl`; `startBotChat:49` drop `background`)
@@ -114,15 +153,19 @@ git commit -m "feat(restyle): neutral gray avatars"
 
 ```ts
 // tests/unit/no-background.test.ts
-import { describe, it, expect } from 'vitest';
-import { ConversationSchema, BotSchema } from '../../shared/collections';
+import { describe, it, expect } from "vitest";
+import { ConversationSchema, BotSchema } from "../../shared/collections";
 
-describe('backgrounds removed', () => {
-  it('Conversation schema has no declared background key', () => {
-    expect(Object.keys((ConversationSchema as any).shape)).not.toContain('background');
+describe("backgrounds removed", () => {
+  it("Conversation schema has no declared background key", () => {
+    expect(Object.keys((ConversationSchema as any).shape)).not.toContain(
+      "background",
+    );
   });
-  it('Bot schema has no declared backgroundUrl key', () => {
-    expect(Object.keys((BotSchema as any).shape)).not.toContain('backgroundUrl');
+  it("Bot schema has no declared backgroundUrl key", () => {
+    expect(Object.keys((BotSchema as any).shape)).not.toContain(
+      "backgroundUrl",
+    );
   });
 });
 ```
@@ -148,6 +191,7 @@ git commit -m "feat(restyle): drop per-chat background from schema/api/bot confi
 ### Task 4: Remove background rendering from ChatPage
 
 **Files:**
+
 - Modify: `client/pages/ChatPage.tsx` (lines 442, 464, 594-610, 118-130, 175-182, 914, 928, 938, 947-950, 953, 1058)
 
 - [ ] **Step 1: Strip the `bgUrl` state + fetch.**
@@ -167,7 +211,7 @@ background:
       : 'var(--app-tertiary)',
 ```
 
-  - At the call site (928) delete `hasBg={!!bgUrl}`; remove `bgUrl` from the deps array (938).
+- At the call site (928) delete `hasBg={!!bgUrl}`; remove `bgUrl` from the deps array (938).
 
 - [ ] **Step 3: Remove background-aware chrome.**
   - System message (914): replace the `bgUrl ? … : …` ternaries with the plain branch — `color: 'var(--app-foreground)'`, drop `textShadow`.
@@ -191,6 +235,7 @@ git commit -m "feat(restyle): remove background rendering from chat"
 ### Task 5: Remove the background field from BotEditPage
 
 **Files:**
+
 - Modify: `client/pages/BotEditPage.tsx` (lines 24, 41, 58, 82, 108)
 
 - [ ] **Step 1:** Delete `const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);` (24), `setBackgroundUrl(b.backgroundUrl ?? null);` (41), `backgroundUrl,` from the save payload (58), `backgroundUrl` from the deps array (82), and the `<ImageField label="Background" … />` line (108). Keep the Avatar ImageField.
@@ -211,6 +256,7 @@ git commit -m "feat(restyle): remove background upload from bot editor"
 ### Task 6: Restyle reactions to gray lucide chips
 
 **Files:**
+
 - Modify: `client/pages/ChatPage.tsx:327-334` (reaction chips) and `355-361` (picker)
 
 Reactions already use lucide icons (good). Change the chip to square, neutral, with the icon in a muted color (matches `mockups/chat.html` `.react`).
@@ -218,7 +264,21 @@ Reactions already use lucide icons (good). Change the chip to square, neutral, w
 - [ ] **Step 1:** Update the chip `<span>` style (327-334) to:
 
 ```tsx
-<span key={r} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--app-font-mono)', fontSize: 10, background: 'var(--app-tertiary)', border: '1px solid var(--app-border)', borderRadius: 0, padding: '2px 8px', color: 'var(--app-foreground-muted)' }}>
+<span
+  key={r}
+  style={{
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 5,
+    fontFamily: "var(--app-font-mono)",
+    fontSize: 10,
+    background: "var(--app-tertiary)",
+    border: "1px solid var(--app-border)",
+    borderRadius: 0,
+    padding: "2px 8px",
+    color: "var(--app-foreground-muted)",
+  }}
+>
   {Icon ? <Icon size={12} /> : r} {n}
 </span>
 ```
@@ -239,6 +299,7 @@ git commit -m "feat(restyle): gray square reaction chips"
 ### Task 7: Restyle the conversation list (Sidebar + ConversationRow)
 
 **Files:**
+
 - Modify: `client/components/Sidebar.tsx`, `client/components/ConversationRow.tsx`
 
 Port the look from `mockups/conversation-list.html`: square search field (1px border, no big radius), `.uc-mono-label` section headers (`// pinned`, `// direct`, `// bots`), square unread badge, square avatars-with-1px-border in chrome contexts, active-row 2px left bar in `--app-primary`.
@@ -265,6 +326,7 @@ git commit -m "feat(restyle): square-chrome conversation list to match mockup"
 ### Task 8: Restyle chat header + composer + bubbles
 
 **Files:**
+
 - Modify: `client/pages/ChatPage.tsx` (header ~953, composer area, MessageBody bubble radii ~175-182)
 
 Port from `mockups/chat.html`: header is 1px-bordered with a `.uc-receipt` status line (`DeepSeek v4 pro · online`), composer uses a 2px `--app-primary` border square box, bubbles get the soft-with-one-square-corner radius.

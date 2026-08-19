@@ -19,10 +19,10 @@
  * name. Handler code keeps referencing `collections.userPublic` from
  * `shared/collections.ts` — `getByIds`/`getDoc` resolve the getter by name.
  */
-import { z } from 'zod';
-import { dbDefaults, defineCollections, d1 } from 'ugly-app/shared';
-import { uglyBotRequest } from './uglybot';
-import type { UserPublicDoc } from '../shared/collections';
+import { z } from "zod";
+import { dbDefaults, defineCollections, d1 } from "ugly-app/shared";
+import { uglyBotRequest } from "./uglybot";
+import type { UserPublicDoc } from "../shared/collections";
 
 const TTL_MS = 90_000;
 
@@ -48,7 +48,9 @@ export async function profilesGetter(
   const out: Record<string, UserPublicDoc | null> = {};
   for (const id of ids) out[id] = null; // default — unresolved ids stay null
   if (ids.length === 0) return out;
-  const { profiles } = await uglyBotRequest('userPublicBatch', { userIds: ids });
+  const { profiles } = await uglyBotRequest("userPublicBatch", {
+    userIds: ids,
+  });
   const base = dbDefaults();
   for (const p of profiles) {
     // ugly.bot returns a single canonical `avatar` object; derive the flat URLs.

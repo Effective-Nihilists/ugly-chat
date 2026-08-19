@@ -1,4 +1,4 @@
-import { definePage, definePages } from 'ugly-app/shared';
+import { definePage, definePages } from "ugly-app/shared";
 
 // ─── Pages ────────────────────────────────────────────────────────────────────
 // Define every route your app supports here. Each key is a URL path segment.
@@ -13,12 +13,14 @@ import { definePage, definePages } from 'ugly-app/shared';
 // After adding a page here, map it to a component in client/allPages.ts.
 // Navigate to it from anywhere via: useRouter().push('route-key', params)
 export const pages = definePages({
-  '': definePage<{}>({ auth: false }),
-  'search': definePage<{ q?: string }>({ auth: true }),
-  'bot/:botId': definePage<{ botId: string }>({ auth: true }),
-  'user/:userId': definePage<{ userId: string }>(),
-  'settings/:conversationId': definePage<{ conversationId: string }>({ auth: true }),
-  ':conversationId': definePage<{ conversationId: string }>({ auth: true }),
+  "": definePage<{}>({ auth: false }),
+  search: definePage<{ q?: string }>({ auth: true }),
+  "bot/:botId": definePage<{ botId: string }>({ auth: true }),
+  "user/:userId": definePage<{ userId: string }>(),
+  "settings/:conversationId": definePage<{ conversationId: string }>({
+    auth: true,
+  }),
+  ":conversationId": definePage<{ conversationId: string }>({ auth: true }),
 });
 
 export type AppPages = typeof pages;

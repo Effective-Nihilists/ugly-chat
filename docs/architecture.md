@@ -7,6 +7,7 @@ ugly-app provides a typed full-stack framework:
 - **Client** (`client/main.tsx`) — React SPA, `createSocket()` for typed server calls, `AppProvider` for global state
 
 ## Data flow
+
 ```
 Client → socket.call('fn', input)
   → WebSocket message to server
@@ -17,6 +18,7 @@ Client → socket.call('fn', input)
 ```
 
 ## Live updates
+
 ```
 Server writes to MongoDB
   → MongoDB Change Stream fires on all server instances

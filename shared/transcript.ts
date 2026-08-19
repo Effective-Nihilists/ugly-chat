@@ -28,7 +28,12 @@ export function upsertTurn(turns: Turn[], next: Turn): Turn[] {
   // second final turn with identical text used to append and every bot reply
   // showed TWICE. Only same-speaker + already-final + same text is suppressed,
   // so a genuine repeated line ("yes. yes.") across two turns is untouched.
-  if (last?.speaker === next.speaker && last.final && next.final && last.text === next.text) {
+  if (
+    last?.speaker === next.speaker &&
+    last.final &&
+    next.final &&
+    last.text === next.text
+  ) {
     return turns;
   }
   return [...turns, { ...next }];
@@ -41,15 +46,15 @@ export function upsertTurn(turns: Turn[], next: Turn): Turn[] {
 // deliberately narrow: it only matches a turn that is EXACTLY the phrase, so a
 // real "thank you, everyone" is never touched.
 const SILENCE_HALLUCINATIONS = new Set([
-  'thank you',
-  'thank you.',
-  'thanks for watching',
-  'thanks for watching.',
-  'thanks for watching!',
-  'you',
-  '.',
-  'bye',
-  'bye.',
+  "thank you",
+  "thank you.",
+  "thanks for watching",
+  "thanks for watching.",
+  "thanks for watching!",
+  "you",
+  ".",
+  "bye",
+  "bye.",
 ]);
 
 export function isSilenceHallucination(text: string): boolean {

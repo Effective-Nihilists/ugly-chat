@@ -1,8 +1,8 @@
-import { useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from "react";
 
 export interface BrowserEmbedContext {
   embedded: boolean;
-  theme: 'light' | 'dark';
+  theme: "light" | "dark";
 }
 
 export interface BrowserConversationMeta {
@@ -13,7 +13,7 @@ export interface BrowserConversationMeta {
 
 const DEFAULT_CONTEXT: BrowserEmbedContext = {
   embedded: false,
-  theme: 'light',
+  theme: "light",
 };
 const MAX_CONVERSATIONS = 24;
 let context = DEFAULT_CONTEXT;
@@ -23,7 +23,7 @@ const contextListeners = new Set<() => void>();
 const selectionListeners = new Set<(conversationId: string) => void>();
 
 function boundedMetadataText(raw: unknown, max: number): string {
-  if (typeof raw !== 'string') return '';
+  if (typeof raw !== "string") return "";
   return Array.from(raw)
     .filter((character) => {
       const code = character.charCodeAt(0);
@@ -34,7 +34,7 @@ function boundedMetadataText(raw: unknown, max: number): string {
         !(code >= 0x2066 && code <= 0x2069)
       );
     })
-    .join('')
+    .join("")
     .trim()
     .slice(0, max);
 }
@@ -44,15 +44,15 @@ function normalizeContext(raw: unknown): BrowserEmbedContext | null {
   if (value?.embedded !== true) return null;
   return {
     embedded: true,
-    theme: value.theme === 'dark' ? 'dark' : 'light',
+    theme: value.theme === "dark" ? "dark" : "light",
   };
 }
 
 function applyContext(next: BrowserEmbedContext): void {
   context = next;
-  if (typeof document !== 'undefined') {
+  if (typeof document !== "undefined") {
     document.documentElement.toggleAttribute(
-      'data-browser-embedded',
+      "data-browser-embedded",
       next.embedded,
     );
     if (next.embedded) document.documentElement.dataset.theme = next.theme;
@@ -61,7 +61,7 @@ function applyContext(next: BrowserEmbedContext): void {
 }
 
 export function installBrowserEmbedBridge(): void {
-  if (installed || typeof window === 'undefined') return;
+  if (installed || typeof window === "undefined") return;
   installed = true;
   window.uglyBrowser?.onContext?.((raw) => {
     const next = normalizeContext(raw);
@@ -111,7 +111,7 @@ export function publishBrowserConversations(
     seen.add(id);
     rows.push({
       id,
-      title: boundedMetadataText(row.title, 120) || 'Conversation',
+      title: boundedMetadataText(row.title, 120) || "Conversation",
       unread: Number.isFinite(row.unread)
         ? Math.max(0, Math.min(999, Math.trunc(row.unread)))
         : 0,

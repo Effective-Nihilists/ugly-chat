@@ -3,7 +3,7 @@
 // Cloudflare Email Sending (send.ugly.bot) using creds in `.env.publish`. The
 // exact path is a deploy-time secret, so it's isolated behind injected env +
 // fetch (same shape as resolveEmail.ts) and `buildInviteEmail` is pure.
-import { shareLink } from 'ugly-app/server/adapter/workers';
+import { shareLink } from "ugly-app/server/adapter/workers";
 
 export interface InviteMessage {
   to: string;
@@ -23,10 +23,10 @@ export function buildInviteEmail(
   appUrl: string,
   link: string,
 ): InviteMessage {
-  const base = appUrl.replace(/\/+$/, '');
+  const base = appUrl.replace(/\/+$/, "");
   return {
     to,
-    subject: 'You have been invited to a chat on ugly.chat',
+    subject: "You have been invited to a chat on ugly.chat",
     html:
       `<p>You've been invited to chat on <a href="${base}">ugly.chat</a>.</p>` +
       `<p>Conversation: <code>${conversationId}</code></p>` +
@@ -43,7 +43,8 @@ interface InviteEnv {
 
 function readEnv(): InviteEnv {
   const env =
-    (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
+    (globalThis as { process?: { env?: Record<string, string | undefined> } })
+      .process?.env ?? {};
   return {
     EMAIL_SEND_URL: env.EMAIL_SEND_URL,
     EMAIL_SEND_TOKEN: env.EMAIL_SEND_TOKEN,
@@ -58,15 +59,15 @@ function readEnv(): InviteEnv {
 export async function sendInviteEmail(
   to: string,
   inviterId: string,
-  conversationId = '',
+  conversationId = "",
   env: InviteEnv = readEnv(),
   fetchFn: typeof fetch = fetch,
   shareLinkFn: typeof shareLink = shareLink,
 ): Promise<void> {
-  const sendUrl = env.EMAIL_SEND_URL ?? 'https://send.ugly.bot';
+  const sendUrl = env.EMAIL_SEND_URL ?? "https://send.ugly.bot";
   const token = env.EMAIL_SEND_TOKEN;
-  const appUrl = env.APP_URL ?? 'https://ugly.chat';
-  const base = appUrl.replace(/\/+$/, '');
+  const appUrl = env.APP_URL ?? "https://ugly.chat";
+  const base = appUrl.replace(/\/+$/, "");
   const target = conversationId
     ? `${base}/#/chat/${encodeURIComponent(conversationId)}`
     : `${base}/`;
@@ -74,17 +75,20 @@ export async function sendInviteEmail(
   // signs in with this email before joining.
   const link = await shareLinkFn({
     target,
-    og: { title: 'You have been invited to chat on ugly.chat' },
+    og: { title: "You have been invited to chat on ugly.chat" },
     requireAuth: true,
   });
   const msg = buildInviteEmail(to, inviterId, conversationId, appUrl, link);
   if (!token) {
-    console.warn('[invite] EMAIL_SEND_TOKEN not set — skipping invite to', to);
+    console.warn("[invite] EMAIL_SEND_TOKEN not set — skipping invite to", to);
     return;
   }
   const res = await fetchFn(sendUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
     body: JSON.stringify(msg),
   });
   if (!res.ok) throw new Error(`invite send HTTP ${res.status}`);

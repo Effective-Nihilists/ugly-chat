@@ -54,73 +54,77 @@
  * agent `inspect_ux` tool: navigate / click / focus / hover /
  * scroll:{to|selector} / wait / simulate_keyboard.
  */
-import { chromium } from 'playwright';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-import fs from 'node:fs';
-import path from 'node:path';
+import { chromium } from "playwright";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import fs from "node:fs";
+import path from "node:path";
 
 const execFileP = promisify(execFile);
 
 const SLUG = process.argv[2];
 if (!SLUG) {
   console.error(
-    'Usage: node bots/feedback/run-bot.mjs <persona-slug> [--capture|--submit]',
+    "Usage: node bots/feedback/run-bot.mjs <persona-slug> [--capture|--submit]",
   );
   process.exit(2);
 }
 
 const MODE_FLAG = process.argv[3];
 let MODE; // 'capture' | 'submit' | 'both'
-if (!MODE_FLAG) MODE = 'both';
-else if (MODE_FLAG === '--capture') MODE = 'capture';
-else if (MODE_FLAG === '--submit') MODE = 'submit';
+if (!MODE_FLAG) MODE = "both";
+else if (MODE_FLAG === "--capture") MODE = "capture";
+else if (MODE_FLAG === "--submit") MODE = "submit";
 else {
-  console.error(`[${SLUG}] unknown mode flag "${MODE_FLAG}" — use --capture or --submit`);
+  console.error(
+    `[${SLUG}] unknown mode flag "${MODE_FLAG}" — use --capture or --submit`,
+  );
   process.exit(2);
 }
 
 const BASE_URL =
   process.env.BASE_URL ?? `http://localhost:${process.env.PORT ?? 4321}`;
 const REPO = process.cwd();
-const BOT_DIR = path.join(REPO, 'bots', 'feedback', 'active', SLUG);
+const BOT_DIR = path.join(REPO, "bots", "feedback", "active", SLUG);
 const SCREENSHOTS_DIR = path.join(
   REPO,
-  'bots',
-  'journal',
-  'cycles',
-  'screenshots',
+  "bots",
+  "journal",
+  "cycles",
+  "screenshots",
   SLUG,
 );
 
 // --- Read persona credentials ----------------------------------------
-const envPath = path.join(BOT_DIR, '.env');
+const envPath = path.join(BOT_DIR, ".env");
 if (!fs.existsSync(envPath)) {
-  console.error(`[${SLUG}] missing ${envPath} — run \`ugly-app auth:create-bot\` first`);
+  console.error(
+    `[${SLUG}] missing ${envPath} — run \`ugly-app auth:create-bot\` first`,
+  );
   process.exit(2);
 }
-const envText = fs.readFileSync(envPath, 'utf-8');
+const envText = fs.readFileSync(envPath, "utf-8");
 const BOT_TOKEN = envText.match(/^BOT_TOKEN=(.+)$/m)?.[1]?.trim();
 if (!BOT_TOKEN) {
   console.error(`[${SLUG}] BOT_TOKEN missing in .env`);
   process.exit(2);
 }
 
-const personaPath = path.join(BOT_DIR, 'persona.md');
+const personaPath = path.join(BOT_DIR, "persona.md");
 const personaText = fs.existsSync(personaPath)
-  ? fs.readFileSync(personaPath, 'utf-8')
-  : '';
+  ? fs.readFileSync(personaPath, "utf-8")
+  : "";
 
 // --- Pages to crawl --------------------------------------------------
 // Defaults: home + every defined route. The manager populates
 // `pages.json` per persona to override (e.g. mobile bots skip
 // desktop-only flows).
-let pages = ['/'];
-const pagesJson = path.join(BOT_DIR, 'pages.json');
+let pages = ["/"];
+const pagesJson = path.join(BOT_DIR, "pages.json");
 if (fs.existsSync(pagesJson)) {
   try {
-    const parsed = JSON.parse(fs.readFileSync(pagesJson, 'utf-8'));
-    if (Array.isArray(parsed) && parsed.every((p) => typeof p === 'string')) {
+    const parsed = JSON.parse(fs.readFileSync(pagesJson, "utf-8"));
+    if (Array.isArray(parsed) && parsed.every((p) => typeof p === "string")) {
       pages = parsed;
     }
   } catch {
@@ -135,18 +139,18 @@ if (fs.existsSync(pagesJson)) {
 async function captureElementMap(page) {
   return await page.evaluate(() => {
     const sel =
-      '[data-id], [role], [aria-label], button, a, input, select, textarea, h1, h2, h3';
+      "[data-id], [role], [aria-label], button, a, input, select, textarea, h1, h2, h3";
     const STYLE = [
-      'color',
-      'backgroundColor',
-      'fontSize',
-      'fontFamily',
-      'fontWeight',
-      'borderRadius',
-      'opacity',
-      'padding',
-      'gap',
-      'display',
+      "color",
+      "backgroundColor",
+      "fontSize",
+      "fontFamily",
+      "fontWeight",
+      "borderRadius",
+      "opacity",
+      "padding",
+      "gap",
+      "display",
     ];
     return Array.from(document.querySelectorAll(sel))
       .filter((el) => {
@@ -164,11 +168,11 @@ async function captureElementMap(page) {
           if (v) style[k] = v;
         }
         return {
-          dataId: el.getAttribute('data-id'),
+          dataId: el.getAttribute("data-id"),
           tag: el.tagName.toLowerCase(),
-          role: el.getAttribute('role'),
-          ariaLabel: el.getAttribute('aria-label'),
-          text: (el.textContent ?? '').slice(0, 80).trim(),
+          role: el.getAttribute("role"),
+          ariaLabel: el.getAttribute("aria-label"),
+          text: (el.textContent ?? "").slice(0, 80).trim(),
           rect: {
             x: Math.round(r.x),
             y: Math.round(r.y),
@@ -184,23 +188,26 @@ async function captureElementMap(page) {
 // --- Submit feedback via CLI -----------------------------------------
 async function submitFeedback({ type, message, url, screenshot, elementMap }) {
   const args = [
-    'ugly-app',
-    'feedback:submit',
-    '--type',
+    "ugly-app",
+    "feedback:submit",
+    "--type",
     type,
-    '--message',
+    "--message",
     message,
-    '--token',
+    "--token",
     BOT_TOKEN,
-    '--url',
+    "--url",
     url,
   ];
-  if (screenshot) args.push('--screenshot', screenshot);
-  if (elementMap) args.push('--element-map', elementMap);
+  if (screenshot) args.push("--screenshot", screenshot);
+  if (elementMap) args.push("--element-map", elementMap);
   try {
-    await execFileP('npx', args, { cwd: REPO, timeout: 30_000 });
+    await execFileP("npx", args, { cwd: REPO, timeout: 30_000 });
   } catch (err) {
-    console.error(`[${SLUG}] feedback submit failed:`, err.stderr ?? err.message);
+    console.error(
+      `[${SLUG}] feedback submit failed:`,
+      err.stderr ?? err.message,
+    );
   }
 }
 
@@ -213,20 +220,23 @@ const DEFAULT_INTERACTIONS = [
   // Pure mount: no interaction. Catches initial CLS, hydration shifts,
   // safe-area violations, mount-time animations. Also produces the
   // screenshot + element-map for vision callers.
-  { name: 'mount', actions: [] },
+  { name: "mount", actions: [] },
   // Hover-first: trigger hover transitions on the first non-feedback
   // interactive element. Cheap, surfaces hover-state animation jank.
   {
-    name: 'hover-first',
+    name: "hover-first",
     actions: [
-      { hover: '[data-id]:not([data-id=feedback-button]):not(input):not(textarea)' },
+      {
+        hover:
+          "[data-id]:not([data-id=feedback-button]):not(input):not(textarea)",
+      },
       { wait: 600 },
     ],
   },
   // Scroll-deep: drives scroll-linked animations and any IntersectionObserver
   // entry animations. Two-stage scroll catches enter + exit jank.
   {
-    name: 'scroll-deep',
+    name: "scroll-deep",
     actions: [
       { scroll: { to: 1200 } },
       { wait: 800 },
@@ -238,9 +248,9 @@ const DEFAULT_INTERACTIONS = [
   // first input. Surfaces keyboard-covers-input on mobile profiles and
   // focus-ring animation jank.
   {
-    name: 'focus-input',
+    name: "focus-input",
     actions: [
-      { focus: 'input, textarea' },
+      { focus: "input, textarea" },
       { simulate_keyboard: true },
       { wait: 400 },
     ],
@@ -248,17 +258,14 @@ const DEFAULT_INTERACTIONS = [
 ];
 
 function loadInteractions() {
-  const overridePath = path.join(BOT_DIR, 'interactions.json');
+  const overridePath = path.join(BOT_DIR, "interactions.json");
   if (!fs.existsSync(overridePath)) return DEFAULT_INTERACTIONS;
   try {
-    const parsed = JSON.parse(fs.readFileSync(overridePath, 'utf-8'));
+    const parsed = JSON.parse(fs.readFileSync(overridePath, "utf-8"));
     if (
       Array.isArray(parsed) &&
       parsed.every(
-        (e) =>
-          e &&
-          typeof e.name === 'string' &&
-          Array.isArray(e.actions),
+        (e) => e && typeof e.name === "string" && Array.isArray(e.actions),
       )
     ) {
       return parsed;
@@ -278,22 +285,22 @@ function loadInteractions() {
 // by `ugly-app inspect:ux` and the studio coding-agent `inspect_ux`
 // tool so a persona's interactions.json is portable across harnesses.
 async function runAction(page, action) {
-  if ('navigate' in action) {
+  if ("navigate" in action) {
     await page.evaluate((to) => {
-      window.history.pushState({}, '', to);
-      window.dispatchEvent(new PopStateEvent('popstate'));
+      window.history.pushState({}, "", to);
+      window.dispatchEvent(new PopStateEvent("popstate"));
     }, action.navigate);
-  } else if ('click' in action) {
+  } else if ("click" in action) {
     await page.evaluate((sel) => {
       const el = document.querySelector(sel);
       if (el) el.click?.();
     }, action.click);
-  } else if ('focus' in action) {
+  } else if ("focus" in action) {
     await page.evaluate((sel) => {
       const el = document.querySelector(sel);
-      if (el && typeof el.focus === 'function') el.focus();
+      if (el && typeof el.focus === "function") el.focus();
     }, action.focus);
-  } else if ('hover' in action) {
+  } else if ("hover" in action) {
     await page.evaluate((sel) => {
       const el = document.querySelector(sel);
       if (!el) return;
@@ -304,30 +311,30 @@ async function runAction(page, action) {
         clientX: rect.left + rect.width / 2,
         clientY: rect.top + rect.height / 2,
       };
-      el.dispatchEvent(new MouseEvent('mouseenter', init));
-      el.dispatchEvent(new MouseEvent('mouseover', init));
+      el.dispatchEvent(new MouseEvent("mouseenter", init));
+      el.dispatchEvent(new MouseEvent("mouseover", init));
     }, action.hover);
-  } else if ('scroll' in action) {
+  } else if ("scroll" in action) {
     await page.evaluate((spec) => {
-      if ('to' in spec) {
-        window.scrollTo({ top: spec.to, behavior: 'smooth' });
+      if ("to" in spec) {
+        window.scrollTo({ top: spec.to, behavior: "smooth" });
       } else {
         const el = document.querySelector(spec.selector);
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     }, action.scroll);
-  } else if ('wait' in action) {
+  } else if ("wait" in action) {
     await page.waitForTimeout(action.wait);
-  } else if ('simulate_keyboard' in action) {
+  } else if ("simulate_keyboard" in action) {
     const h =
-      typeof action.simulate_keyboard === 'number'
+      typeof action.simulate_keyboard === "number"
         ? action.simulate_keyboard
         : action.simulate_keyboard
           ? 320
           : 0;
     await page.evaluate((height) => {
       window.dispatchEvent(
-        new CustomEvent('keyboard-height', { detail: { height } }),
+        new CustomEvent("keyboard-height", { detail: { height } }),
       );
     }, h);
   }
@@ -335,12 +342,19 @@ async function runAction(page, action) {
 
 // --- Per-route helpers ----------------------------------------------
 function routeFilenames(route) {
-  const slugForFile = route === '/' ? 'home' : route.replace(/[^a-z0-9]+/gi, '-');
+  const slugForFile =
+    route === "/" ? "home" : route.replace(/[^a-z0-9]+/gi, "-");
   return {
     slugForFile,
     screenshotPath: path.join(SCREENSHOTS_DIR, `${slugForFile}.png`),
-    elementMapPath: path.join(SCREENSHOTS_DIR, `${slugForFile}.element-map.json`),
-    legacyUxReportPath: path.join(SCREENSHOTS_DIR, `${slugForFile}.ux-report.json`),
+    elementMapPath: path.join(
+      SCREENSHOTS_DIR,
+      `${slugForFile}.element-map.json`,
+    ),
+    legacyUxReportPath: path.join(
+      SCREENSHOTS_DIR,
+      `${slugForFile}.ux-report.json`,
+    ),
     perInteractionUxReportPath: (name) =>
       path.join(SCREENSHOTS_DIR, `${slugForFile}.${name}.ux-report.json`),
     url: `${BASE_URL}${route}`,
@@ -357,7 +371,7 @@ async function captureRoute(page, route, interactions) {
   } = routeFilenames(route);
   for (const interaction of interactions) {
     try {
-      await page.goto(url, { waitUntil: 'networkidle', timeout: 15_000 });
+      await page.goto(url, { waitUntil: "networkidle", timeout: 15_000 });
     } catch (err) {
       console.error(
         `[${SLUG}] ${interaction.name}: failed to load ${url}: ${err.message}`,
@@ -389,7 +403,7 @@ async function captureRoute(page, route, interactions) {
     // (clean DOM, no hover/focus state baked in) and the legacy
     // single-report path. Subsequent interactions only emit their own
     // ux-report file.
-    if (interaction.name === 'mount') {
+    if (interaction.name === "mount") {
       await page.screenshot({ path: screenshotPath, fullPage: true });
       const elementMap = await captureElementMap(page);
       fs.writeFileSync(elementMapPath, JSON.stringify(elementMap, null, 2));
@@ -410,12 +424,13 @@ async function captureRoute(page, route, interactions) {
 function loadFindings(route) {
   // The persona authors findings.json between `--capture` and `--submit`.
   // If absent or empty we emit a placeholder so the journal isn't empty.
-  const findingsPath = path.join(BOT_DIR, 'findings.json');
+  const findingsPath = path.join(BOT_DIR, "findings.json");
   let findings = [];
   if (fs.existsSync(findingsPath)) {
     try {
-      const parsed = JSON.parse(fs.readFileSync(findingsPath, 'utf-8'));
-      if (Array.isArray(parsed)) findings = parsed.filter((f) => f && f.message);
+      const parsed = JSON.parse(fs.readFileSync(findingsPath, "utf-8"));
+      if (Array.isArray(parsed))
+        findings = parsed.filter((f) => f && f.message);
     } catch {
       /* ignore — fall through to placeholder */
     }
@@ -423,7 +438,7 @@ function loadFindings(route) {
   if (findings.length === 0) {
     findings = [
       {
-        type: 'feature',
+        type: "feature",
         message: `[${SLUG}] visited ${route} — no findings authored yet (drop them in bots/feedback/active/${SLUG}/findings.json)`,
       },
     ];
@@ -441,7 +456,7 @@ async function submitForRoute(route) {
   const findings = loadFindings(route);
   for (const f of findings) {
     await submitFeedback({
-      type: f.type ?? 'feature',
+      type: f.type ?? "feature",
       message: `${personaText.slice(0, 200)}\n\n${f.message}`,
       url,
       screenshot: hasScreenshot ? screenshotPath : undefined,
@@ -453,7 +468,7 @@ async function submitForRoute(route) {
 // --- Main ------------------------------------------------------------
 fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 
-if (MODE === 'capture' || MODE === 'both') {
+if (MODE === "capture" || MODE === "both") {
   const browser = await chromium.launch({ headless: true });
   const ctx = await browser.newContext();
   // Cookie-based bot auth: the framework's authReq handler accepts
@@ -462,7 +477,7 @@ if (MODE === 'capture' || MODE === 'both') {
   // having to wire it through manually.
   await ctx.addCookies([
     {
-      name: 'ugly_auth',
+      name: "ugly_auth",
       value: BOT_TOKEN,
       url: BASE_URL,
     },
@@ -471,13 +486,13 @@ if (MODE === 'capture' || MODE === 'both') {
   const interactions = loadInteractions();
   for (const route of pages) {
     const ok = await captureRoute(page, route, interactions);
-    if (ok && MODE === 'both') {
+    if (ok && MODE === "both") {
       await submitForRoute(route);
     }
   }
   await browser.close();
   console.log(
-    `[${SLUG}] ${MODE === 'both' ? 'done' : 'captured'} — ${pages.length} pages × ${interactions.length} interactions.`,
+    `[${SLUG}] ${MODE === "both" ? "done" : "captured"} — ${pages.length} pages × ${interactions.length} interactions.`,
   );
 } else {
   // MODE === 'submit' — no Playwright needed, just post the findings.

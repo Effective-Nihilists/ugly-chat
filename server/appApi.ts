@@ -13,17 +13,17 @@
  *   POST /app/message/create      { conversationId, asUserId, message } → { message }
  *   POST /app/message/list        { conversationId, limit? } → { messages }
  */
-import type { Hono } from 'hono';
+import type { Hono } from "hono";
 import {
   conversationCreate as engineConversationCreate,
   conversationMessageCreate as engineConversationMessageCreate,
-} from 'ugly-app/conversation/engine';
-import { dbDefaults, defaultAvatar } from 'ugly-app/shared';
-import { nanoid } from 'nanoid';
-import { collections } from '../shared/collections';
-import type { DbSurface } from './handlers';
-import { fireMessageWebhooks } from './webhooks';
-import { unfurlMessageLinks } from './linkPreview';
+} from "ugly-app/conversation/engine";
+import { dbDefaults, defaultAvatar } from "ugly-app/shared";
+import { nanoid } from "nanoid";
+import { collections } from "../shared/collections";
+import type { DbSurface } from "./handlers";
+import { fireMessageWebhooks } from "./webhooks";
+import { unfurlMessageLinks } from "./linkPreview";
 
 interface AppIdentity {
   appId: string;
@@ -35,13 +35,19 @@ interface AppIdentity {
 // In-isolate cache of verify-app results (token → identity), short TTL.
 const verifyCache = new Map<string, { identity: AppIdentity; exp: number }>();
 
-async function verifyApp(uglyBotUrl: string, token: string): Promise<AppIdentity | null> {
+async function verifyApp(
+  uglyBotUrl: string,
+  token: string,
+): Promise<AppIdentity | null> {
   const cached = verifyCache.get(token);
   if (cached && cached.exp > Date.now()) return cached.identity;
   try {
     const res = await fetch(`${uglyBotUrl}/v1/chat/verify-app`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
       signal: AbortSignal.timeout(8_000),
     });
     if (!res.ok) return null;
@@ -60,16 +66,20 @@ async function verifyApp(uglyBotUrl: string, token: string): Promise<AppIdentity
   }
 }
 
-function bearer(c: { req: { header(name: string): string | undefined } }): string | null {
-  const h = c.req.header('Authorization');
-  if (!h?.startsWith('Bearer ')) return null;
+function bearer(c: {
+  req: { header(name: string): string | undefined };
+}): string | null {
+  const h = c.req.header("Authorization");
+  if (!h?.startsWith("Bearer ")) return null;
   return h.slice(7).trim() || null;
 }
 
 /** Deterministic app-bot id from (projectId, key). Starts with `bot-` so the
  *  engine / `isBot` treat it like a built-in. */
 function appBotId(projectId: string, key: string): string {
-  const safe = `${projectId}-${key}`.replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 80);
+  const safe = `${projectId}-${key}`
+    .replace(/[^A-Za-z0-9_-]/g, "-")
+    .slice(0, 80);
   return `bot-${safe}`;
 }
 
@@ -85,9 +95,11 @@ async function appCanAccess(
   appId: string,
 ): Promise<boolean> {
   if (conv.appId === appId) return true;
-  const botIds = Object.keys((conv.bots as Record<string, unknown> | undefined) ?? {});
+  const botIds = Object.keys(
+    (conv.bots as Record<string, unknown> | undefined) ?? {},
+  );
   for (const botId of botIds) {
-    if (!botId.startsWith('bot-')) continue;
+    if (!botId.startsWith("bot-")) continue;
     const bot = await getDb().getDoc(collections.bot, botId);
     if (bot?.appId === appId) return true;
   }
@@ -99,7 +111,10 @@ export function registerAppApi(
   getDb: () => DbSurface,
 ): void {
   const uglyBotUrl = (c: { env: Record<string, unknown> }): string =>
-    ((c.env.UGLY_BOT_URL as string | undefined) ?? 'https://ugly.bot').replace(/\/$/, '');
+    ((c.env.UGLY_BOT_URL as string | undefined) ?? "https://ugly.bot").replace(
+      /\/$/,
+      "",
+    );
 
   const auth = async (c: {
     req: { header(n: string): string | undefined };
@@ -111,12 +126,15 @@ export function registerAppApi(
   };
 
   // ── Register / upsert an app-owned bot ────────────────────────────────────
-  app.post('/app/bot/register', async (c) => {
+  app.post("/app/bot/register", async (c) => {
     const id = await auth(c);
-    if (!id) return c.json({ error: 'Unauthorized' }, 401);
-    const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-    const key = typeof body.key === 'string' ? body.key : '';
-    if (!key) return c.json({ error: 'key is required' }, 400);
+    if (!id) return c.json({ error: "Unauthorized" }, 401);
+    const body = (await c.req.json().catch(() => ({}))) as Record<
+      string,
+      unknown
+    >;
+    const key = typeof body.key === "string" ? body.key : "";
+    if (!key) return c.json({ error: "key is required" }, 400);
     const botId = appBotId(id.projectId, key);
     const existing = await getDb().getDoc(collections.bot, botId);
     const bot: Record<string, unknown> = {
@@ -125,49 +143,60 @@ export function registerAppApi(
       _id: botId,
       ownerId: id.ownerUserId,
       appId: id.appId,
-      name: typeof body.name === 'string' ? body.name : 'Bot',
-      instruction: typeof body.instruction === 'string' ? body.instruction : '',
-      model: typeof body.model === 'string' ? body.model : 'deepseek_v4_flash',
-      firstMessage: (body.firstMessage) ?? null,
-      buttons: (body.buttons) ?? [],
+      name: typeof body.name === "string" ? body.name : "Bot",
+      instruction: typeof body.instruction === "string" ? body.instruction : "",
+      model: typeof body.model === "string" ? body.model : "deepseek_v4_flash",
+      firstMessage: body.firstMessage ?? null,
+      buttons: body.buttons ?? [],
       avatar: {
         id: botId,
         uri: null,
-        image: typeof body.avatarUrl === 'string' ? { uri: body.avatarUrl } : defaultAvatar.image,
-        background: typeof body.backgroundUrl === 'string' ? { uri: body.backgroundUrl } : null,
+        image:
+          typeof body.avatarUrl === "string"
+            ? { uri: body.avatarUrl }
+            : defaultAvatar.image,
+        background:
+          typeof body.backgroundUrl === "string"
+            ? { uri: body.backgroundUrl }
+            : null,
       },
-      webhookUrl: (body.webhookUrl) ?? null,
-      webhookSecret: (body.webhookSecret) ?? null,
+      webhookUrl: body.webhookUrl ?? null,
+      webhookSecret: body.webhookSecret ?? null,
     };
     await getDb().setDoc(collections.bot, bot);
     return c.json({ botId });
   });
 
   // ── Create a conversation (humans + bots + optional webhook) ──────────────
-  app.post('/app/conversation/create', async (c) => {
+  app.post("/app/conversation/create", async (c) => {
     const id = await auth(c);
-    if (!id) return c.json({ error: 'Unauthorized' }, 401);
-    const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!id) return c.json({ error: "Unauthorized" }, 401);
+    const body = (await c.req.json().catch(() => ({}))) as Record<
+      string,
+      unknown
+    >;
     const memberUserIds = Array.isArray(body.memberUserIds)
       ? (body.memberUserIds as string[])
       : [];
     const botIds = Array.isArray(body.botIds) ? (body.botIds as string[]) : [];
     if (memberUserIds.length === 0 && botIds.length === 0) {
-      return c.json({ error: 'memberUserIds or botIds required' }, 400);
+      return c.json({ error: "memberUserIds or botIds required" }, 400);
     }
-    const convId = typeof body.id === 'string' ? body.id : nanoid();
+    const convId = typeof body.id === "string" ? body.id : nanoid();
     const creator = memberUserIds[0] ?? id.ownerUserId;
-    if (!creator) return c.json({ error: 'no creator/member resolved' }, 400);
-    const owners = (memberUserIds.length ? memberUserIds : [creator]).filter(Boolean);
+    if (!creator) return c.json({ error: "no creator/member resolved" }, 400);
+    const owners = (memberUserIds.length ? memberUserIds : [creator]).filter(
+      Boolean,
+    );
     const bots = Object.fromEntries(botIds.map((b) => [b, {}]));
 
     await engineConversationCreate(
       {
         id: convId,
-        type: typeof body.type === 'string' ? body.type : 'group',
-        title: typeof body.title === 'string' ? body.title : '',
+        type: typeof body.type === "string" ? body.type : "group",
+        title: typeof body.title === "string" ? body.title : "",
         background: body.background ?? null,
-        mode: 'private',
+        mode: "private",
         ownerIds: owners,
         bots,
         custom: body.custom ?? undefined,
@@ -187,8 +216,10 @@ export function registerAppApi(
       await getDb().setDoc(collections.conversation, {
         ...conv,
         appId: id.appId,
-        ...(typeof body.webhookUrl === 'string' ? { webhookUrl: body.webhookUrl } : {}),
-        ...(typeof body.webhookSecret === 'string'
+        ...(typeof body.webhookUrl === "string"
+          ? { webhookUrl: body.webhookUrl }
+          : {}),
+        ...(typeof body.webhookSecret === "string"
           ? { webhookSecret: body.webhookSecret }
           : {}),
         ...dbDefaults(),
@@ -198,21 +229,26 @@ export function registerAppApi(
   });
 
   // ── Post a message as a human or bot ──────────────────────────────────────
-  app.post('/app/message/create', async (c) => {
+  app.post("/app/message/create", async (c) => {
     const id = await auth(c);
-    if (!id) return c.json({ error: 'Unauthorized' }, 401);
-    const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-    const conversationId = typeof body.conversationId === 'string' ? body.conversationId : '';
-    const asUserId = typeof body.asUserId === 'string' ? body.asUserId : '';
+    if (!id) return c.json({ error: "Unauthorized" }, 401);
+    const body = (await c.req.json().catch(() => ({}))) as Record<
+      string,
+      unknown
+    >;
+    const conversationId =
+      typeof body.conversationId === "string" ? body.conversationId : "";
+    const asUserId = typeof body.asUserId === "string" ? body.asUserId : "";
     if (!conversationId || !asUserId) {
-      return c.json({ error: 'conversationId and asUserId required' }, 400);
+      return c.json({ error: "conversationId and asUserId required" }, 400);
     }
     const conv = await getDb().getDoc(collections.conversation, conversationId);
-    if (!conv) return c.json({ error: 'conversation not found' }, 404);
-    if (!(await appCanAccess(getDb, conv, id.appId))) return c.json({ error: 'Forbidden' }, 403);
+    if (!conv) return c.json({ error: "conversation not found" }, 404);
+    if (!(await appCanAccess(getDb, conv, id.appId)))
+      return c.json({ error: "Forbidden" }, 403);
 
     const message: Record<string, unknown> =
-      typeof body.message === 'object' && body.message !== null
+      typeof body.message === "object" && body.message !== null
         ? (body.message as Record<string, unknown>)
         : {};
     const msg: unknown = await engineConversationMessageCreate(
@@ -223,30 +259,41 @@ export function registerAppApi(
     // isolate is torn down before the catcher fetch completes.
     const fire = fireMessageWebhooks(
       getDb(),
-      'message.created',
+      "message.created",
       conversationId,
       msg as Record<string, unknown>,
-    ).catch((err: unknown) => { console.error('[appApi] webhook fire failed', err); });
+    ).catch((err: unknown) => {
+      console.error("[appApi] webhook fire failed", err);
+    });
     c.executionCtx.waitUntil(fire);
     // Unfurl links (e.g. the Love challenge URL) into a preview card.
     c.executionCtx.waitUntil(
-      unfurlMessageLinks(getDb(), msg as Parameters<typeof unfurlMessageLinks>[1]).catch(
-        (err: unknown) => { console.error('[appApi] unfurl failed', err); },
-      ),
+      unfurlMessageLinks(
+        getDb(),
+        msg as Parameters<typeof unfurlMessageLinks>[1],
+      ).catch((err: unknown) => {
+        console.error("[appApi] unfurl failed", err);
+      }),
     );
     return c.json({ message: msg });
   });
 
   // ── List messages (appId-scoped) ──────────────────────────────────────────
-  app.post('/app/message/list', async (c) => {
+  app.post("/app/message/list", async (c) => {
     const id = await auth(c);
-    if (!id) return c.json({ error: 'Unauthorized' }, 401);
-    const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-    const conversationId = typeof body.conversationId === 'string' ? body.conversationId : '';
-    if (!conversationId) return c.json({ error: 'conversationId required' }, 400);
+    if (!id) return c.json({ error: "Unauthorized" }, 401);
+    const body = (await c.req.json().catch(() => ({}))) as Record<
+      string,
+      unknown
+    >;
+    const conversationId =
+      typeof body.conversationId === "string" ? body.conversationId : "";
+    if (!conversationId)
+      return c.json({ error: "conversationId required" }, 400);
     const conv = await getDb().getDoc(collections.conversation, conversationId);
-    if (!conv) return c.json({ error: 'conversation not found' }, 404);
-    if (!(await appCanAccess(getDb, conv, id.appId))) return c.json({ error: 'Forbidden' }, 403);
+    if (!conv) return c.json({ error: "conversation not found" }, 404);
+    if (!(await appCanAccess(getDb, conv, id.appId)))
+      return c.json({ error: "Forbidden" }, 403);
 
     const limit = Math.min(Number(body.limit ?? 50), 200);
     const messages = await getDb().getDocs(

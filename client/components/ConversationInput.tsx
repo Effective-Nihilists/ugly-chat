@@ -1,10 +1,14 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
-import { Mic, Square } from 'lucide-react';
-import { useApp, uploadBlob, promoteBlob, useSTT } from 'ugly-app/client';
-import type { UglyBotSocket } from 'ugly-app/client';
-import { MarkdownEditor } from 'ugly-app/markdown/client';
-import type { MarkdownEditorFunctions } from 'ugly-app/markdown/client';
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import type {
+  CSSProperties,
+  KeyboardEvent as ReactKeyboardEvent,
+  ReactNode,
+} from "react";
+import { Mic, Square } from "lucide-react";
+import { useApp, uploadBlob, promoteBlob, useSTT } from "ugly-app/client";
+import type { UglyBotSocket } from "ugly-app/client";
+import { MarkdownEditor } from "ugly-app/markdown/client";
+import type { MarkdownEditorFunctions } from "ugly-app/markdown/client";
 
 // Faithful port of ugly.bot's ConversationInput composer onto the ugly-app
 // MarkdownEditor (which IS ugly.bot's editor). The framework's stripped-down
@@ -34,14 +38,20 @@ function imageAspectRatio(file: File): Promise<number> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
-    img.onload = () => { resolve(img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1.4); URL.revokeObjectURL(url); };
-    img.onerror = () => { resolve(1.4); URL.revokeObjectURL(url); };
+    img.onload = () => {
+      resolve(img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1.4);
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => {
+      resolve(1.4);
+      URL.revokeObjectURL(url);
+    };
     img.src = url;
   });
 }
 
 export function ConversationInput({
-  placeholder = 'Message…',
+  placeholder = "Message…",
   disabled = false,
   autoFocus = false,
   allowEmpty = false,
@@ -55,8 +65,8 @@ export function ConversationInput({
   const { socket, uglyBotSocket } = useApp();
   const editorRef = useRef<MarkdownEditorFunctions>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const [value, setValue] = useState('');
-  const valueRef = useRef('');
+  const [value, setValue] = useState("");
+  const valueRef = useRef("");
   const [width, setWidth] = useState(520);
 
   // Set composer content programmatically (used by dictation) — both the
@@ -70,28 +80,32 @@ export function ConversationInput({
   useEffect(() => {
     if (!draftRequest) return;
     const current = valueRef.current.trimEnd();
-    applyText(current ? `${current}\n\n${draftRequest.text}` : draftRequest.text);
+    applyText(
+      current ? `${current}\n\n${draftRequest.text}` : draftRequest.text,
+    );
   }, [applyText, draftRequest]);
 
   // Track the editor width (image embeds + the floating toolbar need it).
   useEffect(() => {
     const el = wrapRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
+    if (!el || typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver((entries) => {
       const w = entries[0]?.contentRect.width;
       if (w && w > 0) setWidth(Math.round(w));
     });
     ro.observe(el);
-    return () => { ro.disconnect(); };
+    return () => {
+      ro.disconnect();
+    };
   }, []);
 
   const handleSend = useCallback(() => {
     const text = value.trim();
     if (!text && !allowEmpty) return;
     onSend(text);
-    setValue('');
-    valueRef.current = '';
-    editorRef.current?.setValue('');
+    setValue("");
+    valueRef.current = "";
+    editorRef.current?.setValue("");
   }, [value, allowEmpty, onSend]);
 
   // Enter sends; Shift+Enter = newline. Capture-phase so we beat ProseMirror —
@@ -99,7 +113,7 @@ export function ConversationInput({
   // highlighted item there).
   const handleKeyDownCapture = useCallback(
     (e: ReactKeyboardEvent) => {
-      if (e.key !== 'Enter' || e.shiftKey) return;
+      if (e.key !== "Enter" || e.shiftKey) return;
       if (editorRef.current?.isMenuActive()) return;
       e.preventDefault();
       e.stopPropagation();
@@ -111,14 +125,20 @@ export function ConversationInput({
   // Paste/drop an image → upload to R2 (promote so the embedded URL is durable)
   // and embed it inline at the caret.
   const onImageUpload = useCallback(
-    async (file: File): Promise<{ src: string; widthPercent: number; aspectRatio: number } | null> => {
+    async (
+      file: File,
+    ): Promise<{
+      src: string;
+      widthPercent: number;
+      aspectRatio: number;
+    } | null> => {
       try {
         const { key } = await uploadBlob(file, { name: file.name });
         const src = await promoteBlob(socket, key);
         const aspectRatio = await imageAspectRatio(file);
         return { src, widthPercent: 70, aspectRatio };
       } catch (err) {
-        console.error('[ConversationInput] image upload failed', err);
+        console.error("[ConversationInput] image upload failed", err);
         return null;
       }
     },
@@ -128,7 +148,11 @@ export function ConversationInput({
   return (
     <div style={containerStyle}>
       {leftActions}
-      <div ref={wrapRef} style={{ flex: 1, minWidth: 0 }} onKeyDownCapture={handleKeyDownCapture}>
+      <div
+        ref={wrapRef}
+        style={{ flex: 1, minWidth: 0 }}
+        onKeyDownCapture={handleKeyDownCapture}
+      >
         <MarkdownEditor
           editorRef={editorRef}
           value={value}
@@ -162,8 +186,25 @@ export function ConversationInput({
           onText={applyText}
         />
       ) : null}
-      <button type="button" style={sendButtonStyle} onClick={handleSend} disabled={disabled} aria-label="Send" data-id="send">
-        <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <button
+        type="button"
+        style={sendButtonStyle}
+        onClick={handleSend}
+        disabled={disabled}
+        aria-label="Send"
+        data-id="send"
+      >
+        <svg
+          width={18}
+          height={18}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
           <path d="m22 2-7 20-4-9-9-4Z" />
           <path d="M22 2 11 13" />
         </svg>
@@ -189,7 +230,7 @@ function DictationButton({
   onText: (text: string) => void;
 }): React.ReactElement {
   const stt = useSTT(socket);
-  const baseRef = useRef('');
+  const baseRef = useRef("");
 
   useEffect(() => {
     const t = stt.transcript.trim();
@@ -219,21 +260,24 @@ function DictationButton({
       onPointerLeave={endHold}
       onPointerCancel={endHold}
       disabled={disabled}
-      title={stt.listening ? 'Recording — release to insert' : 'Hold to talk'}
-      aria-label={stt.listening ? 'Recording — release to insert' : 'Hold to talk'}
+      title={stt.listening ? "Recording — release to insert" : "Hold to talk"}
+      aria-label={
+        stt.listening ? "Recording — release to insert" : "Hold to talk"
+      }
       style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
         width: 32,
         height: 32,
         flexShrink: 0,
-        borderRadius: '50%',
-        border: 'none',
-        background: stt.listening ? 'var(--app-error)' : 'transparent',
-        color: stt.listening ? '#fff' : 'var(--app-foreground)',
-        cursor: 'pointer',
-      }} data-id="button"
+        borderRadius: "50%",
+        border: "none",
+        background: stt.listening ? "var(--app-error)" : "transparent",
+        color: stt.listening ? "#fff" : "var(--app-foreground)",
+        cursor: "pointer",
+      }}
+      data-id="button"
     >
       {stt.listening ? <Square size={15} /> : <Mic size={18} />}
     </button>
@@ -247,25 +291,25 @@ function DictationButton({
 // correctly. (This used to be forced by a `.uc-composer > div` CSS override,
 // which stopped reaching this row once ChatPage wrapped it in a bordered div.)
 const containerStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
+  display: "flex",
+  alignItems: "center",
   gap: 6,
-  padding: '4px 6px 4px 10px',
+  padding: "4px 6px 4px 10px",
   borderRadius: 0,
-  border: 'none',
-  background: 'var(--app-main)',
+  border: "none",
+  background: "var(--app-main)",
 };
 
 const sendButtonStyle: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
   width: 32,
   height: 32,
   flexShrink: 0,
   borderRadius: 0,
-  border: 'none',
-  background: 'transparent',
-  color: 'var(--app-primary)',
-  cursor: 'pointer',
+  border: "none",
+  background: "transparent",
+  color: "var(--app-primary)",
+  cursor: "pointer",
 };

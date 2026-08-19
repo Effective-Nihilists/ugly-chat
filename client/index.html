@@ -1,9 +1,12 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/icon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
     <!-- PWA: makes the app installable + detectable as a dock app in ugly-studio.
          The build-time injector (buildWorkers injectDefaultMeta) overrides
          theme-color with the per-project value and is idempotent, so these static
@@ -15,7 +18,18 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <title>App</title>
-    <style>html, body, #root { height: 100%; margin: 0; } html, body { overscroll-behavior: none; }</style>
+    <style>
+      html,
+      body,
+      #root {
+        height: 100%;
+        margin: 0;
+      }
+      html,
+      body {
+        overscroll-behavior: none;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

@@ -9,9 +9,9 @@
  * Visual source: mockups/call-bot.html / call-2p.html (.tpanel / .tp-turn /
  * .tp-cbox).
  */
-import React, { useEffect, useRef, useState } from 'react';
-import { Captions, Keyboard, SendHorizonal, ChevronRight } from 'lucide-react';
-import type { Turn } from '../../shared/transcript';
+import React, { useEffect, useRef, useState } from "react";
+import { Captions, Keyboard, SendHorizonal, ChevronRight } from "lucide-react";
+import type { Turn } from "../../shared/transcript";
 
 export interface SpeakerProfile {
   name?: string;
@@ -19,13 +19,17 @@ export interface SpeakerProfile {
 }
 export type SpeakerProfiles = Record<string, SpeakerProfile>;
 
-function speakerName(id: string, meId: string, profiles: SpeakerProfiles): string {
-  if (id === meId) return 'You';
+function speakerName(
+  id: string,
+  meId: string,
+  profiles: SpeakerProfiles,
+): string {
+  if (id === meId) return "You";
   return profiles[id]?.name ?? id.slice(0, 8);
 }
 
 function initial(name: string): string {
-  return name.trim().charAt(0).toUpperCase() || '?';
+  return name.trim().charAt(0).toUpperCase() || "?";
 }
 
 export function TranscriptPanel({
@@ -45,7 +49,7 @@ export function TranscriptPanel({
   /** Fill the parent (mobile expanded sheet) instead of the fixed desktop rail. */
   fill?: boolean;
 }): React.ReactElement {
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState("");
   const bodyRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to the newest turn.
@@ -58,7 +62,7 @@ export function TranscriptPanel({
     const t = draft.trim();
     if (!t) return;
     onSend(t);
-    setDraft('');
+    setDraft("");
   };
 
   // The last non-final turn is the live one (emphasized).
@@ -71,39 +75,46 @@ export function TranscriptPanel({
     <div
       style={{
         ...(fill
-          ? { width: '100%', flex: 1, borderTop: '1px solid var(--app-border)' }
-          : { width: 332, flex: 'none', borderLeft: '1px solid var(--app-border)' }),
-        display: 'flex',
-        flexDirection: 'column',
+          ? { width: "100%", flex: 1, borderTop: "1px solid var(--app-border)" }
+          : {
+              width: 332,
+              flex: "none",
+              borderLeft: "1px solid var(--app-border)",
+            }),
+        display: "flex",
+        flexDirection: "column",
         minHeight: 0,
-        background: 'var(--app-main)',
+        background: "var(--app-main)",
       }}
     >
       {/* Header */}
       <div
         style={{
-          padding: '13px 16px',
-          borderBottom: '1px solid var(--app-border)',
-          display: 'flex',
-          alignItems: 'center',
+          padding: "13px 16px",
+          borderBottom: "1px solid var(--app-border)",
+          display: "flex",
+          alignItems: "center",
           gap: 9,
           flexShrink: 0,
         }}
       >
-        <Captions size={15} style={{ color: 'var(--app-foreground-muted)' }} />
-        <span className="uc-mono-label" style={{ letterSpacing: '0.18em', fontSize: 10 }}>
+        <Captions size={15} style={{ color: "var(--app-foreground-muted)" }} />
+        <span
+          className="uc-mono-label"
+          style={{ letterSpacing: "0.18em", fontSize: 10 }}
+        >
           Transcript
         </span>
         <span
           className="uc-mono-label"
           style={{
-            marginLeft: 'auto',
-            display: 'inline-flex',
-            alignItems: 'center',
+            marginLeft: "auto",
+            display: "inline-flex",
+            alignItems: "center",
             gap: 6,
-            color: 'var(--app-success)',
+            color: "var(--app-success)",
             fontSize: 9,
-            letterSpacing: '0.14em',
+            letterSpacing: "0.14em",
           }}
         >
           <span className="uc-tp-livedot" />
@@ -118,15 +129,15 @@ export function TranscriptPanel({
             title="Collapse transcript"
             style={{
               marginLeft: 6,
-              display: 'grid',
-              placeItems: 'center',
+              display: "grid",
+              placeItems: "center",
               width: 24,
               height: 24,
-              border: '1px solid var(--app-border)',
+              border: "1px solid var(--app-border)",
               borderRadius: 6,
-              background: 'transparent',
-              color: 'var(--app-foreground-muted)',
-              cursor: 'pointer',
+              background: "transparent",
+              color: "var(--app-foreground-muted)",
+              cursor: "pointer",
             }}
           >
             <ChevronRight size={15} />
@@ -139,10 +150,10 @@ export function TranscriptPanel({
         ref={bodyRef}
         style={{
           flex: 1,
-          overflowY: 'auto',
+          overflowY: "auto",
           padding: 16,
-          display: 'flex',
-          flexDirection: 'column',
+          display: "flex",
+          flexDirection: "column",
           gap: 15,
           minHeight: 0,
         }}
@@ -151,8 +162,8 @@ export function TranscriptPanel({
           <span
             style={{
               fontSize: 12.5,
-              color: 'var(--app-foreground-muted)',
-              fontFamily: 'var(--app-font-body)',
+              color: "var(--app-foreground-muted)",
+              fontFamily: "var(--app-font-body)",
             }}
           >
             Listening… captions appear here as people speak.
@@ -162,35 +173,46 @@ export function TranscriptPanel({
             const name = speakerName(turn.speaker, meId, profiles);
             const active = i === lastLiveIdx;
             return (
-              <div key={`${turn.speaker}-${turn.at}-${i}`} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <div
+                key={`${turn.speaker}-${turn.at}-${i}`}
+                style={{ display: "flex", flexDirection: "column", gap: 4 }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                   <span
                     aria-hidden
                     style={{
                       width: 20,
                       height: 20,
-                      borderRadius: '50%',
+                      borderRadius: "50%",
                       flexShrink: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: 'var(--app-tertiary)',
-                      color: 'var(--app-foreground)',
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "var(--app-tertiary)",
+                      color: "var(--app-foreground)",
                       fontSize: 8.5,
                       fontWeight: 700,
-                      fontFamily: 'var(--app-font-mono)',
+                      fontFamily: "var(--app-font-mono)",
                     }}
                   >
                     {initial(name)}
                   </span>
                   <span
                     className="uc-mono-label"
-                    style={{ fontSize: 9.5, letterSpacing: '0.12em', color: 'var(--app-foreground-muted)' }}
+                    style={{
+                      fontSize: 9.5,
+                      letterSpacing: "0.12em",
+                      color: "var(--app-foreground-muted)",
+                    }}
                   >
                     {name}
                   </span>
                   {turn.typed ? (
-                    <Keyboard size={11} style={{ color: 'var(--app-foreground-muted)' }} aria-label="typed" />
+                    <Keyboard
+                      size={11}
+                      style={{ color: "var(--app-foreground-muted)" }}
+                      aria-label="typed"
+                    />
                   ) : null}
                 </div>
                 <div
@@ -198,8 +220,10 @@ export function TranscriptPanel({
                     fontSize: 13.5,
                     lineHeight: 1.5,
                     paddingLeft: 27,
-                    fontFamily: 'var(--app-font-body)',
-                    color: active ? 'var(--app-foreground)' : 'var(--app-foreground-muted)',
+                    fontFamily: "var(--app-font-body)",
+                    color: active
+                      ? "var(--app-foreground)"
+                      : "var(--app-foreground-muted)",
                   }}
                 >
                   {turn.text}
@@ -211,7 +235,13 @@ export function TranscriptPanel({
       </div>
 
       {/* Composer */}
-      <div style={{ padding: '12px 14px', borderTop: '1px solid var(--app-border)', flexShrink: 0 }}>
+      <div
+        style={{
+          padding: "12px 14px",
+          borderTop: "1px solid var(--app-border)",
+          flexShrink: 0,
+        }}
+      >
         <div className="uc-tp-cbox">
           <input
             data-id="call-transcript-input"
@@ -220,7 +250,7 @@ export function TranscriptPanel({
               setDraft(e.target.value);
             }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+              if (e.key === "Enter") {
                 e.preventDefault();
                 submit();
               }
@@ -238,14 +268,14 @@ export function TranscriptPanel({
             style={{
               width: 30,
               height: 30,
-              flex: 'none',
-              display: 'grid',
-              placeItems: 'center',
-              border: 'none',
+              flex: "none",
+              display: "grid",
+              placeItems: "center",
+              border: "none",
               borderRadius: 8,
-              background: 'var(--app-primary)',
-              color: 'var(--app-on-primary)',
-              cursor: 'pointer',
+              background: "var(--app-primary)",
+              color: "var(--app-on-primary)",
+              cursor: "pointer",
             }}
           >
             <SendHorizonal size={15} />

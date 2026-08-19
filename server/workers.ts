@@ -11,20 +11,20 @@ import {
   SessionDO,
   createWorkersApp,
   getAppContext,
-} from 'ugly-app/server/adapter/workers';
+} from "ugly-app/server/adapter/workers";
 
-import { messages, requests } from '../shared/api';
-import { collections } from '../shared/collections';
-import { cronTasks } from '../shared/cron';
-import { createChatHandlers, cronHandlers, type DbSurface } from './handlers';
-import { wireEngineDeps } from './configure';
-import { d1Migrations } from './migrations-d1/001_repair_id_only_fields';
-import { registerAppApi } from './appApi';
-import { withUserPublic } from './userPublic';
+import { messages, requests } from "../shared/api";
+import { collections } from "../shared/collections";
+import { cronTasks } from "../shared/cron";
+import { createChatHandlers, cronHandlers, type DbSurface } from "./handlers";
+import { wireEngineDeps } from "./configure";
+import { d1Migrations } from "./migrations-d1/001_repair_id_only_fields";
+import { registerAppApi } from "./appApi";
+import { withUserPublic } from "./userPublic";
 
 const getFullDb = () => {
   const ctx = getAppContext();
-  if (!ctx.typedDb) throw new Error('[workers] typedDb not initialized');
+  if (!ctx.typedDb) throw new Error("[workers] typedDb not initialized");
   return ctx.typedDb;
 };
 const getDb = (): DbSurface => getFullDb();
@@ -48,7 +48,10 @@ const app = createWorkersApp(
     // vars like UGLY_BOT_URL that WorkersEnv doesn't declare). Bridge the two
     // Hono binding shapes at this boundary.
     cfg.setRawRoutes((honoApp) => {
-      registerAppApi(honoApp as unknown as Parameters<typeof registerAppApi>[0], getDb);
+      registerAppApi(
+        honoApp as unknown as Parameters<typeof registerAppApi>[0],
+        getDb,
+      );
     });
   },
 );

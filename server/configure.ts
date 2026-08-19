@@ -18,11 +18,11 @@ import {
   setConversationDeps,
   setConversationUserDeps,
   type ConversationDeps,
-} from 'ugly-app/conversation/engine';
-import { botUser } from './bots';
-import { resolveProfiles } from './profiles';
-import type { TypedDB } from 'ugly-app/shared';
-import { collections } from '../shared/collections';
+} from "ugly-app/conversation/engine";
+import { botUser } from "./bots";
+import { resolveProfiles } from "./profiles";
+import type { TypedDB } from "ugly-app/shared";
+import { collections } from "../shared/collections";
 
 export function wireEngineDeps(getDb: () => TypedDB): void {
   const convDeps: ConversationDeps = {
@@ -41,7 +41,7 @@ export function wireEngineDeps(getDb: () => TypedDB): void {
       if (bot) return bot;
       // App-registered bots live in the `bot` collection with a `bot-` id; resolve
       // them as bots so their messages are flagged isBot.
-      if (userId.startsWith('bot-')) {
+      if (userId.startsWith("bot-")) {
         const b = await getDb().getDoc(collections.bot, userId);
         if (b) return { _id: userId, name: b.name, isBot: true };
       }

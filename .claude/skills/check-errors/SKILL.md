@@ -21,10 +21,12 @@ If it reports "No prod Cloudflare D1 found", the app hasn't been deployed yet â€
 `npm run deploy` first.
 
 ## Tips
+
 - `source: 'server'` = server-side error, `source: 'browser'` = client-side
 - `context.recentLogs` holds the console history captured right before a browser error
 - Check the `stack` field for the full trace
 - `userId: null` means an unauthenticated user
 
 # Notes
+
 <!-- Claude: append observations here -->

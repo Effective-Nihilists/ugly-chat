@@ -1,8 +1,12 @@
-import { defaultAvatar, type Avatar } from 'ugly-app/shared';
+import { defaultAvatar, type Avatar } from "ugly-app/shared";
 
 /** Coerce a stored value into a valid Avatar object, else the shared default. */
 export function toAvatar(raw: unknown): Avatar {
-  if (raw && typeof raw === 'object' && (raw as { image?: { uri?: string } }).image?.uri) {
+  if (
+    raw &&
+    typeof raw === "object" &&
+    (raw as { image?: { uri?: string } }).image?.uri
+  ) {
     return raw as Avatar;
   }
   return defaultAvatar;
@@ -21,13 +25,19 @@ export function botAvatar(doc: {
   avatarUrl?: unknown;
   characterThumbnail?: unknown;
 }): Avatar {
-  if (typeof doc.characterThumbnail === 'string' && doc.characterThumbnail) {
-    return { ...defaultAvatar, image: { ...defaultAvatar.image, uri: doc.characterThumbnail } };
+  if (typeof doc.characterThumbnail === "string" && doc.characterThumbnail) {
+    return {
+      ...defaultAvatar,
+      image: { ...defaultAvatar.image, uri: doc.characterThumbnail },
+    };
   }
   const a = toAvatar(doc.avatar);
   if (a !== defaultAvatar) return a;
-  if (typeof doc.avatarUrl === 'string' && doc.avatarUrl) {
-    return { ...defaultAvatar, image: { ...defaultAvatar.image, uri: doc.avatarUrl } };
+  if (typeof doc.avatarUrl === "string" && doc.avatarUrl) {
+    return {
+      ...defaultAvatar,
+      image: { ...defaultAvatar.image, uri: doc.avatarUrl },
+    };
   }
   return defaultAvatar;
 }

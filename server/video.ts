@@ -8,9 +8,9 @@
  * join as participants with `isBot: true` and are rendered client-side as a
  * "fake call" (avatar + local TTS), needing no media track.
  */
-import { isBot } from './bots';
-import type { CollectionDef, DBObject, DocFields } from 'ugly-app/shared';
-import type { Conversation } from '../shared/collections';
+import { isBot } from "./bots";
+import type { CollectionDef, DBObject, DocFields } from "ugly-app/shared";
+import type { Conversation } from "../shared/collections";
 
 export interface CallParticipant {
   userId: string;
@@ -64,7 +64,9 @@ export interface DbLike {
     fields: DocFields<T>,
   ): Promise<T>;
 }
-interface Collections { conversation: CollectionDef<Conversation> }
+interface Collections {
+  conversation: CollectionDef<Conversation>;
+}
 
 function getCall(conv: Conversation | null): CallState {
   const c = conv?.call as CallState | undefined;
@@ -79,20 +81,26 @@ export async function videoJoin(
   isBot = false,
 ): Promise<CallState> {
   const conv = await db.getDoc(collections.conversation, conversationId);
-  if (!conv) throw new Error('conversation not found');
+  if (!conv) throw new Error("conversation not found");
   // Dot-path writes touch ONLY this participant's subtree — no read-modify-write
   // of the whole `call`, so concurrent joiners don't clobber each other. The
   // `$set` operator creates the missing `call`/`call.participants` parents.
-  const participant: CallParticipant = { userId, isBot, joinedAt: Date.now(), seenAt: Date.now() };
+  const participant: CallParticipant = {
+    userId,
+    isBot,
+    joinedAt: Date.now(),
+    seenAt: Date.now(),
+  };
   // Stamp startedAt on the first join of a call. It was never written — only
   // ever preserved — so every call instance looked identical (`undefined`) and
   // clients had no id to say "I declined THIS call": declining one ring would
   // have suppressed every future one.
   const existing = getCall(conv);
-  const startedAt = existing.active && existing.startedAt ? existing.startedAt : Date.now();
+  const startedAt =
+    existing.active && existing.startedAt ? existing.startedAt : Date.now();
   await db.setDocFields(collections.conversation, conversationId, {
-    'call.active': true,
-    'call.startedAt': startedAt,
+    "call.active": true,
+    "call.startedAt": startedAt,
     [`call.participants.${userId}`]: participant,
   });
   const updated = await db.getDoc(collections.conversation, conversationId);
@@ -104,7 +112,10 @@ export async function videoJoin(
  * network) and end the call if no live human is left. Returns the pruned state
  * plus whether anything changed, so callers only write when needed.
  */
-function pruneStale(call: CallState, now = Date.now()): { call: CallState; changed: boolean } {
+function pruneStale(
+  call: CallState,
+  now = Date.now(),
+): { call: CallState; changed: boolean } {
   if (!call.active) return { call, changed: false };
   const live: Record<string, CallParticipant> = {};
   let dropped = false;
@@ -120,7 +131,11 @@ function pruneStale(call: CallState, now = Date.now()): { call: CallState; chang
   }
   if (!dropped) return { call, changed: false };
   return {
-    call: { active: true, ...(call.startedAt ? { startedAt: call.startedAt } : {}), participants: live },
+    call: {
+      active: true,
+      ...(call.startedAt ? { startedAt: call.startedAt } : {}),
+      participants: live,
+    },
     changed: true,
   };
 }
@@ -171,14 +186,17 @@ export async function videoLeave(
   // nobody to talk to, so drop to <2 humans and the call is over for everyone.
   // A 3-way losing one participant still has 2 humans and correctly continues.
   const humans = Object.values(participants).filter((p) => !p.isBot);
-  const next: CallState = humans.length >= 2
-    ? {
-        active: true,
-        ...(call.startedAt ? { startedAt: call.startedAt } : {}),
-        participants,
-      }
-    : { active: false, participants: {} };
-  await db.setDocFields(collections.conversation, conversationId, { call: next });
+  const next: CallState =
+    humans.length >= 2
+      ? {
+          active: true,
+          ...(call.startedAt ? { startedAt: call.startedAt } : {}),
+          participants,
+        }
+      : { active: false, participants: {} };
+  await db.setDocFields(collections.conversation, conversationId, {
+    call: next,
+  });
   return next;
 }
 
@@ -188,7 +206,9 @@ export async function videoEnd(
   conversationId: string,
 ): Promise<CallState> {
   const next: CallState = { active: false, participants: {} };
-  await db.setDocFields(collections.conversation, conversationId, { call: next });
+  await db.setDocFields(collections.conversation, conversationId, {
+    call: next,
+  });
   return next;
 }
 
@@ -230,7 +250,13 @@ export async function videoCaption(
   final: boolean,
   typed = false,
 ): Promise<void> {
-  const caption: CallCaption = { userId, text, final, at: Date.now(), ...(typed ? { typed: true } : {}) };
+  const caption: CallCaption = {
+    userId,
+    text,
+    final,
+    at: Date.now(),
+    ...(typed ? { typed: true } : {}),
+  };
   await db.setDocFields(collections.conversation, conversationId, {
     [`call.captions.${userId}`]: caption,
   });
@@ -269,7 +295,7 @@ export async function videoBotJoin(
   conversationId: string,
   botId: string,
 ): Promise<CallState> {
-  if (!isBot(botId)) throw new Error('not a bot');
+  if (!isBot(botId)) throw new Error("not a bot");
   // A bot may only join a call a HUMAN is already in. Bots never leave on their
   // own and never send a heartbeat, so a bot-only call sat `active: true` in the
   // conversation doc forever: every client tracking the doc rendered an incoming
@@ -282,7 +308,7 @@ export async function videoBotJoin(
   const call = getCall(conv);
   const humans = Object.values(call.participants).filter((p) => !p.isBot);
   if (!call.active || humans.length === 0) {
-    throw new Error('no active call to join');
+    throw new Error("no active call to join");
   }
   return videoJoin(db, collections, conversationId, botId, true);
 }

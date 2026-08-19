@@ -1,4 +1,4 @@
-import type { query as pgQuery } from 'ugly-app/server';
+import type { query as pgQuery } from "ugly-app/server";
 
 // Schema migration: create collection "conversationUser"
 
@@ -10,5 +10,7 @@ export async function up(query: typeof pgQuery): Promise<void> {
     updated  TIMESTAMPTZ NOT NULL DEFAULT now(),
     version  INTEGER NOT NULL DEFAULT 1
   )`);
-  await query(`CREATE INDEX IF NOT EXISTS "idx_conversationUser_data" ON "conversationUser" USING GIN (data)`);
+  await query(
+    `CREATE INDEX IF NOT EXISTS "idx_conversationUser_data" ON "conversationUser" USING GIN (data)`,
+  );
 }

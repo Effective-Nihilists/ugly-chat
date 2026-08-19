@@ -69,8 +69,7 @@ export async function bumpListForMessage(
       const memberId = uc.userPrivateId ?? "";
       if (!memberId || isBotId(memberId)) return;
       const isSender = memberId === senderId;
-      const visibility =
-        uc.visibility === "hidden" ? "visible" : uc.visibility;
+      const visibility = uc.visibility === "hidden" ? "visible" : uc.visibility;
       await db.setDoc(collections.userConversation, {
         ...uc,
         notificationText: p,

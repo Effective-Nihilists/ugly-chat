@@ -14,11 +14,11 @@ either no longer exists or produces an account that looks signed in and cannot s
 ## In a Playwright test
 
 ```ts
-import { testAccount, authenticateAs } from 'ugly-app/playwright';
+import { testAccount, authenticateAs } from "ugly-app/playwright";
 
-const acct = await testAccount('checkout-flow');        // idempotent per project+slug
-await authenticateAs(page, acct);                        // or a domain: 'myapp.ugly.bot'
-await page.goto('/');
+const acct = await testAccount("checkout-flow"); // idempotent per project+slug
+await authenticateAs(page, acct); // or a domain: 'myapp.ugly.bot'
+await page.goto("/");
 ```
 
 - `acct` is `{ userId, token, email, payerUserId?, canSpend? }`.
@@ -59,9 +59,12 @@ Call the app's own API as that account, so the data goes through the same valida
 users do:
 
 ```ts
-await request.post('/api/<endpoint>', {
-  headers: { 'Cookie': `auth_token=${acct.token}`, 'Content-Type': 'application/json' },
-  data: { input: { /* ... */ } },
+await request.post("/api/<endpoint>", {
+  headers: {
+    Cookie: `auth_token=${acct.token}`,
+    "Content-Type": "application/json",
+  },
+  data: { input: {/* ... */} },
 });
 ```
 
@@ -72,4 +75,5 @@ offline. See `TESTING.md` §1: `UGLY_APP_TEST_MODE=1` plus the `impersonate(user
 fixture from `ugly-app/testing`.
 
 # Notes
+
 <!-- Claude: append observations here — record which test users exist -->

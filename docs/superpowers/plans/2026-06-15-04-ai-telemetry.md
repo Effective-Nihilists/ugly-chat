@@ -16,6 +16,7 @@
 ### Task 1: Telemetry types + cost/format helpers (TDD)
 
 **Files:**
+
 - Create: `shared/telemetry.ts`
 - Test: `tests/unit/telemetry.test.ts`
 
@@ -23,29 +24,46 @@
 
 ```ts
 // tests/unit/telemetry.test.ts
-import { describe, it, expect } from 'vitest';
-import { formatTokens, formatCost, sumTelemetry, type MsgTelemetry } from '../../shared/telemetry';
+import { describe, it, expect } from "vitest";
+import {
+  formatTokens,
+  formatCost,
+  sumTelemetry,
+  type MsgTelemetry,
+} from "../../shared/telemetry";
 
-describe('telemetry', () => {
-  it('formats tokens compactly', () => {
-    expect(formatTokens(842)).toBe('842');
-    expect(formatTokens(84200)).toBe('84.2k');
+describe("telemetry", () => {
+  it("formats tokens compactly", () => {
+    expect(formatTokens(842)).toBe("842");
+    expect(formatTokens(84200)).toBe("84.2k");
   });
-  it('formats cost with 3 decimals and a leading $', () => {
-    expect(formatCost(0.004)).toBe('$0.004');
-    expect(formatCost(0.21)).toBe('$0.21');
-    expect(formatCost(0)).toBe('$0.00');
+  it("formats cost with 3 decimals and a leading $", () => {
+    expect(formatCost(0.004)).toBe("$0.004");
+    expect(formatCost(0.21)).toBe("$0.21");
+    expect(formatCost(0)).toBe("$0.00");
   });
-  it('sums a session', () => {
+  it("sums a session", () => {
     const msgs: MsgTelemetry[] = [
-      { model: 'DeepSeek v4 pro', inputTokens: 118, outputTokens: 1204, costUsd: 0.004, latencyMs: 1400 },
-      { model: 'DeepSeek v4 pro', inputTokens: 96, outputTokens: 842, costUsd: 0.003, latencyMs: 900 },
+      {
+        model: "DeepSeek v4 pro",
+        inputTokens: 118,
+        outputTokens: 1204,
+        costUsd: 0.004,
+        latencyMs: 1400,
+      },
+      {
+        model: "DeepSeek v4 pro",
+        inputTokens: 96,
+        outputTokens: 842,
+        costUsd: 0.003,
+        latencyMs: 900,
+      },
     ];
     const t = sumTelemetry(msgs);
     expect(t.totalTokens).toBe(118 + 1204 + 96 + 842);
     expect(t.totalCostUsd).toBeCloseTo(0.007, 6);
     expect(t.messages).toBe(2);
-    expect(t.model).toBe('DeepSeek v4 pro');
+    expect(t.model).toBe("DeepSeek v4 pro");
   });
 });
 ```
@@ -69,14 +87,19 @@ export function formatTokens(n: number): string {
 }
 
 export function formatCost(usd: number): string {
-  if (usd === 0) return '$0.00';
+  if (usd === 0) return "$0.00";
   return `$${usd < 1 ? usd.toFixed(3) : usd.toFixed(2)}`;
 }
 
 export function sumTelemetry(msgs: MsgTelemetry[]): {
-  messages: number; totalTokens: number; totalCostUsd: number; model: string;
+  messages: number;
+  totalTokens: number;
+  totalCostUsd: number;
+  model: string;
 } {
-  let totalTokens = 0, totalCostUsd = 0, model = '';
+  let totalTokens = 0,
+    totalCostUsd = 0,
+    model = "";
   for (const m of msgs) {
     totalTokens += (m.inputTokens || 0) + (m.outputTokens || 0);
     totalCostUsd += m.costUsd || 0;
@@ -94,6 +117,7 @@ export function sumTelemetry(msgs: MsgTelemetry[]): {
 ### Task 2: Capture usage from ugly.bot in uglyBotTextGen (TDD)
 
 **Files:**
+
 - Modify: `server/bots.ts:21-59` (return `{ text, usage }`)
 - Test: `tests/unit/uglyBotTextGen.test.ts`
 
@@ -103,22 +127,41 @@ Refactor so the network call + parsing is testable with an injected fetch. Extra
 
 ```ts
 // tests/unit/uglyBotTextGen.test.ts
-import { describe, it, expect } from 'vitest';
-import { parseTextGenResponse } from '../../server/bots';
+import { describe, it, expect } from "vitest";
+import { parseTextGenResponse } from "../../server/bots";
 
-describe('parseTextGenResponse', () => {
-  it('extracts text + usage when present', () => {
+describe("parseTextGenResponse", () => {
+  it("extracts text + usage when present", () => {
     const r = parseTextGenResponse({
-      message: { content: 'hello' },
-      usage: { model: 'deepseek_v4_pro', inputTokens: 118, outputTokens: 1204, costUsd: 0.004 },
+      message: { content: "hello" },
+      usage: {
+        model: "deepseek_v4_pro",
+        inputTokens: 118,
+        outputTokens: 1204,
+        costUsd: 0.004,
+      },
     });
-    expect(r.text).toBe('hello');
-    expect(r.usage).toEqual({ model: 'deepseek_v4_pro', inputTokens: 118, outputTokens: 1204, costUsd: 0.004, latencyMs: 0 });
+    expect(r.text).toBe("hello");
+    expect(r.usage).toEqual({
+      model: "deepseek_v4_pro",
+      inputTokens: 118,
+      outputTokens: 1204,
+      costUsd: 0.004,
+      latencyMs: 0,
+    });
   });
-  it('defaults usage to zeros when absent and joins block arrays', () => {
-    const r = parseTextGenResponse({ message: { content: [{ type: 'text', text: 'hi' }] } });
-    expect(r.text).toBe('hi');
-    expect(r.usage).toEqual({ model: '', inputTokens: 0, outputTokens: 0, costUsd: 0, latencyMs: 0 });
+  it("defaults usage to zeros when absent and joins block arrays", () => {
+    const r = parseTextGenResponse({
+      message: { content: [{ type: "text", text: "hi" }] },
+    });
+    expect(r.text).toBe("hi");
+    expect(r.usage).toEqual({
+      model: "",
+      inputTokens: 0,
+      outputTokens: 0,
+      costUsd: 0,
+      latencyMs: 0,
+    });
   });
 });
 ```
@@ -128,18 +171,25 @@ describe('parseTextGenResponse', () => {
 - [ ] **Step 3: Implement.** In `server/bots.ts`, export a pure parser and make `uglyBotTextGen` return `{ text, usage }`:
 
 ```ts
-import type { MsgTelemetry } from '../shared/telemetry';
+import type { MsgTelemetry } from "../shared/telemetry";
 
-export function parseTextGenResponse(data: any): { text: string; usage: MsgTelemetry } {
+export function parseTextGenResponse(data: any): {
+  text: string;
+  usage: MsgTelemetry;
+} {
   const content = data?.message?.content ?? data?.result?.message?.content;
-  let text = '';
-  if (typeof content === 'string') text = content.trim();
+  let text = "";
+  if (typeof content === "string") text = content.trim();
   else if (Array.isArray(content)) {
-    text = content.filter((b: any) => b?.type === 'text' && typeof b.text === 'string').map((b: any) => b.text).join('').trim();
+    text = content
+      .filter((b: any) => b?.type === "text" && typeof b.text === "string")
+      .map((b: any) => b.text)
+      .join("")
+      .trim();
   }
   const u = data?.usage ?? data?.result?.usage ?? {};
   const usage: MsgTelemetry = {
-    model: String(u.model ?? data?.model ?? ''),
+    model: String(u.model ?? data?.model ?? ""),
     inputTokens: Number(u.inputTokens ?? u.promptTokens ?? 0),
     outputTokens: Number(u.outputTokens ?? u.completionTokens ?? 0),
     costUsd: Number(u.costUsd ?? u.cost ?? 0),
@@ -152,13 +202,18 @@ export function parseTextGenResponse(data: any): { text: string; usage: MsgTelem
 Then in `uglyBotTextGen`, measure latency around the fetch and return the parsed object:
 
 ```ts
-async function uglyBotTextGen(model, messages, maxTokens): Promise<{ text: string; usage: MsgTelemetry }> {
+async function uglyBotTextGen(
+  model,
+  messages,
+  maxTokens,
+): Promise<{ text: string; usage: MsgTelemetry }> {
   // …existing fetch setup…
   const t0 = Date.now();
   const res = await fetch(/* … */);
   if (!res.ok) throw new Error(`textGen HTTP ${res.status}`);
   const data = await res.json();
-  if (data.error) throw new Error(`textGen ${data.error}: ${data.detail ?? ''}`);
+  if (data.error)
+    throw new Error(`textGen ${data.error}: ${data.detail ?? ""}`);
   const parsed = parseTextGenResponse(data);
   parsed.usage.latencyMs = Date.now() - t0;
   if (!parsed.usage.model) parsed.usage.model = model;
@@ -176,6 +231,7 @@ async function uglyBotTextGen(model, messages, maxTokens): Promise<{ text: strin
 ### Task 3: Persist telemetry onto bot messages
 
 **Files:**
+
 - Modify: `shared/collections.ts` (`MessageSchema` — add optional `telemetry`)
 - Modify: `server/bots.ts:triggerBotReplies` (write telemetry on the reply message)
 
@@ -196,14 +252,26 @@ telemetry: z
 - [ ] **Step 2: Write it on the reply.** In `triggerBotReplies`, capture the usage and pass it through `conversationMessageCreate`:
 
 ```ts
-let reply = ''; let usage: MsgTelemetry | undefined;
+let reply = "";
+let usage: MsgTelemetry | undefined;
 try {
   const out = await uglyBotTextGen(bot.model, [/* …system + history… */], 1200);
-  reply = out.text; usage = out.usage;
-} catch (err) { /* existing fallback */ }
+  reply = out.text;
+  usage = out.usage;
+} catch (err) {
+  /* existing fallback */
+}
 // …
 await conversationMessageCreate(
-  { conversationId, message: { text: reply, markdown: reply, onlyUserIds: ['global'], ...(usage ? { telemetry: usage } : {}) } },
+  {
+    conversationId,
+    message: {
+      text: reply,
+      markdown: reply,
+      onlyUserIds: ["global"],
+      ...(usage ? { telemetry: usage } : {}),
+    },
+  },
   botId,
 );
 ```
@@ -218,19 +286,25 @@ await conversationMessageCreate(
 ### Task 4: Render per-message receipt footer
 
 **Files:**
+
 - Modify: `client/pages/ChatPage.tsx` (MessageBody — add a footer when `msg.telemetry` exists)
 
 - [ ] **Step 1:** In `MessageBody`, after the bubble (and reactions), render:
 
 ```tsx
-{msg.telemetry ? (
-  <div className="uc-receipt" style={{ padding: '0 4px' }}>
-    <b>{msg.telemetry.model || 'model'}</b><span className="dot">·</span>
-    {(msg.telemetry.latencyMs / 1000).toFixed(1)}s<span className="dot">·</span>
-    ↑{formatTokens(msg.telemetry.inputTokens)} ↓{formatTokens(msg.telemetry.outputTokens)} tok
-    <span className="dot">·</span><span className="cost">{formatCost(msg.telemetry.costUsd)}</span>
-  </div>
-) : null}
+{
+  msg.telemetry ? (
+    <div className="uc-receipt" style={{ padding: "0 4px" }}>
+      <b>{msg.telemetry.model || "model"}</b>
+      <span className="dot">·</span>
+      {(msg.telemetry.latencyMs / 1000).toFixed(1)}s
+      <span className="dot">·</span>↑{formatTokens(msg.telemetry.inputTokens)} ↓
+      {formatTokens(msg.telemetry.outputTokens)} tok
+      <span className="dot">·</span>
+      <span className="cost">{formatCost(msg.telemetry.costUsd)}</span>
+    </div>
+  ) : null;
+}
 ```
 
 Import `formatTokens, formatCost` from `../../shared/telemetry`. Ensure `ChatMessage` (the client message type) includes optional `telemetry` — extend it to match the schema field.
@@ -243,6 +317,7 @@ Import `formatTokens, formatCost` from `../../shared/telemetry`. Ensure `ChatMes
 ### Task 5: Session-totals strip
 
 **Files:**
+
 - Create: `client/components/TelemetryStrip.tsx`
 - Modify: `client/pages/ChatPage.tsx` (render it below the header for bot conversations)
 
@@ -250,22 +325,36 @@ Import `formatTokens, formatCost` from `../../shared/telemetry`. Ensure `ChatMes
 
 ```tsx
 // client/components/TelemetryStrip.tsx
-import React from 'react';
-import { sumTelemetry, formatTokens, formatCost, type MsgTelemetry } from '../../shared/telemetry';
+import React from "react";
+import {
+  sumTelemetry,
+  formatTokens,
+  formatCost,
+  type MsgTelemetry,
+} from "../../shared/telemetry";
 
-export function TelemetryStrip({ telemetry, openedAt }: { telemetry: MsgTelemetry[]; openedAt: number }): React.ReactElement {
+export function TelemetryStrip({
+  telemetry,
+  openedAt,
+}: {
+  telemetry: MsgTelemetry[];
+  openedAt: number;
+}): React.ReactElement {
   const t = sumTelemetry(telemetry);
   const mins = Math.floor((Date.now() - openedAt) / 60000);
   const cell = (k: string, v: React.ReactNode, cost = false) => (
-    <div className="uc-tel-cell"><span className="k">{k}</span><span className={`v${cost ? ' cost' : ''}`}>{v}</span></div>
+    <div className="uc-tel-cell">
+      <span className="k">{k}</span>
+      <span className={`v${cost ? " cost" : ""}`}>{v}</span>
+    </div>
   );
   return (
     <div className="uc-telemetry">
-      {cell('session', `${mins}m`)}
-      {cell('messages', String(t.messages))}
-      {cell('tokens', formatTokens(t.totalTokens))}
-      {cell('model', t.model || '—')}
-      {cell('spent', formatCost(t.totalCostUsd), true)}
+      {cell("session", `${mins}m`)}
+      {cell("messages", String(t.messages))}
+      {cell("tokens", formatTokens(t.totalTokens))}
+      {cell("model", t.model || "—")}
+      {cell("spent", formatCost(t.totalCostUsd), true)}
       <span className="uc-tel-note">billed to your key</span>
     </div>
   );

@@ -16,20 +16,30 @@
  * VideoCall stays mounted at all times (returns null until joined) so its
  * `start()`/`leave()` ref + roster subscription persist.
  */
-import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
-import type { DBObject } from 'ugly-app/shared';
-import { VideoCall, type VideoCallHandle, type CallProfiles } from './VideoCall';
-import { TranscriptPanel, type SpeakerProfiles } from './TranscriptPanel';
-import { SubtitleOverlay } from './SubtitleOverlay';
-import { CallLobby } from './call/CallLobby';
-import { IncomingCall } from './call/IncomingCall';
-import type { DevicePrefs } from './call/useAvDevices';
-import { useCallTranscript } from '../lib/useCallTranscript';
-import type { useApp } from 'ugly-app/client';
-import type { UglyBotSocket } from 'ugly-app/client';
+import React, {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
+import { ChevronDown } from "lucide-react";
+import type { DBObject } from "ugly-app/shared";
+import {
+  VideoCall,
+  type VideoCallHandle,
+  type CallProfiles,
+} from "./VideoCall";
+import { TranscriptPanel, type SpeakerProfiles } from "./TranscriptPanel";
+import { SubtitleOverlay } from "./SubtitleOverlay";
+import { CallLobby } from "./call/CallLobby";
+import { IncomingCall } from "./call/IncomingCall";
+import type { DevicePrefs } from "./call/useAvDevices";
+import { useCallTranscript } from "../lib/useCallTranscript";
+import type { useApp } from "ugly-app/client";
+import type { UglyBotSocket } from "ugly-app/client";
 
-type AppSocketT = ReturnType<typeof useApp>['socket'];
+type AppSocketT = ReturnType<typeof useApp>["socket"];
 
 // Mirrors AppShell's SIDEBAR_MIN_WIDTH breakpoint.
 const SIDEBAR_MIN_WIDTH = 820;
@@ -60,270 +70,331 @@ export interface CallLayoutProps {
   onActiveChange?: (active: boolean) => void;
 }
 
-export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(function CallLayout(
-  { conversationId, meId, socket, uglyBotSocket, profiles, botModel = null, autoJoinBotId = null, onActiveChange },
-  ref,
-) {
-  const videoRef = useRef<VideoCallHandle>(null);
-  const [call, setCall] = useState<CallStateDoc>({ active: false, participants: {} });
-  const [joined, setJoined] = useState(false);
-  const [lobbyOpen, setLobbyOpen] = useState(false);
-  const [callError, setCallError] = useState<string | null>(null);
-  // call.startedAt we've actively declined, so the ring doesn't re-appear for it.
-  // MUST be state, not a ref: nothing else re-renders while a ring is showing
-  // (the roster poll only runs once joined), so mutating a ref left the overlay
-  // on screen forever — Decline did nothing and its full-screen overlay swallowed
-  // every click, bricking the conversation.
-  const [declinedAt, setDeclinedAt] = useState<number>(-1);
-
-  const [wide, setWide] = useState(() =>
-    typeof window === 'undefined' ? true : window.innerWidth >= SIDEBAR_MIN_WIDTH,
-  );
-  const [collapsed, setCollapsed] = useState(false); // desktop: hide panel → overlay
-  const [expanded, setExpanded] = useState(false); // mobile: grow chat below video
-
-  // Track the full call state off the conversation doc (roster + startedAt).
-  useEffect(() => {
-    const unsub = socket.trackDoc<CallConvDoc>('conversation', conversationId, (doc) => {
-      setCall(doc?.call ?? { active: false, participants: {} });
-    });
-    return () => {
-      unsub();
-    };
-  }, [socket, conversationId]);
-
-  // The video button (ChatPage) opens the lobby; leave() tears down via VideoCall.
-  useImperativeHandle(
+export const CallLayout = forwardRef<VideoCallHandle, CallLayoutProps>(
+  function CallLayout(
+    {
+      conversationId,
+      meId,
+      socket,
+      uglyBotSocket,
+      profiles,
+      botModel = null,
+      autoJoinBotId = null,
+      onActiveChange,
+    },
     ref,
-    () => ({
-      start: () => {
-        setCallError(null);
-        setLobbyOpen(true);
-      },
-      leave: () => videoRef.current?.leave(),
-    }),
-    [],
-  );
+  ) {
+    const videoRef = useRef<VideoCallHandle>(null);
+    const [call, setCall] = useState<CallStateDoc>({
+      active: false,
+      participants: {},
+    });
+    const [joined, setJoined] = useState(false);
+    const [lobbyOpen, setLobbyOpen] = useState(false);
+    const [callError, setCallError] = useState<string | null>(null);
+    // call.startedAt we've actively declined, so the ring doesn't re-appear for it.
+    // MUST be state, not a ref: nothing else re-renders while a ring is showing
+    // (the roster poll only runs once joined), so mutating a ref left the overlay
+    // on screen forever — Decline did nothing and its full-screen overlay swallowed
+    // every click, bricking the conversation.
+    const [declinedAt, setDeclinedAt] = useState<number>(-1);
 
-  // LOCAL participation drives the host's thread visibility (not call.active).
-  useEffect(() => {
-    onActiveChange?.(joined);
-  }, [joined, onActiveChange]);
+    const [wide, setWide] = useState(() =>
+      typeof window === "undefined"
+        ? true
+        : window.innerWidth >= SIDEBAR_MIN_WIDTH,
+    );
+    const [collapsed, setCollapsed] = useState(false); // desktop: hide panel → overlay
+    const [expanded, setExpanded] = useState(false); // mobile: grow chat below video
 
-  useEffect(() => {
-    const onResize = (): void => {
-      setWide(window.innerWidth >= SIDEBAR_MIN_WIDTH);
-    };
-    window.addEventListener('resize', onResize);
-    return () => {
-      window.removeEventListener('resize', onResize);
-    };
-  }, []);
+    // Track the full call state off the conversation doc (roster + startedAt).
+    useEffect(() => {
+      const unsub = socket.trackDoc<CallConvDoc>(
+        "conversation",
+        conversationId,
+        (doc) => {
+          setCall(doc?.call ?? { active: false, participants: {} });
+        },
+      );
+      return () => {
+        unsub();
+      };
+    }, [socket, conversationId]);
 
-  const participants = call.participants ?? {};
-  const meParticipant = !!participants[meId];
-  // A PERSON has to be calling us. Second layer under the server's bot-join
-  // guard: a bot left alone on a stale roster rang forever — it never leaves and
-  // never times out, so `active` stayed true and Decline couldn't outlive it (a
-  // resurrected call gets a new `startedAt`, so the declined id never matched
-  // again). Bots don't call people; they answer.
-  const humanCallers = Object.values(participants).filter((p) => !p.isBot && p.userId !== meId);
-  // Someone is calling us: call active, a human is in it, we're not, not joined,
-  // not in the lobby, and we haven't declined this exact call instance.
-  const incoming =
-    !!call.active &&
-    humanCallers.length > 0 &&
-    !meParticipant &&
-    !joined &&
-    !lobbyOpen &&
-    (call.startedAt ?? 0) !== declinedAt;
+    // The video button (ChatPage) opens the lobby; leave() tears down via VideoCall.
+    useImperativeHandle(
+      ref,
+      () => ({
+        start: () => {
+          setCallError(null);
+          setLobbyOpen(true);
+        },
+        leave: () => videoRef.current?.leave(),
+      }),
+      [],
+    );
 
-  // Caller = the (first, human) participant that isn't us — for the ring/lobby.
-  const callerId = Object.values(participants)
-    .filter((p) => p.userId !== meId)
-    .sort((a, b) => a.joinedAt - b.joinedAt)[0]?.userId;
-  const callerName = callerId ? profiles[callerId]?.name ?? callerId.slice(0, 8) : 'Someone';
-  const callerAvatar = callerId ? profiles[callerId]?.avatarUrl ?? null : null;
+    // LOCAL participation drives the host's thread visibility (not call.active).
+    useEffect(() => {
+      onActiveChange?.(joined);
+    }, [joined, onActiveChange]);
 
-  const { turns, appendTyped, upsertExternalTurn } = useCallTranscript(
-    socket,
-    uglyBotSocket,
-    conversationId,
-    meId,
-    joined,
-  );
+    useEffect(() => {
+      const onResize = (): void => {
+        setWide(window.innerWidth >= SIDEBAR_MIN_WIDTH);
+      };
+      window.addEventListener("resize", onResize);
+      return () => {
+        window.removeEventListener("resize", onResize);
+      };
+    }, []);
 
-  const callProfiles: CallProfiles = profiles;
+    const participants = call.participants ?? {};
+    const meParticipant = !!participants[meId];
+    // A PERSON has to be calling us. Second layer under the server's bot-join
+    // guard: a bot left alone on a stale roster rang forever — it never leaves and
+    // never times out, so `active` stayed true and Decline couldn't outlive it (a
+    // resurrected call gets a new `startedAt`, so the declined id never matched
+    // again). Bots don't call people; they answer.
+    const humanCallers = Object.values(participants).filter(
+      (p) => !p.isBot && p.userId !== meId,
+    );
+    // Someone is calling us: call active, a human is in it, we're not, not joined,
+    // not in the lobby, and we haven't declined this exact call instance.
+    const incoming =
+      !!call.active &&
+      humanCallers.length > 0 &&
+      !meParticipant &&
+      !joined &&
+      !lobbyOpen &&
+      (call.startedAt ?? 0) !== declinedAt;
 
-  // The always-mounted VideoCall stage (null until joined) + its ref/callbacks.
-  const stage = (
-    showSubs: boolean,
-    subBottom: number,
-    onToggle: (() => void) | undefined,
-    transcriptCollapsed: boolean,
-  ): React.ReactElement => (
-    <VideoCall
-      ref={videoRef}
-      conversationId={conversationId}
-      uglyBotSocket={uglyBotSocket}
-      profiles={callProfiles}
-      botModel={botModel}
-      autoJoinBotId={autoJoinBotId}
-      transcriptCollapsed={transcriptCollapsed}
-      onJoinedChange={setJoined}
-      onCallError={(m) => {
-        setCallError(m);
-        setLobbyOpen(false);
-      }}
-      {...(onToggle ? { onToggleTranscript: onToggle } : {})}
-      subtitleSlot={
-        showSubs ? <SubtitleOverlay turns={turns} meId={meId} profiles={profiles} bottom={subBottom} /> : null
-      }
-      onBotTurn={(botId, text, final) => {
-        upsertExternalTurn(botId, text, final);
-      }}
-    />
-  );
+    // Caller = the (first, human) participant that isn't us — for the ring/lobby.
+    const callerId = Object.values(participants)
+      .filter((p) => p.userId !== meId)
+      .sort((a, b) => a.joinedAt - b.joinedAt)[0]?.userId;
+    const callerName = callerId
+      ? (profiles[callerId]?.name ?? callerId.slice(0, 8))
+      : "Someone";
+    const callerAvatar = callerId
+      ? (profiles[callerId]?.avatarUrl ?? null)
+      : null;
 
-  // Overlays (lobby / ring / error) rendered above whatever layout is active.
-  const overlays = (
-    <>
-      {lobbyOpen ? (
-        <CallLobby
-          {...(callerName !== 'Someone' ? { peerName: callerName } : {})}
-          onJoin={(prefs: DevicePrefs) => {
-            setLobbyOpen(false);
-            videoRef.current?.start(prefs);
-          }}
-          onCancel={() => { setLobbyOpen(false); }}
-        />
-      ) : null}
-      {incoming ? (
-        <IncomingCall
-          callerName={callerName}
-          callerAvatarUrl={callerAvatar}
-          onAccept={() => {
-            setCallError(null);
-            setLobbyOpen(true);
-          }}
-          onDecline={() => {
-            setDeclinedAt(call.startedAt ?? 0);
-          }}
-        />
-      ) : null}
-      {callError ? (
-        <div
-          role="alert"
-          onClick={() => { setCallError(null); }}
-          style={{
-            position: 'fixed',
-            left: '50%',
-            bottom: 24,
-            transform: 'translateX(-50%)',
-            zIndex: 1002,
-            maxWidth: 'min(420px, 90vw)',
-            padding: '10px 14px',
-            background: '#1a1c22',
-            color: '#fff',
-            border: '1px solid rgba(248,113,113,0.6)',
-            fontSize: 13,
-            cursor: 'pointer',
-          }} data-id="div"
-        >
-          {callError}
-        </div>
-      ) : null}
-    </>
-  );
+    const { turns, appendTyped, upsertExternalTurn } = useCallTranscript(
+      socket,
+      uglyBotSocket,
+      conversationId,
+      meId,
+      joined,
+    );
 
-  // ── Single stable layout ──────────────────────────────────────────────────
-  // CRITICAL: VideoCall must occupy the SAME tree slot whether or not we've
-  // joined. Relocating it (the old bare-stage ↔ wrapped-layout switch) remounts
-  // it → resets `joined` → tears down the live RTCPeerConnection mid-call (the
-  // bug behind "joined but no video"). So we keep one stage slot always mounted
-  // and only (a) collapse the container to zero height when not joined and
-  // (b) mount/unmount the transcript chrome as a sibling.
-  const showSubs = wide ? collapsed : !expanded;
-  // Clears the control band AND the bottom row of tile name labels — anchored at
-  // the stage floor the caption band sat straight on top of "Ben Okafor".
-  const subBottom = wide ? 116 : 98;
-  const onToggle = wide ? () => { setCollapsed((v) => !v); } : () => { setExpanded((v) => !v); };
-  const transcriptCollapsed = wide ? collapsed : expanded;
-  const showTranscript = joined && (wide ? !collapsed : expanded);
+    const callProfiles: CallProfiles = profiles;
 
-  return (
-    <>
-      <div
-        style={{
-          flex: joined ? 1 : '0 0 0px',
-          height: joined ? undefined : 0,
-          minHeight: 0,
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: wide ? 'row' : 'column',
-          background: 'var(--app-main)',
+    // The always-mounted VideoCall stage (null until joined) + its ref/callbacks.
+    const stage = (
+      showSubs: boolean,
+      subBottom: number,
+      onToggle: (() => void) | undefined,
+      transcriptCollapsed: boolean,
+    ): React.ReactElement => (
+      <VideoCall
+        ref={videoRef}
+        conversationId={conversationId}
+        uglyBotSocket={uglyBotSocket}
+        profiles={callProfiles}
+        botModel={botModel}
+        autoJoinBotId={autoJoinBotId}
+        transcriptCollapsed={transcriptCollapsed}
+        onJoinedChange={setJoined}
+        onCallError={(m) => {
+          setCallError(m);
+          setLobbyOpen(false);
         }}
-      >
-        {/* STABLE stage slot — VideoCall lives here for its whole lifetime. */}
+        {...(onToggle ? { onToggleTranscript: onToggle } : {})}
+        subtitleSlot={
+          showSubs ? (
+            <SubtitleOverlay
+              turns={turns}
+              meId={meId}
+              profiles={profiles}
+              bottom={subBottom}
+            />
+          ) : null
+        }
+        onBotTurn={(botId, text, final) => {
+          upsertExternalTurn(botId, text, final);
+        }}
+      />
+    );
+
+    // Overlays (lobby / ring / error) rendered above whatever layout is active.
+    const overlays = (
+      <>
+        {lobbyOpen ? (
+          <CallLobby
+            {...(callerName !== "Someone" ? { peerName: callerName } : {})}
+            onJoin={(prefs: DevicePrefs) => {
+              setLobbyOpen(false);
+              videoRef.current?.start(prefs);
+            }}
+            onCancel={() => {
+              setLobbyOpen(false);
+            }}
+          />
+        ) : null}
+        {incoming ? (
+          <IncomingCall
+            callerName={callerName}
+            callerAvatarUrl={callerAvatar}
+            onAccept={() => {
+              setCallError(null);
+              setLobbyOpen(true);
+            }}
+            onDecline={() => {
+              setDeclinedAt(call.startedAt ?? 0);
+            }}
+          />
+        ) : null}
+        {callError ? (
+          <div
+            role="alert"
+            onClick={() => {
+              setCallError(null);
+            }}
+            style={{
+              position: "fixed",
+              left: "50%",
+              bottom: 24,
+              transform: "translateX(-50%)",
+              zIndex: 1002,
+              maxWidth: "min(420px, 90vw)",
+              padding: "10px 14px",
+              background: "#1a1c22",
+              color: "#fff",
+              border: "1px solid rgba(248,113,113,0.6)",
+              fontSize: 13,
+              cursor: "pointer",
+            }}
+            data-id="div"
+          >
+            {callError}
+          </div>
+        ) : null}
+      </>
+    );
+
+    // ── Single stable layout ──────────────────────────────────────────────────
+    // CRITICAL: VideoCall must occupy the SAME tree slot whether or not we've
+    // joined. Relocating it (the old bare-stage ↔ wrapped-layout switch) remounts
+    // it → resets `joined` → tears down the live RTCPeerConnection mid-call (the
+    // bug behind "joined but no video"). So we keep one stage slot always mounted
+    // and only (a) collapse the container to zero height when not joined and
+    // (b) mount/unmount the transcript chrome as a sibling.
+    const showSubs = wide ? collapsed : !expanded;
+    // Clears the control band AND the bottom row of tile name labels — anchored at
+    // the stage floor the caption band sat straight on top of "Ben Okafor".
+    const subBottom = wide ? 116 : 98;
+    const onToggle = wide
+      ? () => {
+          setCollapsed((v) => !v);
+        }
+      : () => {
+          setExpanded((v) => !v);
+        };
+    const transcriptCollapsed = wide ? collapsed : expanded;
+    const showTranscript = joined && (wide ? !collapsed : expanded);
+
+    return (
+      <>
         <div
           style={{
-            position: 'relative',
-            flex: !wide && expanded ? 'none' : 1,
-            minWidth: 0,
+            flex: joined ? 1 : "0 0 0px",
+            height: joined ? undefined : 0,
             minHeight: 0,
-            overflow: 'hidden',
-            ...(!wide && expanded ? { height: 296 } : {}),
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: wide ? "row" : "column",
+            background: "var(--app-main)",
           }}
         >
-          {stage(showSubs, subBottom, onToggle, transcriptCollapsed)}
-          {/* No always-on composer over the stage. On a 390px screen this input
+          {/* STABLE stage slot — VideoCall lives here for its whole lifetime. */}
+          <div
+            style={{
+              position: "relative",
+              flex: !wide && expanded ? "none" : 1,
+              minWidth: 0,
+              minHeight: 0,
+              overflow: "hidden",
+              ...(!wide && expanded ? { height: 296 } : {}),
+            }}
+          >
+            {stage(showSubs, subBottom, onToggle, transcriptCollapsed)}
+            {/* No always-on composer over the stage. On a 390px screen this input
               sat permanently across the video just above the control bar, so the
               first thing you saw in a call was a text box — and it covered the
               bottom row of tiles. Typing lives behind the transcript toggle in
               the control bar, which opens the panel (it has its own input). */}
-        </div>
-        {/* Transcript chrome — sibling; mounting it never moves the stage slot. */}
-        {showTranscript ? (
-          wide ? (
-            <TranscriptPanel
-              turns={turns}
-              meId={meId}
-              profiles={profiles}
-              onSend={appendTyped}
-              onCollapse={() => { setCollapsed(true); }}
-            />
-          ) : (
-            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
-              <button
-                type="button"
-                data-id="call-collapse-chat"
-                onClick={() => { setExpanded(false); }}
-                aria-label="Collapse chat"
-                title="Collapse chat"
+          </div>
+          {/* Transcript chrome — sibling; mounting it never moves the stage slot. */}
+          {showTranscript ? (
+            wide ? (
+              <TranscriptPanel
+                turns={turns}
+                meId={meId}
+                profiles={profiles}
+                onSend={appendTyped}
+                onCollapse={() => {
+                  setCollapsed(true);
+                }}
+              />
+            ) : (
+              <div
                 style={{
-                  position: 'absolute',
-                  top: 4,
-                  right: 8,
-                  zIndex: 5,
-                  width: 28,
-                  height: 28,
-                  display: 'grid',
-                  placeItems: 'center',
-                  border: 'none',
-                  background: 'transparent',
-                  color: 'var(--app-foreground-muted)',
-                  cursor: 'pointer',
+                  flex: 1,
+                  minHeight: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  position: "relative",
                 }}
               >
-                <ChevronDown size={18} />
-              </button>
-              <TranscriptPanel turns={turns} meId={meId} profiles={profiles} onSend={appendTyped} fill />
-            </div>
-          )
-        ) : null}
-      </div>
-      {overlays}
-    </>
-  );
-});
-
+                <button
+                  type="button"
+                  data-id="call-collapse-chat"
+                  onClick={() => {
+                    setExpanded(false);
+                  }}
+                  aria-label="Collapse chat"
+                  title="Collapse chat"
+                  style={{
+                    position: "absolute",
+                    top: 4,
+                    right: 8,
+                    zIndex: 5,
+                    width: 28,
+                    height: 28,
+                    display: "grid",
+                    placeItems: "center",
+                    border: "none",
+                    background: "transparent",
+                    color: "var(--app-foreground-muted)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <ChevronDown size={18} />
+                </button>
+                <TranscriptPanel
+                  turns={turns}
+                  meId={meId}
+                  profiles={profiles}
+                  onSend={appendTyped}
+                  fill
+                />
+              </div>
+            )
+          ) : null}
+        </div>
+        {overlays}
+      </>
+    );
+  },
+);

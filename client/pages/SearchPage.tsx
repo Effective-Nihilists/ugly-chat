@@ -1,7 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useApp } from 'ugly-app/client';
-import { useRouter } from '../router';
-import { useConversations } from '../lib/conversations';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useApp } from "ugly-app/client";
+import { useRouter } from "../router";
+import { useConversations } from "../lib/conversations";
 
 interface SearchHit {
   _id: string;
@@ -20,7 +26,7 @@ export default function SearchPage(): React.ReactElement {
   const { socket } = useApp();
   const router = useRouter();
   const { conversations } = useConversations();
-  const initialQ = new URLSearchParams(window.location.search).get('q') ?? '';
+  const initialQ = new URLSearchParams(window.location.search).get("q") ?? "";
   const [query, setQuery] = useState(initialQ);
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [loading, setLoading] = useState(false);
@@ -30,7 +36,8 @@ export default function SearchPage(): React.ReactElement {
   // conversationId → display title, for labelling each hit.
   const titleById = useMemo(() => {
     const m = new Map<string, string>();
-    for (const c of conversations) m.set(c.conversationId, c.title || 'Conversation');
+    for (const c of conversations)
+      m.set(c.conversationId, c.title || "Conversation");
     return m;
   }, [conversations]);
 
@@ -46,7 +53,7 @@ export default function SearchPage(): React.ReactElement {
       }
       setLoading(true);
       try {
-        const res = (await socket.request('conversationMessageSearch', {
+        const res = (await socket.request("conversationMessageSearch", {
           search: trimmed,
           limit: 50,
         })) as { items?: SearchHit[] };
@@ -55,7 +62,7 @@ export default function SearchPage(): React.ReactElement {
         setSearched(true);
       } catch (err) {
         if (mine !== seq.current) return;
-        console.error('[search] failed', err);
+        console.error("[search] failed", err);
         setHits([]);
         setSearched(true);
       } finally {
@@ -68,51 +75,86 @@ export default function SearchPage(): React.ReactElement {
   // Debounced search as the user types; keep `?q=` in the URL.
   useEffect(() => {
     const url = new URL(window.location.href);
-    if (query) url.searchParams.set('q', query);
-    else url.searchParams.delete('q');
-    window.history.replaceState(null, '', url.toString());
+    if (query) url.searchParams.set("q", query);
+    else url.searchParams.delete("q");
+    window.history.replaceState(null, "", url.toString());
     const t = setTimeout(() => void runSearch(query), 250);
-    return () => { clearTimeout(t); };
+    return () => {
+      clearTimeout(t);
+    };
   }, [query, runSearch]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--app-main)' }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        background: "var(--app-main)",
+      }}
+    >
       <div
         style={{
           height: 52,
           flexShrink: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderBottom: '1px solid var(--app-border)',
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          borderBottom: "1px solid var(--app-border)",
         }}
       >
-        <span style={{ fontFamily: 'var(--app-font-heading)', fontWeight: 800, fontSize: 17, color: 'var(--app-foreground)' }}>
+        <span
+          style={{
+            fontFamily: "var(--app-font-heading)",
+            fontWeight: 800,
+            fontSize: 17,
+            color: "var(--app-foreground)",
+          }}
+        >
           Search messages
         </span>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-        <div style={{ maxWidth: 900, margin: '0 auto', padding: '16px 16px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+        <div
+          style={{
+            maxWidth: 900,
+            margin: "0 auto",
+            padding: "16px 16px 24px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 16,
+          }}
+        >
           <div
             style={{
-              display: 'flex',
-              alignItems: 'center',
+              display: "flex",
+              alignItems: "center",
               gap: 8,
-              padding: '0 14px',
+              padding: "0 14px",
               height: 48,
               borderRadius: 16,
-              border: '2px solid var(--app-primary)',
-              background: 'var(--app-main)',
+              border: "2px solid var(--app-primary)",
+              background: "var(--app-main)",
             }}
           >
             <SearchIcon />
             <input
               autoFocus
               value={query}
-              onChange={(e) => { setQuery(e.target.value); }}
+              onChange={(e) => {
+                setQuery(e.target.value);
+              }}
               placeholder="Search all messages…"
-              style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 16, color: 'var(--app-foreground)' }} data-id="search-all-messages"
+              style={{
+                flex: 1,
+                border: "none",
+                background: "transparent",
+                outline: "none",
+                fontSize: 16,
+                color: "var(--app-foreground)",
+              }}
+              data-id="search-all-messages"
             />
           </div>
 
@@ -123,32 +165,57 @@ export default function SearchPage(): React.ReactElement {
           ) : hits.length === 0 && searched ? (
             <Hint text={`No messages matching "${query.trim()}".`} />
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: "flex", flexDirection: "column" }}>
               {hits.map((h) => (
                 <button
                   key={h._id}
                   type="button"
                   className="uc-row"
-                  onClick={() => { router.push(':conversationId', { conversationId: h.conversationId }); }}
+                  onClick={() => {
+                    router.push(":conversationId", {
+                      conversationId: h.conversationId,
+                    });
+                  }}
                   style={{
-                    display: 'flex',
-                    flexDirection: 'column',
+                    display: "flex",
+                    flexDirection: "column",
                     gap: 3,
-                    width: '100%',
-                    padding: '10px 8px',
-                    border: 'none',
-                    borderBottom: '1px solid var(--app-border)',
-                    background: 'transparent',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    font: 'inherit',
-                  }} data-id="button"
+                    width: "100%",
+                    padding: "10px 8px",
+                    border: "none",
+                    borderBottom: "1px solid var(--app-border)",
+                    background: "transparent",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    font: "inherit",
+                  }}
+                  data-id="button"
                 >
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--app-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {titleById.get(h.conversationId) ?? 'Conversation'}
+                  <span
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: "var(--app-primary)",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {titleById.get(h.conversationId) ?? "Conversation"}
                   </span>
-                  <span style={{ fontSize: 14, color: 'var(--app-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {highlight(snippet(h.markdown ?? h.text ?? ''), query.trim())}
+                  <span
+                    style={{
+                      fontSize: 14,
+                      color: "var(--app-foreground)",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {highlight(
+                      snippet(h.markdown ?? h.text ?? ""),
+                      query.trim(),
+                    )}
                   </span>
                 </button>
               ))}
@@ -162,7 +229,11 @@ export default function SearchPage(): React.ReactElement {
 
 // Collapse markdown/whitespace to a single-line preview.
 function snippet(s: string): string {
-  return s.replace(/[#*_`>~\-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 200);
+  return s
+    .replace(/[#*_`>~\-]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 200);
 }
 
 // Bold the matched substring(s) within the preview.
@@ -176,7 +247,14 @@ function highlight(text: string, q: string): React.ReactNode {
   while ((i = lower.indexOf(ql, from)) !== -1) {
     if (i > from) parts.push(text.slice(from, i));
     parts.push(
-      <mark key={i} style={{ background: 'var(--app-secondary)', color: 'inherit', padding: 0 }}>
+      <mark
+        key={i}
+        style={{
+          background: "var(--app-secondary)",
+          color: "inherit",
+          padding: 0,
+        }}
+      >
         {text.slice(i, i + q.length)}
       </mark>,
     );
@@ -187,12 +265,32 @@ function highlight(text: string, q: string): React.ReactNode {
 }
 
 function Hint({ text }: { text: string }): React.ReactElement {
-  return <div style={{ padding: '32px 8px', textAlign: 'center', fontSize: 14, color: 'var(--app-foreground)', opacity: 0.45 }}>{text}</div>;
+  return (
+    <div
+      style={{
+        padding: "32px 8px",
+        textAlign: "center",
+        fontSize: 14,
+        color: "var(--app-foreground)",
+        opacity: 0.45,
+      }}
+    >
+      {text}
+    </div>
+  );
 }
 
 function SearchIcon(): React.ReactElement {
   return (
-    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="var(--app-primary)" strokeWidth={2} style={{ flexShrink: 0 }}>
+    <svg
+      width={18}
+      height={18}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="var(--app-primary)"
+      strokeWidth={2}
+      style={{ flexShrink: 0 }}
+    >
       <circle cx={11} cy={11} r={7} />
       <line x1={21} y1={21} x2={16.65} y2={16.65} />
     </svg>

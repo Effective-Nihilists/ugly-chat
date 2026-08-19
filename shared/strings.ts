@@ -1,4 +1,4 @@
-import { defineStrings } from 'ugly-app/shared';
+import { defineStrings } from "ugly-app/shared";
 
 // ─── App string table ────────────────────────────────────────────────────────
 // Every user-facing string in the app belongs here.
@@ -16,11 +16,11 @@ export interface AppStringTable {
 
 // ─── Supported languages ─────────────────────────────────────────────────────
 
-export type AppLang = 'en' | 'es';
+export type AppLang = "en" | "es";
 
 // ─── Definition ──────────────────────────────────────────────────────────────
 
 export const stringsDef = defineStrings<AppStringTable, AppLang>({
-  defaultLang: 'en',
-  langs: ['en', 'es'] as const,
+  defaultLang: "en",
+  langs: ["en", "es"] as const,
 });

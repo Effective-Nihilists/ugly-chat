@@ -17,17 +17,17 @@
  * no crash, no white screen. Captions still work because TTS is independent of
  * the render.
  */
-import React, { Suspense, useEffect, useRef, useState } from 'react';
-import type { TalkingAvatarProps } from 'ugly-app/three/client';
-import { useTTS } from 'ugly-app/client';
-import type { UglyBotSocket } from 'ugly-app/client';
-import { Bot } from 'lucide-react';
-import { BOT_AVATAR_URL, ttsVoiceForBot } from '../lib/avatar';
+import React, { Suspense, useEffect, useRef, useState } from "react";
+import type { TalkingAvatarProps } from "ugly-app/three/client";
+import { useTTS } from "ugly-app/client";
+import type { UglyBotSocket } from "ugly-app/client";
+import { Bot } from "lucide-react";
+import { BOT_AVATAR_URL, ttsVoiceForBot } from "../lib/avatar";
 
 // Client-only chunk: three.js + the avatar scene never reach the server build
 // and stay out of the main app bundle.
 const TalkingAvatar = React.lazy(() =>
-  import('ugly-app/three/client').then((m) => ({
+  import("ugly-app/three/client").then((m) => ({
     default: m.TalkingAvatar as React.ComponentType<TalkingAvatarProps>,
   })),
 );
@@ -40,10 +40,10 @@ const READY_TIMEOUT_MS = 8000;
 // Cheap WebGL-availability probe — if the browser can't make a GL context there's
 // no point loading the three.js chunk; go straight to the neutral fallback.
 function webglAvailable(): boolean {
-  if (typeof document === 'undefined') return false;
+  if (typeof document === "undefined") return false;
   try {
-    const c = document.createElement('canvas');
-    return !!(c.getContext('webgl2') ?? c.getContext('webgl'));
+    const c = document.createElement("canvas");
+    return !!(c.getContext("webgl2") ?? c.getContext("webgl"));
   } catch {
     return false;
   }
@@ -76,38 +76,39 @@ function NeutralBotTile({ label }: { label: string }): React.ReactElement {
     <div
       data-id="bot-avatar-fallback"
       style={{
-        position: 'absolute',
+        position: "absolute",
         inset: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
         gap: 14,
-        background: 'radial-gradient(circle at 50% 42%, rgba(255,85,0,0.16), transparent 55%), #0b0d12',
-        color: 'rgba(255,255,255,0.62)',
+        background:
+          "radial-gradient(circle at 50% 42%, rgba(255,85,0,0.16), transparent 55%), #0b0d12",
+        color: "rgba(255,255,255,0.62)",
       }}
     >
       <div
         style={{
           width: 96,
           height: 96,
-          display: 'grid',
-          placeItems: 'center',
-          border: '1px solid rgba(255,85,0,0.5)',
-          background: 'rgba(255,85,0,0.10)',
-          color: '#ff5500',
+          display: "grid",
+          placeItems: "center",
+          border: "1px solid rgba(255,85,0,0.5)",
+          background: "rgba(255,85,0,0.10)",
+          color: "#ff5500",
         }}
       >
         <Bot size={44} />
       </div>
       <span
         style={{
-          fontFamily: 'var(--app-font-mono)',
+          fontFamily: "var(--app-font-mono)",
           fontSize: 12,
           fontWeight: 600,
-          letterSpacing: '0.14em',
-          textTransform: 'uppercase',
-          color: '#fff',
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          color: "#fff",
         }}
       >
         {label}
@@ -135,7 +136,7 @@ class AvatarErrorBoundary extends React.Component<
     return { failed: true };
   }
   override componentDidCatch(error: unknown): void {
-    console.warn('[BotAvatarTile] avatar render failed, falling back', error);
+    console.warn("[BotAvatarTile] avatar render failed, falling back", error);
     this.props.onError();
   }
   override render(): React.ReactNode {
@@ -158,14 +159,16 @@ export function BotAvatarTile({
   // Pause the avatar (unmount the render loop) when the tab is hidden — saves
   // battery; remounting on re-show reloads fast from the warm chunk cache.
   const [hidden, setHidden] = useState(
-    () => typeof document !== 'undefined' && document.hidden,
+    () => typeof document !== "undefined" && document.hidden,
   );
   useEffect(() => {
-    if (typeof document === 'undefined') return undefined;
-    const onVis = (): void => { setHidden(document.hidden); };
-    document.addEventListener('visibilitychange', onVis);
+    if (typeof document === "undefined") return undefined;
+    const onVis = (): void => {
+      setHidden(document.hidden);
+    };
+    document.addEventListener("visibilitychange", onVis);
     return () => {
-      document.removeEventListener('visibilitychange', onVis);
+      document.removeEventListener("visibilitychange", onVis);
     };
   }, []);
   // Stop any in-flight speech on unmount (call end) so audio doesn't outlive the
@@ -199,7 +202,7 @@ export function BotAvatarTile({
         onSubtitleIndex: (i) => onSubRef.current?.(i),
       })
       .catch((err: unknown) => {
-        console.warn('[BotAvatarTile] tts.play failed', err);
+        console.warn("[BotAvatarTile] tts.play failed", err);
       });
     // Re-run only when the text to speak changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -210,7 +213,7 @@ export function BotAvatarTile({
   useEffect(() => {
     if (ready || failed || hidden) return undefined;
     const t = setTimeout(() => {
-      console.warn('[BotAvatarTile] avatar not ready in time, falling back');
+      console.warn("[BotAvatarTile] avatar not ready in time, falling back");
       setFailed(true);
     }, READY_TIMEOUT_MS);
     return () => {
@@ -218,20 +221,20 @@ export function BotAvatarTile({
     };
   }, [ready, failed, hidden]);
 
-  const label = name ?? 'ugly-bot';
+  const label = name ?? "ugly-bot";
 
   return (
     <div
       data-id="bot-avatar-tile"
       style={{
-        position: 'relative',
-        width: '100%',
-        height: '100%',
-        display: 'grid',
-        placeItems: 'center',
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        display: "grid",
+        placeItems: "center",
         // Dark stage + soft orange radial glow behind the head (mock parity).
         background:
-          'radial-gradient(circle at 50% 43%, rgba(255,85,0,0.18), transparent 55%), #07080B',
+          "radial-gradient(circle at 50% 43%, rgba(255,85,0,0.18), transparent 55%), #07080B",
       }}
     >
       {failed || hidden ? (
@@ -239,7 +242,9 @@ export function BotAvatarTile({
       ) : (
         <AvatarErrorBoundary
           fallback={<NeutralBotTile label={label} />}
-          onError={() => { setFailed(true); }}
+          onError={() => {
+            setFailed(true);
+          }}
         >
           <Suspense fallback={<NeutralBotTile label={label} />}>
             <TalkingAvatar
@@ -248,8 +253,10 @@ export function BotAvatarTile({
               speaking={tts.playing}
               framing="head"
               background="transparent"
-              style={{ width: '100%', height: '100%' }}
-              onReady={() => { setReady(true); }}
+              style={{ width: "100%", height: "100%" }}
+              onReady={() => {
+                setReady(true);
+              }}
             />
           </Suspense>
         </AvatarErrorBoundary>

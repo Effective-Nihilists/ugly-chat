@@ -11,12 +11,12 @@
  * fetch it without CORS (blob.ugly.bot has none). Mirrors UGLY_BOT_GLB_URL in
  * shared/bots.ts; per-bot GLBs can override via the `glbUrl` prop.
  */
-export const BOT_AVATAR_URL = 'https://ugly.chat/public/avatars/ugly-bot.glb';
+export const BOT_AVATAR_URL = "https://ugly.chat/public/avatars/ugly-bot.glb";
 
 /**
  * Map a bot id to its InWorld TTS voice. All custom bots currently share one
  * default voice; per-bot voices can be added here when configurable.
  */
 export function ttsVoiceForBot(_botId: string): string {
-  return 'inworld-Ashley';
+  return "inworld-Ashley";
 }

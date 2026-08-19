@@ -25,6 +25,7 @@ state machine with three modes:
    an LLM scores recall 1–10; at **≥9** the quote is considered memorized and returns to `start`.
 
 Key primitives the original relied on (from the old `ugly_bot` Python SDK):
+
 - per-conversation persisted state: `data_get()` / `data_set(...)` (mode, current quote/attribution,
   `comprehension_start`, `comprehension_correct_count`, `comprehension_last_time`, `memorization_start`).
 - `message_history(start=…)`, `messages_to_text(...)`, `MessageVisibility`, `MessageColor`.
@@ -34,6 +35,7 @@ Key primitives the original relied on (from the old `ugly_bot` Python SDK):
 - handler exports: `conversation_start` (init), `message_direct` (per user message), `set_quote` (button).
 
 ### Known bugs noted in the original (carry forward as requirements/tests)
+
 - It must **start every new quote in comprehension mode** (it sometimes jumped straight to FITB after
   generating a new quote).
 - After a quote is learned it should **resume at the last-memorized quote**, not restart at the first.
@@ -46,7 +48,7 @@ A fresh `ugly-app init` project deployed to Workers (mirror the ugly.chat/ugly-f
   - `quoteSet` — `{ ownerId, title, public, items: [{ title, quote, attribution }] }` (generalize the
     hard-coded `quotes` array; let users/admins create banks; seed with sebrina's Bahá'í bank from `main.py`).
   - `memorizeProgress` — `{ userId, quoteSetId, quoteIndex, mode: 'start'|'comprehension'|'fitb'|'done',
-    comprehensionCorrect, lastScoredAt, startedAt, memorizedQuoteIndexes: number[] }` (replaces the old
+comprehensionCorrect, lastScoredAt, startedAt, memorizedQuoteIndexes: number[] }` (replaces the old
     per-conversation `data_*`; key by (userId, quoteSetId) so progress survives and resumes correctly).
 - **Server endpoints** (`shared/api.ts` + handlers): `quoteSetList/Create`, `sessionStart`
   (pick/resume quote), `answer` (the `message_direct` equivalent — runs the mode state machine, scores
@@ -55,7 +57,7 @@ A fresh `ugly-app init` project deployed to Workers (mirror the ugly.chat/ugly-f
   framework `textGenCreate`); pick a strong available model (gpt_4o works today; deepseek as fallback).
 - **State machine** ported from `main.py` with the two bug-fixes above baked in + unit tests:
   - new quote → always `comprehension`; 3×(≥8) → `fitb`; `fitb` ≥9 → mark index memorized, advance to the
-    next *un-memorized* index (resume logic), not index 0.
+    next _un-memorized_ index (resume logic), not index 0.
 - **UI** — a focused study screen (current quote card, chat-style Q&A, progress: comprehension x/3,
   FITB difficulty, quotes memorized N/total). Reuse the framework conversation UI if convenient, but the
   state lives in `memorizeProgress`, not in chat messages.
@@ -63,11 +65,13 @@ A fresh `ugly-app init` project deployed to Workers (mirror the ugly.chat/ugly-f
   SRS algorithm). Add a `nextReviewAt` per memorized item + a daily cron to surface due reviews.
 
 ## Migration / onboarding for sebrina
+
 - Seed a public `quoteSet` "Bahá'í Writings" from the `quotes` array in `main.py`.
 - Her account is `ph2fotkUZ1e4y_btuu430` (post identity-repoint). No old Mems state is portable
   (it lived in the Python bot's per-conversation store); she restarts cleanly.
 
 ## Status
+
 - [x] Original source preserved (`main.py`, `requirements.txt`).
 - [ ] `ugly-app init ugly-memorize` + collections + endpoints + state machine (+ tests for the 2 bugs).
 - [ ] Seed Bahá'í quote bank.

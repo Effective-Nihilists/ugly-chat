@@ -17,7 +17,7 @@
  *      → pull: SDP offer + requiresImmediateRenegotiation
  *   6. realtimeRenegotiate(mySession, {answer})          → finalize the pull
  */
-const SFU_BASE = 'https://rtc.live.cloudflare.com/v1';
+const SFU_BASE = "https://rtc.live.cloudflare.com/v1";
 
 interface RealtimeCfg {
   appId: string;
@@ -28,15 +28,16 @@ interface RealtimeCfg {
 
 function cfg(): RealtimeCfg | null {
   const env =
-    (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
+    (globalThis as { process?: { env?: Record<string, string | undefined> } })
+      .process?.env ?? {};
   const appId = env.REALTIME_APP_ID;
   const appSecret = env.REALTIME_APP_SECRET;
   if (!appId || !appSecret) return null;
   return {
     appId,
     appSecret,
-    turnKeyId: env.REALTIME_TURN_KEY_ID ?? '',
-    turnKeyToken: env.REALTIME_TURN_KEY_TOKEN ?? '',
+    turnKeyId: env.REALTIME_TURN_KEY_ID ?? "",
+    turnKeyToken: env.REALTIME_TURN_KEY_TOKEN ?? "",
   };
 }
 
@@ -47,55 +48,79 @@ export function realtimeEnabled(): boolean {
 async function sfu(
   c: RealtimeCfg,
   path: string,
-  method: 'POST' | 'PUT',
+  method: "POST" | "PUT",
   body?: unknown,
 ): Promise<unknown> {
   const res = await fetch(`${SFU_BASE}/apps/${c.appId}${path}`, {
     method,
-    headers: { Authorization: `Bearer ${c.appSecret}`, 'Content-Type': 'application/json' },
+    headers: {
+      Authorization: `Bearer ${c.appSecret}`,
+      "Content-Type": "application/json",
+    },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
   const json: unknown = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(`SFU ${path} → ${res.status}: ${JSON.stringify(json).slice(0, 240)}`);
+    throw new Error(
+      `SFU ${path} → ${res.status}: ${JSON.stringify(json).slice(0, 240)}`,
+    );
   }
   return json;
 }
 
 export async function realtimeNewSession(): Promise<{ sessionId: string }> {
   const c = cfg();
-  if (!c) throw new Error('Realtime not configured');
-  const j = (await sfu(c, '/sessions/new', 'POST')) as { sessionId?: string };
-  if (!j.sessionId) throw new Error('SFU returned no sessionId');
+  if (!c) throw new Error("Realtime not configured");
+  const j = (await sfu(c, "/sessions/new", "POST")) as { sessionId?: string };
+  if (!j.sessionId) throw new Error("SFU returned no sessionId");
   return { sessionId: j.sessionId };
 }
 
 /** Relay a tracks/new call (push local OR pull remote — the client builds the body). */
-export async function realtimeTracks(sessionId: string, body: unknown): Promise<unknown> {
+export async function realtimeTracks(
+  sessionId: string,
+  body: unknown,
+): Promise<unknown> {
   const c = cfg();
-  if (!c) throw new Error('Realtime not configured');
-  return sfu(c, `/sessions/${encodeURIComponent(sessionId)}/tracks/new`, 'POST', body);
+  if (!c) throw new Error("Realtime not configured");
+  return sfu(
+    c,
+    `/sessions/${encodeURIComponent(sessionId)}/tracks/new`,
+    "POST",
+    body,
+  );
 }
 
 /** Finalize a pull renegotiation (client answers the SFU's offer). */
-export async function realtimeRenegotiate(sessionId: string, body: unknown): Promise<unknown> {
+export async function realtimeRenegotiate(
+  sessionId: string,
+  body: unknown,
+): Promise<unknown> {
   const c = cfg();
-  if (!c) throw new Error('Realtime not configured');
-  return sfu(c, `/sessions/${encodeURIComponent(sessionId)}/renegotiate`, 'PUT', body);
+  if (!c) throw new Error("Realtime not configured");
+  return sfu(
+    c,
+    `/sessions/${encodeURIComponent(sessionId)}/renegotiate`,
+    "PUT",
+    body,
+  );
 }
 
 /** Short-lived STUN/TURN ICE servers minted from the TURN key (falls back to
  *  Cloudflare's public STUN when no TURN key is configured). */
 export async function realtimeIceServers(): Promise<{ iceServers: unknown }> {
-  const fallback = { iceServers: [{ urls: 'stun:stun.cloudflare.com:3478' }] };
+  const fallback = { iceServers: [{ urls: "stun:stun.cloudflare.com:3478" }] };
   const c = cfg();
   if (!c?.turnKeyId || !c.turnKeyToken) return fallback;
   try {
     const res = await fetch(
       `${SFU_BASE}/turn/keys/${encodeURIComponent(c.turnKeyId)}/credentials/generate-ice-servers`,
       {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${c.turnKeyToken}`, 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${c.turnKeyToken}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ ttl: 3600 }),
       },
     );

@@ -1,12 +1,29 @@
-import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { useApp, useTTS } from 'ugly-app/client';
-import type { UglyBotSocket } from 'ugly-app/client';
-import type { DBObject } from 'ugly-app/shared';
-import { Mic, MicOff, Video, VideoOff, Captions, UserPlus, Bot as BotIcon, PhoneOff } from 'lucide-react';
-import { BotAvatarTile } from './BotAvatarTile';
-import { ParticipantAvatarTile } from './call/ParticipantAvatarTile';
-import type { DevicePrefs } from './call/useAvDevices';
-import { classifyMediaError } from './call/mediaErrors';
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useApp, useTTS } from "ugly-app/client";
+import type { UglyBotSocket } from "ugly-app/client";
+import type { DBObject } from "ugly-app/shared";
+import {
+  Mic,
+  MicOff,
+  Video,
+  VideoOff,
+  Captions,
+  UserPlus,
+  Bot as BotIcon,
+  PhoneOff,
+} from "lucide-react";
+import { BotAvatarTile } from "./BotAvatarTile";
+import { ParticipantAvatarTile } from "./call/ParticipantAvatarTile";
+import type { DevicePrefs } from "./call/useAvDevices";
+import { classifyMediaError } from "./call/mediaErrors";
 
 export interface VideoCallHandle {
   /** Join the call with the device prefs chosen in the lobby. */
@@ -27,7 +44,13 @@ interface MessageDoc extends DBObject {
 }
 
 const toMs = (v: unknown): number =>
-  v instanceof Date ? v.getTime() : typeof v === 'number' ? v : typeof v === 'string' ? Date.parse(v) : 0;
+  v instanceof Date
+    ? v.getTime()
+    : typeof v === "number"
+      ? v
+      : typeof v === "string"
+        ? Date.parse(v)
+        : 0;
 
 // Minimal profile shape (name + avatar) — supplied by ChatPage's resolved roster
 // so call tiles/chips never show a raw `5c0e5c0e…` id.
@@ -103,7 +126,10 @@ interface ConversationDoc extends DBObject {
 }
 
 // Cloudflare Realtime track/SDP wire shapes (subset we use).
-interface SdpMessage { type: 'offer' | 'answer'; sdp: string }
+interface SdpMessage {
+  type: "offer" | "answer";
+  sdp: string;
+}
 interface TracksResponse {
   sessionDescription?: SdpMessage;
   requiresImmediateRenegotiation?: boolean;
@@ -113,17 +139,17 @@ interface TracksResponse {
 // ── Immersive stage palette (fixed dark/light-on-dark in EVERY theme) ─────────
 const C = {
   stageBg:
-    'radial-gradient(circle at 50% 38%, rgba(255,85,0,0.10), transparent 58%),' +
-    ' radial-gradient(circle at 50% 90%, rgba(59,130,246,0.06), transparent 55%), #07080B',
-  hairline: 'rgba(255,255,255,0.12)',
-  panel: 'rgba(8,9,11,0.72)',
-  textOnDark: '#fff',
-  faintOnDark: 'rgba(255,255,255,0.4)',
-  brand: '#ff5500',
-  brandGrad: 'linear-gradient(135deg, #ff8a4d 0%, #ff5500 50%, #d2470f 100%)',
-  brandGlow: 'rgba(255,85,0,0.30)',
+    "radial-gradient(circle at 50% 38%, rgba(255,85,0,0.10), transparent 58%)," +
+    " radial-gradient(circle at 50% 90%, rgba(59,130,246,0.06), transparent 55%), #07080B",
+  hairline: "rgba(255,255,255,0.12)",
+  panel: "rgba(8,9,11,0.72)",
+  textOnDark: "#fff",
+  faintOnDark: "rgba(255,255,255,0.4)",
+  brand: "#ff5500",
+  brandGrad: "linear-gradient(135deg, #ff8a4d 0%, #ff5500 50%, #d2470f 100%)",
+  brandGlow: "rgba(255,85,0,0.30)",
   /** Reserved for End call — the only destructive control on the stage. */
-  danger: '#dc2626',
+  danger: "#dc2626",
 };
 
 /** Tiles that share the stage grid before the rest are demoted to a filmstrip. */
@@ -150,7 +176,9 @@ const SPEAK_RELEASE = 5;
  * having no indicator. A winner must clear the noise floor and beat the
  * runner-up by a margin.
  */
-export function pickSpeaker(levels: { id: string; rms: number }[]): string | null {
+export function pickSpeaker(
+  levels: { id: string; rms: number }[],
+): string | null {
   const sorted = [...levels].sort((a, b) => b.rms - a.rms);
   const top = sorted[0];
   if (!top || top.rms < SPEAK_FLOOR) return null;
@@ -167,7 +195,10 @@ export function pickSpeaker(levels: { id: string; rms: number }[]): string | nul
  * and every tile looked identical. That left "who said that?" unanswerable the
  * moment a call had more than two people in it.
  */
-function useActiveSpeaker(streams: Map<string, MediaStream>, enabled: boolean): string | null {
+function useActiveSpeaker(
+  streams: Map<string, MediaStream>,
+  enabled: boolean,
+): string | null {
   const [activeId, setActiveId] = useState<string | null>(null);
   const ctxRef = useRef<AudioContext | null>(null);
 
@@ -195,7 +226,7 @@ function useActiveSpeaker(streams: Map<string, MediaStream>, enabled: boolean): 
         src.connect(an);
         nodes.push({ id, src, an, buf: new Uint8Array(an.frequencyBinCount) });
       } catch (err) {
-        console.warn('[VideoCall] audio analyser failed', err);
+        console.warn("[VideoCall] audio analyser failed", err);
       }
     }
     if (nodes.length === 0) return undefined;
@@ -270,11 +301,19 @@ export function rankPeers(
 ): { heroPeers: CallParticipant[]; stripPeers: CallParticipant[] } {
   if (peers.length <= GRID_MAX) return { heroPeers: peers, stripPeers: [] };
   const active = peers.find((p) => p.userId === activeId) ?? peers[0]!;
-  return { heroPeers: [active], stripPeers: peers.filter((p) => p.userId !== active.userId) };
+  return {
+    heroPeers: [active],
+    stripPeers: peers.filter((p) => p.userId !== active.userId),
+  };
 }
 
-function resolveName(id: string, meId: string, isBot: boolean, profiles: CallProfiles): string {
-  if (isBot) return profiles[id]?.name ?? 'ugly-bot';
+function resolveName(
+  id: string,
+  meId: string,
+  isBot: boolean,
+  profiles: CallProfiles,
+): string {
+  if (isBot) return profiles[id]?.name ?? "ugly-bot";
   return profiles[id]?.name ?? id.slice(0, 8);
 }
 
@@ -282,7 +321,7 @@ function fmtClock(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
   const mm = Math.floor(s / 60);
   const ss = s % 60;
-  return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+  return `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
 }
 
 /**
@@ -298,671 +337,852 @@ function fmtClock(ms: number): string {
  * RENDER (the immersive stage: HUD, tiles, controls, self-PiP) is restyled to
  * match mockups/call-bot.html + call-2p.html.
  */
-export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(function VideoCall(
-  {
-    conversationId,
-    uglyBotSocket = null,
-    onBotTurn,
-    profiles = {},
-    botModel = null,
-    autoJoinBotId = null,
-    transcriptCollapsed = false,
-    onToggleTranscript,
-    onAddPerson,
-    subtitleSlot,
-    onJoinedChange,
-    onCallError,
-  },
-  ref,
-) {
-  const { socket, userId } = useApp();
-  const [call, setCall] = useState<CallState>({ active: false, participants: {} });
-  const [joined, setJoined] = useState(false);
-  const [status, setStatus] = useState<string>('');
-  const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
-
-  // Speaker (audiooutput) chosen in the lobby — applied to remote media via
-  // setSinkId. Empty = system default.
-  const [speakerId, setSpeakerId] = useState<string>('');
-
-  // Notify the host whenever local join state flips (drives exit-call view).
-  const onJoinedChangeRef = useRef(onJoinedChange);
-  onJoinedChangeRef.current = onJoinedChange;
-  useEffect(() => {
-    onJoinedChangeRef.current?.(joined);
-  }, [joined]);
-
-  // ── Speak a peer's TYPED message via TTS (so silent typed text is heard) ────
-  // STT captions are live mic audio (already heard over the SFU) → never spoken.
-  // The speaking peer's tile lip-syncs (3D avatar) / pulses (audio viz) off the
-  // shared TTS analyser. Bots speak via their own BotAvatarTile path.
-  const peerTts = useTTS(uglyBotSocket!);
-  const [speakingPeerId, setSpeakingPeerId] = useState<string | null>(null);
-  const spokenCaptionAt = useRef<Map<string, number>>(new Map());
-  useEffect(() => {
-    if (!joined || !uglyBotSocket) return;
-    const captions = call.captions ?? {};
-    for (const cap of Object.values(captions)) {
-      if (!cap.typed || !cap.final || cap.userId === userId) continue;
-      if (spokenCaptionAt.current.get(cap.userId) === cap.at) continue;
-      spokenCaptionAt.current.set(cap.userId, cap.at);
-      setSpeakingPeerId(cap.userId);
-      void peerTts
-        .play(cap.text)
-        .catch((err: unknown) => { console.warn('[VideoCall] peer TTS failed', err); })
-        .finally(() => { setSpeakingPeerId((cur) => (cur === cap.userId ? null : cur)); });
-    }
-  }, [call.captions, joined, uglyBotSocket, userId, peerTts]);
-
-  const localVideoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const pcRef = useRef<RTCPeerConnection | null>(null);
-  const sessionIdRef = useRef<string>('');
-  const pulledRef = useRef<Set<string>>(new Set());
-  const midToUserRef = useRef<Map<string, string>>(new Map());
-  // Serialize renegotiations — overlapping setLocal/RemoteDescription corrupts state.
-  const chainRef = useRef<Promise<void>>(Promise.resolve());
-
-  // Live roster from conversation.call
-  useEffect(() => {
-    const unsub = socket.trackDoc<ConversationDoc>('conversation', conversationId, (doc) => {
-      setCall(doc?.call ?? { active: false, participants: {} });
+export const VideoCall = forwardRef<VideoCallHandle, VideoCallProps>(
+  function VideoCall(
+    {
+      conversationId,
+      uglyBotSocket = null,
+      onBotTurn,
+      profiles = {},
+      botModel = null,
+      autoJoinBotId = null,
+      transcriptCollapsed = false,
+      onToggleTranscript,
+      onAddPerson,
+      subtitleSlot,
+      onJoinedChange,
+      onCallError,
+    },
+    ref,
+  ) {
+    const { socket, userId } = useApp();
+    const [call, setCall] = useState<CallState>({
+      active: false,
+      participants: {},
     });
-    return () => { unsub(); };
-  }, [socket, conversationId]);
+    const [joined, setJoined] = useState(false);
+    const [status, setStatus] = useState<string>("");
+    const [remoteStreams, setRemoteStreams] = useState<
+      Map<string, MediaStream>
+    >(new Map());
 
-  // ── Bot speech ───────────────────────────────────────────────────────────
-  // The bot speaks its newest message once. We watch the message stream and,
-  // when a fresh bot message arrives, stash its text as the tile's `speakText`.
-  // `spokenIds` guards against re-speaking on every trackDocs re-emit. This is
-  // purely additive — it never touches the SFU/track/renegotiation path.
-  const [pendingBotText, setPendingBotText] = useState<{ botId: string; text: string } | null>(null);
-  const spokenIds = useRef<Set<string>>(new Set());
-  const joinedAtRef = useRef<number>(0);
-  useEffect(() => {
-    if (!joined || !uglyBotSocket) return undefined;
-    if (!joinedAtRef.current) joinedAtRef.current = Date.now();
-    const unsub = socket.trackDocs<MessageDoc>(
-      'message',
-      { keys: { conversationId }, sort: { created: -1 }, limit: 20 },
-      (docs) => {
-        const list = Array.isArray(docs) ? docs : [];
-        // Newest bot, non-system, non-deleted message after we joined the call.
-        const latest = list
-          .filter(
-            (d) =>
-              !d.deleted &&
-              !d.systemType &&
-              d.userId.startsWith('bot-') &&
-              (!!d.text || !!d.markdown) &&
-              toMs(d.created) >= joinedAtRef.current,
+    // Speaker (audiooutput) chosen in the lobby — applied to remote media via
+    // setSinkId. Empty = system default.
+    const [speakerId, setSpeakerId] = useState<string>("");
+
+    // Notify the host whenever local join state flips (drives exit-call view).
+    const onJoinedChangeRef = useRef(onJoinedChange);
+    onJoinedChangeRef.current = onJoinedChange;
+    useEffect(() => {
+      onJoinedChangeRef.current?.(joined);
+    }, [joined]);
+
+    // ── Speak a peer's TYPED message via TTS (so silent typed text is heard) ────
+    // STT captions are live mic audio (already heard over the SFU) → never spoken.
+    // The speaking peer's tile lip-syncs (3D avatar) / pulses (audio viz) off the
+    // shared TTS analyser. Bots speak via their own BotAvatarTile path.
+    const peerTts = useTTS(uglyBotSocket!);
+    const [speakingPeerId, setSpeakingPeerId] = useState<string | null>(null);
+    const spokenCaptionAt = useRef<Map<string, number>>(new Map());
+    useEffect(() => {
+      if (!joined || !uglyBotSocket) return;
+      const captions = call.captions ?? {};
+      for (const cap of Object.values(captions)) {
+        if (!cap.typed || !cap.final || cap.userId === userId) continue;
+        if (spokenCaptionAt.current.get(cap.userId) === cap.at) continue;
+        spokenCaptionAt.current.set(cap.userId, cap.at);
+        setSpeakingPeerId(cap.userId);
+        void peerTts
+          .play(cap.text)
+          .catch((err: unknown) => {
+            console.warn("[VideoCall] peer TTS failed", err);
+          })
+          .finally(() => {
+            setSpeakingPeerId((cur) => (cur === cap.userId ? null : cur));
+          });
+      }
+    }, [call.captions, joined, uglyBotSocket, userId, peerTts]);
+
+    const localVideoRef = useRef<HTMLVideoElement>(null);
+    const streamRef = useRef<MediaStream | null>(null);
+    const pcRef = useRef<RTCPeerConnection | null>(null);
+    const sessionIdRef = useRef<string>("");
+    const pulledRef = useRef<Set<string>>(new Set());
+    const midToUserRef = useRef<Map<string, string>>(new Map());
+    // Serialize renegotiations — overlapping setLocal/RemoteDescription corrupts state.
+    const chainRef = useRef<Promise<void>>(Promise.resolve());
+
+    // Live roster from conversation.call
+    useEffect(() => {
+      const unsub = socket.trackDoc<ConversationDoc>(
+        "conversation",
+        conversationId,
+        (doc) => {
+          setCall(doc?.call ?? { active: false, participants: {} });
+        },
+      );
+      return () => {
+        unsub();
+      };
+    }, [socket, conversationId]);
+
+    // ── Bot speech ───────────────────────────────────────────────────────────
+    // The bot speaks its newest message once. We watch the message stream and,
+    // when a fresh bot message arrives, stash its text as the tile's `speakText`.
+    // `spokenIds` guards against re-speaking on every trackDocs re-emit. This is
+    // purely additive — it never touches the SFU/track/renegotiation path.
+    const [pendingBotText, setPendingBotText] = useState<{
+      botId: string;
+      text: string;
+    } | null>(null);
+    const spokenIds = useRef<Set<string>>(new Set());
+    const joinedAtRef = useRef<number>(0);
+    useEffect(() => {
+      if (!joined || !uglyBotSocket) return undefined;
+      if (!joinedAtRef.current) joinedAtRef.current = Date.now();
+      const unsub = socket.trackDocs<MessageDoc>(
+        "message",
+        { keys: { conversationId }, sort: { created: -1 }, limit: 20 },
+        (docs) => {
+          const list = Array.isArray(docs) ? docs : [];
+          // Newest bot, non-system, non-deleted message after we joined the call.
+          const latest = list
+            .filter(
+              (d) =>
+                !d.deleted &&
+                !d.systemType &&
+                d.userId.startsWith("bot-") &&
+                (!!d.text || !!d.markdown) &&
+                toMs(d.created) >= joinedAtRef.current,
+            )
+            .sort((a, b) => toMs(b.created) - toMs(a.created))[0];
+          if (!latest || spokenIds.current.has(latest._id)) return;
+          spokenIds.current.add(latest._id);
+          setPendingBotText({
+            botId: latest.userId,
+            text: latest.text ?? latest.markdown ?? "",
+          });
+        },
+      );
+      return () => {
+        unsub();
+      };
+    }, [joined, uglyBotSocket, socket, conversationId]);
+
+    // Attach the local stream when the tile mounts.
+    useEffect(() => {
+      if (localVideoRef.current && streamRef.current) {
+        localVideoRef.current.srcObject = streamRef.current;
+      }
+    });
+
+    // Run a negotiation step serialized on one chain — overlapping
+    // setLocal/RemoteDescription (e.g. the local push colliding with a pull)
+    // corrupts the RTCPeerConnection, so EVERYTHING goes through here.
+    const negotiate = useCallback((fn: () => Promise<void>): void => {
+      chainRef.current = chainRef.current.then(fn).catch((err: unknown) => {
+        console.error("[VideoCall] negotiate failed", err);
+      });
+    }, []);
+
+    // Pull every peer's not-yet-pulled tracks (batched per peer = one
+    // renegotiation), serialized via `negotiate`. Idempotent through pulledRef.
+    const pullPeers = useCallback(
+      (participants: Record<string, CallParticipant>) => {
+        const pc = pcRef.current;
+        const mySession = sessionIdRef.current;
+        if (!pc || !mySession) return;
+        for (const p of Object.values(participants)) {
+          if (
+            p.userId === userId ||
+            p.isBot ||
+            !p.sessionId ||
+            !p.tracks?.length
           )
-          .sort((a, b) => toMs(b.created) - toMs(a.created))[0];
-        if (!latest || spokenIds.current.has(latest._id)) return;
-        spokenIds.current.add(latest._id);
-        setPendingBotText({ botId: latest.userId, text: latest.text ?? latest.markdown ?? '' });
-      },
-    );
-    return () => {
-      unsub();
-    };
-  }, [joined, uglyBotSocket, socket, conversationId]);
-
-  // Attach the local stream when the tile mounts.
-  useEffect(() => {
-    if (localVideoRef.current && streamRef.current) {
-      localVideoRef.current.srcObject = streamRef.current;
-    }
-  });
-
-  // Run a negotiation step serialized on one chain — overlapping
-  // setLocal/RemoteDescription (e.g. the local push colliding with a pull)
-  // corrupts the RTCPeerConnection, so EVERYTHING goes through here.
-  const negotiate = useCallback((fn: () => Promise<void>): void => {
-    chainRef.current = chainRef.current.then(fn).catch((err: unknown) => {
-      console.error('[VideoCall] negotiate failed', err);
-    });
-  }, []);
-
-  // Pull every peer's not-yet-pulled tracks (batched per peer = one
-  // renegotiation), serialized via `negotiate`. Idempotent through pulledRef.
-  const pullPeers = useCallback((participants: Record<string, CallParticipant>) => {
-    const pc = pcRef.current;
-    const mySession = sessionIdRef.current;
-    if (!pc || !mySession) return;
-    for (const p of Object.values(participants)) {
-      if (p.userId === userId || p.isBot || !p.sessionId || !p.tracks?.length) continue;
-      const peerSession = p.sessionId;
-      const fresh = p.tracks.filter((tn) => !pulledRef.current.has(`${peerSession}/${tn}`));
-      if (fresh.length === 0) continue;
-      for (const tn of fresh) pulledRef.current.add(`${peerSession}/${tn}`);
-      const peerUserId = p.userId;
-      const keys = fresh.map((tn) => `${peerSession}/${tn}`);
-      negotiate(async () => {
-        try {
-          const resp = (await socket.request('realtimeTracks', {
-            sessionId: mySession,
-            body: { tracks: fresh.map((trackName) => ({ location: 'remote', sessionId: peerSession, trackName })) },
-          })) as TracksResponse & { errorCode?: number; errorDescription?: string };
-          if (resp.errorCode) throw new Error(`SFU pull ${resp.errorCode}: ${resp.errorDescription ?? ''}`);
-          for (const t of resp.tracks ?? []) {
-            if (t.mid) midToUserRef.current.set(t.mid, peerUserId);
-          }
-          if (resp.requiresImmediateRenegotiation && resp.sessionDescription) {
-            await pc.setRemoteDescription(resp.sessionDescription);
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            await socket.request('realtimeRenegotiate', {
-              sessionId: mySession,
-              body: { sessionDescription: { type: 'answer', sdp: answer.sdp } },
-            });
-          }
-        } catch (err) {
-          // Un-mark so the next poll retries (transient SFU/reneg failure).
-          keys.forEach((k) => pulledRef.current.delete(k));
-          throw err;
+            continue;
+          const peerSession = p.sessionId;
+          const fresh = p.tracks.filter(
+            (tn) => !pulledRef.current.has(`${peerSession}/${tn}`),
+          );
+          if (fresh.length === 0) continue;
+          for (const tn of fresh) pulledRef.current.add(`${peerSession}/${tn}`);
+          const peerUserId = p.userId;
+          const keys = fresh.map((tn) => `${peerSession}/${tn}`);
+          negotiate(async () => {
+            try {
+              const resp = (await socket.request("realtimeTracks", {
+                sessionId: mySession,
+                body: {
+                  tracks: fresh.map((trackName) => ({
+                    location: "remote",
+                    sessionId: peerSession,
+                    trackName,
+                  })),
+                },
+              })) as TracksResponse & {
+                errorCode?: number;
+                errorDescription?: string;
+              };
+              if (resp.errorCode)
+                throw new Error(
+                  `SFU pull ${resp.errorCode}: ${resp.errorDescription ?? ""}`,
+                );
+              for (const t of resp.tracks ?? []) {
+                if (t.mid) midToUserRef.current.set(t.mid, peerUserId);
+              }
+              if (
+                resp.requiresImmediateRenegotiation &&
+                resp.sessionDescription
+              ) {
+                await pc.setRemoteDescription(resp.sessionDescription);
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                await socket.request("realtimeRenegotiate", {
+                  sessionId: mySession,
+                  body: {
+                    sessionDescription: { type: "answer", sdp: answer.sdp },
+                  },
+                });
+              }
+            } catch (err) {
+              // Un-mark so the next poll retries (transient SFU/reneg failure).
+              keys.forEach((k) => pulledRef.current.delete(k));
+              throw err;
+            }
+          });
         }
+      },
+      [socket, userId, negotiate],
+    );
+
+    // React immediately to roster updates we DO receive…
+    useEffect(() => {
+      if (joined) pullPeers(call.participants);
+    }, [joined, call.participants, pullPeers]);
+
+    // …but trackDoc delivery can be stale/coalesced, so also poll the
+    // AUTHORITATIVE roster (getDoc) and pull from it. Idempotent via pulledRef;
+    // failed pulls are removed so they retry. This is what makes the call
+    // reliably bidirectional regardless of trackDoc timing.
+    useEffect(() => {
+      if (!joined) return;
+      const t = setInterval(() => {
+        // Fresh SERVER read — client getDoc only returns the stale trackDoc cache.
+        void socket
+          .request("conversationVideoState", { conversationId })
+          .then((c) => {
+            const call = c as CallState | null;
+            if (call) setCall(call); // keep the RENDER roster fresh too
+            pullPeers(call?.participants ?? {});
+          })
+          .catch(() => undefined);
+      }, 1500);
+      return () => {
+        clearInterval(t);
+      };
+    }, [joined, socket, conversationId, pullPeers]);
+
+    const join = useCallback(
+      async (prefs?: DevicePrefs) => {
+        if (prefs?.speakerId) setSpeakerId(prefs.speakerId);
+        // Acquire local media with the lobby-chosen devices. Permission was already
+        // granted in the lobby, so this won't re-prompt — but if it fails (device
+        // unplugged, busy) SURFACE it instead of the old silent console.warn, and do
+        // NOT proceed to publish an empty session (which left both sides black).
+        try {
+          streamRef.current = await navigator.mediaDevices.getUserMedia({
+            video: prefs?.cameraId
+              ? { deviceId: { exact: prefs.cameraId } }
+              : true,
+            audio: prefs?.micId ? { deviceId: { exact: prefs.micId } } : true,
+          });
+          if (localVideoRef.current)
+            localVideoRef.current.srcObject = streamRef.current;
+        } catch (err) {
+          const c = classifyMediaError(err);
+          console.error("[VideoCall] getUserMedia failed:", err);
+          onCallError?.(c.help);
+          setStatus("error");
+          return; // abort join — don't publish a track-less session
+        }
+        await socket.request("conversationVideoJoin", { conversationId });
+        setJoined(true);
+
+        // ── Cloudflare Realtime: publish local media ──────────────────────────
+        try {
+          const ice = (await socket.request("realtimeIceServers", {})) as {
+            iceServers?: RTCIceServer[];
+          };
+          const pc = new RTCPeerConnection({
+            iceServers: ice.iceServers ?? [],
+            bundlePolicy: "max-bundle",
+          });
+          pcRef.current = pc;
+          // Test hook: lets the e2e read RTCPeerConnection.getStats() to prove real
+          // inbound media (framesDecoded/bytesReceived). Harmless in production.
+          if (typeof window !== "undefined")
+            (window as Window & { __ucpc?: RTCPeerConnection }).__ucpc = pc;
+          pc.addEventListener("track", (e) => {
+            const mid = e.transceiver.mid ?? "";
+            const uid = midToUserRef.current.get(mid);
+            if (!uid) return;
+            setRemoteStreams((prev) => {
+              const next = new Map(prev);
+              const ms = next.get(uid) ?? new MediaStream();
+              if (!ms.getTracks().includes(e.track)) ms.addTrack(e.track);
+              next.set(uid, ms);
+              return next;
+            });
+          });
+          pc.addEventListener("connectionstatechange", () => {
+            setStatus(pc.connectionState);
+          });
+
+          const { sessionId } = (await socket.request(
+            "realtimeNewSession",
+            {},
+          )) as { sessionId: string };
+          sessionIdRef.current = sessionId;
+
+          // Push local tracks + advertise them — as the FIRST step on the
+          // negotiation chain, so the offer/answer can't overlap a pull.
+          negotiate(async () => {
+            const stream = streamRef.current;
+            if (!stream) return;
+            const transceivers = stream
+              .getTracks()
+              .map((track) =>
+                pc.addTransceiver(track, { direction: "sendonly" }),
+              );
+            await pc.setLocalDescription(await pc.createOffer());
+            const localTracks = transceivers
+              .filter((t) => t.mid)
+              .map((t) => ({
+                location: "local" as const,
+                mid: t.mid!,
+                trackName: `${userId}-${t.sender.track?.kind ?? "track"}`,
+              }));
+            const resp = (await socket.request("realtimeTracks", {
+              sessionId,
+              body: {
+                sessionDescription: {
+                  type: "offer",
+                  sdp: pc.localDescription?.sdp,
+                },
+                tracks: localTracks,
+              },
+            })) as TracksResponse;
+            if (resp.sessionDescription)
+              await pc.setRemoteDescription(resp.sessionDescription);
+            await socket.request("conversationVideoPublish", {
+              conversationId,
+              sessionId,
+              tracks: localTracks.map((t) => t.trackName),
+            });
+          });
+        } catch (err) {
+          console.error("[VideoCall] realtime publish failed", err);
+          setStatus("error");
+        }
+      },
+      [socket, conversationId, userId, negotiate, onCallError],
+    );
+
+    const leave = useCallback(async () => {
+      streamRef.current?.getTracks().forEach((t) => {
+        t.stop();
       });
-    }
-  }, [socket, userId, negotiate]);
+      streamRef.current = null;
+      pcRef.current?.close();
+      pcRef.current = null;
+      sessionIdRef.current = "";
+      pulledRef.current.clear();
+      midToUserRef.current.clear();
+      setRemoteStreams(new Map());
+      spokenIds.current.clear();
+      joinedAtRef.current = 0;
+      setPendingBotText(null);
+      await socket.request("conversationVideoLeave", { conversationId });
+      setJoined(false);
+    }, [socket, conversationId]);
 
-  // React immediately to roster updates we DO receive…
-  useEffect(() => {
-    if (joined) pullPeers(call.participants);
-  }, [joined, call.participants, pullPeers]);
+    const addBot = useCallback(
+      (botId = "bot-ugly") => {
+        void socket
+          .request("conversationVideoBotJoin", { conversationId, botId })
+          .catch((err: unknown) => {
+            console.error("[VideoCall] add bot failed", err);
+          });
+      },
+      [socket, conversationId],
+    );
 
-  // …but trackDoc delivery can be stale/coalesced, so also poll the
-  // AUTHORITATIVE roster (getDoc) and pull from it. Idempotent via pulledRef;
-  // failed pulls are removed so they retry. This is what makes the call
-  // reliably bidirectional regardless of trackDoc timing.
-  useEffect(() => {
-    if (!joined) return;
-    const t = setInterval(() => {
-      // Fresh SERVER read — client getDoc only returns the stale trackDoc cache.
-      void socket
-        .request('conversationVideoState', { conversationId })
-        .then((c) => {
-          const call = c as CallState | null;
-          if (call) setCall(call); // keep the RENDER roster fresh too
-          pullPeers(call?.participants ?? {});
-        })
-        .catch(() => undefined);
-    }, 1500);
-    return () => { clearInterval(t); };
-  }, [joined, socket, conversationId, pullPeers]);
+    // Auto-join the conversation's bot once, after the local user joins a call in a
+    // bot conversation, so the centered 3D BotAvatarTile mounts (without the user
+    // clicking "Add ugly-bot"). Guarded by a ref so the roster poll can't re-fire
+    // it. Purely invokes the existing bot-join RPC — no SFU/track changes.
+    const autoJoinedRef = useRef(false);
+    useEffect(() => {
+      if (!joined || !autoJoinBotId) return;
+      if (autoJoinedRef.current) return;
+      const hasBot = Object.values(call.participants).some((p) => p.isBot);
+      if (hasBot) return;
+      autoJoinedRef.current = true;
+      addBot(autoJoinBotId);
+    }, [joined, autoJoinBotId, call.participants, addBot]);
 
-  const join = useCallback(async (prefs?: DevicePrefs) => {
-    if (prefs?.speakerId) setSpeakerId(prefs.speakerId);
-    // Acquire local media with the lobby-chosen devices. Permission was already
-    // granted in the lobby, so this won't re-prompt — but if it fails (device
-    // unplugged, busy) SURFACE it instead of the old silent console.warn, and do
-    // NOT proceed to publish an empty session (which left both sides black).
-    try {
-      streamRef.current = await navigator.mediaDevices.getUserMedia({
-        video: prefs?.cameraId ? { deviceId: { exact: prefs.cameraId } } : true,
-        audio: prefs?.micId ? { deviceId: { exact: prefs.micId } } : true,
+    // Reset the auto-join guard when leaving so a re-join re-invites the bot.
+    useEffect(() => {
+      if (!joined) autoJoinedRef.current = false;
+    }, [joined]);
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        start: (prefs?: DevicePrefs) => void join(prefs),
+        leave: () => void leave(),
+      }),
+      [join, leave],
+    );
+
+    // ── Local device toggles (render-level only — flips track.enabled; never
+    // touches the SFU/track/renegotiation path). ───────────────────────────────
+    const [micOn, setMicOn] = useState(true);
+    const [camOn, setCamOn] = useState(true);
+    // Publish mic/cam to the roster so PEERS can show it. Flipping only the local
+    // track's `enabled` left the other side with silence / a black rectangle and
+    // no idea why.
+    const publishMedia = useCallback(
+      (mic: boolean, cam: boolean) => {
+        void socket
+          .request("conversationVideoMedia", {
+            conversationId,
+            micOn: mic,
+            camOn: cam,
+          })
+          .catch(() => undefined);
+      },
+      [socket, conversationId],
+    );
+    const toggleMic = useCallback(() => {
+      setMicOn((on) => {
+        const next = !on;
+        streamRef.current?.getAudioTracks().forEach((t) => (t.enabled = next));
+        publishMedia(next, camOn);
+        return next;
       });
-      if (localVideoRef.current) localVideoRef.current.srcObject = streamRef.current;
-    } catch (err) {
-      const c = classifyMediaError(err);
-      console.error('[VideoCall] getUserMedia failed:', err);
-      onCallError?.(c.help);
-      setStatus('error');
-      return; // abort join — don't publish a track-less session
-    }
-    await socket.request('conversationVideoJoin', { conversationId });
-    setJoined(true);
-
-    // ── Cloudflare Realtime: publish local media ──────────────────────────
-    try {
-      const ice = (await socket.request('realtimeIceServers', {})) as { iceServers?: RTCIceServer[] };
-      const pc = new RTCPeerConnection({
-        iceServers: ice.iceServers ?? [],
-        bundlePolicy: 'max-bundle',
+    }, [publishMedia, camOn]);
+    const toggleCam = useCallback(() => {
+      setCamOn((on) => {
+        const next = !on;
+        streamRef.current?.getVideoTracks().forEach((t) => (t.enabled = next));
+        publishMedia(micOn, next);
+        return next;
       });
-      pcRef.current = pc;
-      // Test hook: lets the e2e read RTCPeerConnection.getStats() to prove real
-      // inbound media (framesDecoded/bytesReceived). Harmless in production.
-      if (typeof window !== 'undefined') (window as Window & { __ucpc?: RTCPeerConnection }).__ucpc = pc;
-      pc.addEventListener('track', (e) => {
-        const mid = e.transceiver.mid ?? '';
-        const uid = midToUserRef.current.get(mid);
-        if (!uid) return;
-        setRemoteStreams((prev) => {
-          const next = new Map(prev);
-          const ms = next.get(uid) ?? new MediaStream();
-          if (!ms.getTracks().includes(e.track)) ms.addTrack(e.track);
-          next.set(uid, ms);
-          return next;
-        });
-      });
-      pc.addEventListener('connectionstatechange', () => { setStatus(pc.connectionState); });
+    }, [publishMedia, micOn]);
 
-      const { sessionId } = (await socket.request('realtimeNewSession', {})) as { sessionId: string };
-      sessionIdRef.current = sessionId;
+    // ── Elapsed-call timer (real time from local join). ─────────────────────────
+    const [now, setNow] = useState(() => Date.now());
+    useEffect(() => {
+      if (!joined) return undefined;
+      if (!joinedAtRef.current) joinedAtRef.current = Date.now();
+      const id = setInterval(() => {
+        setNow(Date.now());
+      }, 1000);
+      return () => {
+        clearInterval(id);
+      };
+    }, [joined]);
+    const elapsed =
+      joined && joinedAtRef.current ? now - joinedAtRef.current : 0;
 
-      // Push local tracks + advertise them — as the FIRST step on the
-      // negotiation chain, so the offer/answer can't overlap a pull.
-      negotiate(async () => {
-        const stream = streamRef.current;
-        if (!stream) return;
-        const transceivers = stream
-          .getTracks()
-          .map((track) => pc.addTransceiver(track, { direction: 'sendonly' }));
-        await pc.setLocalDescription(await pc.createOffer());
-        const localTracks = transceivers
-          .filter((t) => t.mid)
-          .map((t) => ({ location: 'local' as const, mid: t.mid!, trackName: `${userId}-${t.sender.track?.kind ?? 'track'}` }));
-        const resp = (await socket.request('realtimeTracks', {
-          sessionId,
-          body: { sessionDescription: { type: 'offer', sdp: pc.localDescription?.sdp }, tracks: localTracks },
-        })) as TracksResponse;
-        if (resp.sessionDescription) await pc.setRemoteDescription(resp.sessionDescription);
-        await socket.request('conversationVideoPublish', {
-          conversationId,
-          sessionId,
-          tracks: localTracks.map((t) => t.trackName),
-        });
-      });
-    } catch (err) {
-      console.error('[VideoCall] realtime publish failed', err);
-      setStatus('error');
-    }
-  }, [socket, conversationId, userId, negotiate, onCallError]);
+    // Is the local camera actually producing frames? `camOn` only reflects what we
+    // ASKED for — a granted-but-dead camera kept it true while the tile stayed
+    // black. videoWidth is the only honest signal that pixels exist.
+    const [selfLive, setSelfLive] = useState(false);
+    const camOnAtRef = useRef(0);
+    useEffect(() => {
+      if (!joined || !camOn) {
+        setSelfLive(false);
+        camOnAtRef.current = 0;
+        return undefined;
+      }
+      if (!camOnAtRef.current) camOnAtRef.current = Date.now();
+      const id = setInterval(() => {
+        const el = localVideoRef.current;
+        if (!el) return;
+        // A paused preview never recovers on its own — a mute toggle left the
+        // element paused with a live track behind it, i.e. a black tile claiming
+        // the camera was on. Nudge it back rather than report a lie.
+        if (el.paused) void el.play().catch(() => undefined);
+        // videoWidth is the honest "pixels exist" signal — but some environments
+        // never report it for the LOCAL preview even with a live track, which left
+        // "Starting camera…" pinned over a working camera for the whole call. So
+        // after a short grace, a live+enabled track counts as on too.
+        const vt = streamRef.current?.getVideoTracks()[0];
+        const trackLive = !!vt && vt.readyState === "live" && vt.enabled;
+        const graced = Date.now() - camOnAtRef.current > 3500;
+        setSelfLive(el.videoWidth > 0 || (graced && trackLive));
+      }, 400);
+      return () => {
+        clearInterval(id);
+      };
+    }, [joined, camOn]);
 
-  const leave = useCallback(async () => {
-    streamRef.current?.getTracks().forEach((t) => { t.stop(); });
-    streamRef.current = null;
-    pcRef.current?.close();
-    pcRef.current = null;
-    sessionIdRef.current = '';
-    pulledRef.current.clear();
-    midToUserRef.current.clear();
-    setRemoteStreams(new Map());
-    spokenIds.current.clear();
-    joinedAtRef.current = 0;
-    setPendingBotText(null);
-    await socket.request('conversationVideoLeave', { conversationId });
-    setJoined(false);
-  }, [socket, conversationId]);
+    const participants = Object.values(call.participants);
 
-  const addBot = useCallback(
-    (botId = 'bot-ugly') => {
-      void socket
-        .request('conversationVideoBotJoin', { conversationId, botId })
-        .catch((err: unknown) => { console.error('[VideoCall] add bot failed', err); });
-    },
-    [socket, conversationId],
-  );
+    const botParticipant = useMemo(
+      () => participants.find((p) => p.isBot) ?? null,
+      [participants],
+    );
 
-  // Auto-join the conversation's bot once, after the local user joins a call in a
-  // bot conversation, so the centered 3D BotAvatarTile mounts (without the user
-  // clicking "Add ugly-bot"). Guarded by a ref so the roster poll can't re-fire
-  // it. Purely invokes the existing bot-join RPC — no SFU/track changes.
-  const autoJoinedRef = useRef(false);
-  useEffect(() => {
-    if (!joined || !autoJoinBotId) return;
-    if (autoJoinedRef.current) return;
-    const hasBot = Object.values(call.participants).some((p) => p.isBot);
-    if (hasBot) return;
-    autoJoinedRef.current = true;
-    addBot(autoJoinBotId);
-  }, [joined, autoJoinBotId, call.participants, addBot]);
+    // Everyone but us gets a tile. The stage used to render only `participants
+    // .find(p => p.userId !== userId)`, so a 3-way call showed exactly one peer.
+    const peers = useMemo(
+      () => participants.filter((p) => p.userId !== userId),
+      [participants, userId],
+    );
 
-  // Reset the auto-join guard when leaving so a re-join re-invites the bot.
-  useEffect(() => {
-    if (!joined) autoJoinedRef.current = false;
-  }, [joined]);
+    // Active speaker = a bot mid-utterance, a peer whose typed text we're speaking,
+    // or — the case that actually matters on a real call — whoever's mic is hot.
+    const activeAudioId = useActiveSpeaker(remoteStreams, joined);
+    const activeId = pendingBotText?.botId ?? speakingPeerId ?? activeAudioId;
 
-  useImperativeHandle(ref, () => ({ start: (prefs?: DevicePrefs) => void join(prefs), leave: () => void leave() }), [join, leave]);
+    const { heroPeers, stripPeers } = useMemo(
+      () => rankPeers(peers, activeId),
+      [peers, activeId],
+    );
 
-  // ── Local device toggles (render-level only — flips track.enabled; never
-  // touches the SFU/track/renegotiation path). ───────────────────────────────
-  const [micOn, setMicOn] = useState(true);
-  const [camOn, setCamOn] = useState(true);
-  // Publish mic/cam to the roster so PEERS can show it. Flipping only the local
-  // track's `enabled` left the other side with silence / a black rectangle and
-  // no idea why.
-  const publishMedia = useCallback(
-    (mic: boolean, cam: boolean) => {
-      void socket
-        .request('conversationVideoMedia', { conversationId, micOn: mic, camOn: cam })
-        .catch(() => undefined);
-    },
-    [socket, conversationId],
-  );
-  const toggleMic = useCallback(() => {
-    setMicOn((on) => {
-      const next = !on;
-      streamRef.current?.getAudioTracks().forEach((t) => (t.enabled = next));
-      publishMedia(next, camOn);
-      return next;
-    });
-  }, [publishMedia, camOn]);
-  const toggleCam = useCallback(() => {
-    setCamOn((on) => {
-      const next = !on;
-      streamRef.current?.getVideoTracks().forEach((t) => (t.enabled = next));
-      publishMedia(micOn, next);
-      return next;
-    });
-  }, [publishMedia, micOn]);
+    const isSpeaking = (p: CallParticipant): boolean =>
+      p.isBot ? pendingBotText?.botId === p.userId : activeId === p.userId;
 
-  // ── Elapsed-call timer (real time from local join). ─────────────────────────
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!joined) return undefined;
-    if (!joinedAtRef.current) joinedAtRef.current = Date.now();
-    const id = setInterval(() => { setNow(Date.now()); }, 1000);
-    return () => { clearInterval(id); };
-  }, [joined]);
-  const elapsed = joined && joinedAtRef.current ? now - joinedAtRef.current : 0;
+    // Render the immersive stage ONLY when the LOCAL user has joined. A peer (or a
+    // never-leaving bot) keeping `call.active` true must not strand us on an empty
+    // stage after we leave — CallLayout shows the incoming-call ring for the
+    // not-yet-joined case instead.
+    if (!joined) return null;
 
-  // Is the local camera actually producing frames? `camOn` only reflects what we
-  // ASKED for — a granted-but-dead camera kept it true while the tile stayed
-  // black. videoWidth is the only honest signal that pixels exist.
-  const [selfLive, setSelfLive] = useState(false);
-  const camOnAtRef = useRef(0);
-  useEffect(() => {
-    if (!joined || !camOn) {
-      setSelfLive(false);
-      camOnAtRef.current = 0;
-      return undefined;
-    }
-    if (!camOnAtRef.current) camOnAtRef.current = Date.now();
-    const id = setInterval(() => {
-      const el = localVideoRef.current;
-      if (!el) return;
-      // A paused preview never recovers on its own — a mute toggle left the
-      // element paused with a live track behind it, i.e. a black tile claiming
-      // the camera was on. Nudge it back rather than report a lie.
-      if (el.paused) void el.play().catch(() => undefined);
-      // videoWidth is the honest "pixels exist" signal — but some environments
-      // never report it for the LOCAL preview even with a live track, which left
-      // "Starting camera…" pinned over a working camera for the whole call. So
-      // after a short grace, a live+enabled track counts as on too.
-      const vt = streamRef.current?.getVideoTracks()[0];
-      const trackLive = !!vt && vt.readyState === 'live' && vt.enabled;
-      const graced = Date.now() - camOnAtRef.current > 3500;
-      setSelfLive(el.videoWidth > 0 || (graced && trackLive));
-    }, 400);
-    return () => { clearInterval(id); };
-  }, [joined, camOn]);
+    const connState = status || "connecting";
+    // HUD stat line — REAL values only. Bot call → model · live; else → roster.
+    // `status` is OUR connection to the SFU, so sitting alone in a call read
+    // "1 in call · connected" — the app claiming a connection to nobody. Until a
+    // second human is actually on the roster, say we're ringing.
+    const otherHumans = participants.filter(
+      (p) => p.userId !== userId && !p.isBot,
+    );
+    const statLine = botParticipant
+      ? `${botModel ? `${botModel} · ` : ""}live`
+      : otherHumans.length === 0
+        ? "ringing · nobody has joined yet"
+        : `${participants.length} in call${connState ? ` · ${connState}` : ""}`;
 
-  const participants = Object.values(call.participants);
+    return (
+      <div
+        data-id="video-call"
+        className="uc-call-root"
+        style={{
+          position: "absolute",
+          inset: 0,
+          overflow: "hidden",
+          background: C.stageBg,
+        }}
+      >
+        {/* ── viewport corner brackets ──────────────────────────────────────── */}
+        {(["tl", "tr", "bl", "br"] as const).map((c) => {
+          const base: React.CSSProperties = {
+            position: "absolute",
+            width: 16,
+            height: 16,
+            border: `1px solid rgba(255,255,255,0.18)`,
+            pointerEvents: "none",
+          };
+          const pos: Record<string, React.CSSProperties> = {
+            tl: {
+              top: 14,
+              left: 14,
+              borderRight: "none",
+              borderBottom: "none",
+            },
+            tr: {
+              top: 14,
+              right: 14,
+              borderLeft: "none",
+              borderBottom: "none",
+            },
+            bl: {
+              bottom: 14,
+              left: 14,
+              borderRight: "none",
+              borderTop: "none",
+            },
+            br: {
+              bottom: 14,
+              right: 14,
+              borderLeft: "none",
+              borderTop: "none",
+            },
+          };
+          return <span key={c} style={{ ...base, ...pos[c] }} aria-hidden />;
+        })}
 
-  const botParticipant = useMemo(() => participants.find((p) => p.isBot) ?? null, [participants]);
+        {/* ── HUD top-left: LIVE timer + real stat line ─────────────────────── */}
+        <div className="uc-hud">
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 7,
+              fontFamily: "var(--app-font-mono, monospace)",
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: "0.1em",
+              color: C.textOnDark,
+            }}
+          >
+            <span
+              className="uc-call-rec"
+              style={{
+                width: 8,
+                height: 8,
+                background: "#f87171",
+                borderRadius: "50%",
+              }}
+            />
+            LIVE · {fmtClock(elapsed)}
+          </span>
+          <span
+            style={{
+              fontFamily: "var(--app-font-mono, monospace)",
+              fontSize: 10.5,
+              // Was 40% white — legible on the empty stage it was designed
+              // against, invisible once a camera feed sat behind it.
+              color: "rgba(255,255,255,0.9)",
+              letterSpacing: "0.06em",
+            }}
+          >
+            {statLine}
+          </span>
+        </div>
 
-  // Everyone but us gets a tile. The stage used to render only `participants
-  // .find(p => p.userId !== userId)`, so a 3-way call showed exactly one peer.
-  const peers = useMemo(
-    () => participants.filter((p) => p.userId !== userId),
-    [participants, userId],
-  );
-
-  // Active speaker = a bot mid-utterance, a peer whose typed text we're speaking,
-  // or — the case that actually matters on a real call — whoever's mic is hot.
-  const activeAudioId = useActiveSpeaker(remoteStreams, joined);
-  const activeId = pendingBotText?.botId ?? speakingPeerId ?? activeAudioId;
-
-  const { heroPeers, stripPeers } = useMemo(
-    () => rankPeers(peers, activeId),
-    [peers, activeId],
-  );
-
-  const isSpeaking = (p: CallParticipant): boolean =>
-    p.isBot ? pendingBotText?.botId === p.userId : activeId === p.userId;
-
-  // Render the immersive stage ONLY when the LOCAL user has joined. A peer (or a
-  // never-leaving bot) keeping `call.active` true must not strand us on an empty
-  // stage after we leave — CallLayout shows the incoming-call ring for the
-  // not-yet-joined case instead.
-  if (!joined) return null;
-
-  const connState = status || 'connecting';
-  // HUD stat line — REAL values only. Bot call → model · live; else → roster.
-  // `status` is OUR connection to the SFU, so sitting alone in a call read
-  // "1 in call · connected" — the app claiming a connection to nobody. Until a
-  // second human is actually on the roster, say we're ringing.
-  const otherHumans = participants.filter((p) => p.userId !== userId && !p.isBot);
-  const statLine = botParticipant
-    ? `${botModel ? `${botModel} · ` : ''}live`
-    : otherHumans.length === 0
-      ? 'ringing · nobody has joined yet'
-      : `${participants.length} in call${connState ? ` · ${connState}` : ''}`;
-
-  return (
-    <div
-      data-id="video-call"
-      className="uc-call-root"
-      style={{
-        position: 'absolute',
-        inset: 0,
-        overflow: 'hidden',
-        background: C.stageBg,
-      }}
-    >
-      {/* ── viewport corner brackets ──────────────────────────────────────── */}
-      {(['tl', 'tr', 'bl', 'br'] as const).map((c) => {
-        const base: React.CSSProperties = {
-          position: 'absolute',
-          width: 16,
-          height: 16,
-          border: `1px solid rgba(255,255,255,0.18)`,
-          pointerEvents: 'none',
-        };
-        const pos: Record<string, React.CSSProperties> = {
-          tl: { top: 14, left: 14, borderRight: 'none', borderBottom: 'none' },
-          tr: { top: 14, right: 14, borderLeft: 'none', borderBottom: 'none' },
-          bl: { bottom: 14, left: 14, borderRight: 'none', borderTop: 'none' },
-          br: { bottom: 14, right: 14, borderLeft: 'none', borderTop: 'none' },
-        };
-        return <span key={c} style={{ ...base, ...pos[c] }} aria-hidden />;
-      })}
-
-      {/* ── HUD top-left: LIVE timer + real stat line ─────────────────────── */}
-      <div className="uc-hud">
-        <span
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 7,
-            fontFamily: 'var(--app-font-mono, monospace)',
-            fontSize: 11,
-            fontWeight: 600,
-            letterSpacing: '0.1em',
-            color: C.textOnDark,
-          }}
-        >
-          <span className="uc-call-rec" style={{ width: 8, height: 8, background: '#f87171', borderRadius: '50%' }} />
-          LIVE · {fmtClock(elapsed)}
-        </span>
-        <span
-          style={{
-            fontFamily: 'var(--app-font-mono, monospace)',
-            fontSize: 10.5,
-            // Was 40% white — legible on the empty stage it was designed
-            // against, invisible once a camera feed sat behind it.
-            color: 'rgba(255,255,255,0.9)',
-            letterSpacing: '0.06em',
-          }}
-        >
-          {statLine}
-        </span>
-      </div>
-
-      {/* ── stage: adaptive tile grid ─────────────────────────────────────────
+        {/* ── stage: adaptive tile grid ─────────────────────────────────────────
           The stage used to render ONE peer (`participants.find(...)`) no matter
           how many people were in the call — a 3-way showed one tile while the
           transcript happily named all three. It now composes every participant:
           1 → full-bleed · 2–4 → equal grid · 5+ → active speaker + filmstrip. */}
-      {peers.length === 0 ? (
-        <CallWaiting />
-      ) : (
-        <div className={`uc-stage n${Math.min(heroPeers.length, 4)}`}>
-          {heroPeers.map((p) => (
-            <CallTile
-              key={p.userId}
-              participant={p}
-              name={resolveName(p.userId, userId, p.isBot, profiles)}
-              profile={profiles[p.userId]}
-              stream={remoteStreams.get(p.userId)}
-              speaking={isSpeaking(p)}
-              speakerId={speakerId}
-              botSocket={uglyBotSocket}
-              botSpeakText={pendingBotText?.botId === p.userId ? pendingBotText.text : null}
-              onBotSubtitle={(i) => {
-                const full = pendingBotText?.botId === p.userId ? pendingBotText.text : '';
-                if (!full) return;
-                onBotTurn?.(p.userId, full.slice(0, i), i >= full.length);
-              }}
-              analyser={peerTts.analyser}
-              hero={heroPeers.length === 1}
-            />
-          ))}
-        </div>
-      )}
-      {/* Overflow beyond the grid rides in a filmstrip rather than vanishing. */}
-      {stripPeers.length > 0 ? (
-        <div className="uc-strip" data-id="call-strip">
-          {stripPeers.map((p) => (
-            <CallTile
-              key={p.userId}
-              participant={p}
-              name={resolveName(p.userId, userId, p.isBot, profiles)}
-              profile={profiles[p.userId]}
-              stream={remoteStreams.get(p.userId)}
-              speaking={isSpeaking(p)}
-              botSocket={uglyBotSocket}
-              analyser={peerTts.analyser}
-              hero={false}
-            />
-          ))}
-        </div>
-      ) : null}
+        {peers.length === 0 ? (
+          <CallWaiting />
+        ) : (
+          <div className={`uc-stage n${Math.min(heroPeers.length, 4)}`}>
+            {heroPeers.map((p) => (
+              <CallTile
+                key={p.userId}
+                participant={p}
+                name={resolveName(p.userId, userId, p.isBot, profiles)}
+                profile={profiles[p.userId]}
+                stream={remoteStreams.get(p.userId)}
+                speaking={isSpeaking(p)}
+                speakerId={speakerId}
+                botSocket={uglyBotSocket}
+                botSpeakText={
+                  pendingBotText?.botId === p.userId
+                    ? pendingBotText.text
+                    : null
+                }
+                onBotSubtitle={(i) => {
+                  const full =
+                    pendingBotText?.botId === p.userId
+                      ? pendingBotText.text
+                      : "";
+                  if (!full) return;
+                  onBotTurn?.(p.userId, full.slice(0, i), i >= full.length);
+                }}
+                analyser={peerTts.analyser}
+                hero={heroPeers.length === 1}
+              />
+            ))}
+          </div>
+        )}
+        {/* Overflow beyond the grid rides in a filmstrip rather than vanishing. */}
+        {stripPeers.length > 0 ? (
+          <div className="uc-strip" data-id="call-strip">
+            {stripPeers.map((p) => (
+              <CallTile
+                key={p.userId}
+                participant={p}
+                name={resolveName(p.userId, userId, p.isBot, profiles)}
+                profile={profiles[p.userId]}
+                stream={remoteStreams.get(p.userId)}
+                speaking={isSpeaking(p)}
+                botSocket={uglyBotSocket}
+                analyser={peerTts.analyser}
+                hero={false}
+              />
+            ))}
+          </div>
+        ) : null}
 
-      {/* ── self PiP bottom-right ─────────────────────────────────────────────
+        {/* ── self PiP bottom-right ─────────────────────────────────────────────
           Self-view exists to answer ONE question: am I broadcasting? It used to
           answer it with a flat black rectangle whenever the camera was on but
           hadn't produced a frame yet (starting, or failed) — indistinguishable
           from "off" and from "broken", while the camera button still read as on.
           Every state is now named. */}
-      <div
-        data-id="call-tile-self"
-        className="uc-self"
-        style={{ border: '1px solid rgba(255,255,255,0.2)', background: '#14161b' }}
-      >
-        <video
-          ref={localVideoRef}
-          autoPlay
-          muted
-          playsInline
-          // NEVER gate this on `selfLive`. Hiding the element until it has
-          // frames is a deadlock: a display:none video stops decoding, so
-          // videoWidth stays 0, so selfLive stays false, so it stays hidden —
-          // one mute→unmute cycle and the self-view was black for the rest of
-          // the call while the camera button still read "on". The state label
-          // overlays this element rather than replacing it.
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: camOn ? 'block' : 'none' }}
-        />
-        {!camOn ? (
-          // Camera off → show MY avatar (3D model over the avatar background, or
-          // a circular image fallback) instead of a blank tile.
-          <ParticipantAvatarTile
-            name={resolveName(userId, userId, false, profiles)}
-            glbUrl={profiles[userId]?.avatarGlbUrl ?? null}
-            imageUrl={profiles[userId]?.avatarUrl ?? null}
-            backgroundUrl={profiles[userId]?.backgroundUrl ?? null}
+        <div
+          data-id="call-tile-self"
+          className="uc-self"
+          style={{
+            border: "1px solid rgba(255,255,255,0.2)",
+            background: "#14161b",
+          }}
+        >
+          <video
+            ref={localVideoRef}
+            autoPlay
+            muted
+            playsInline
+            // NEVER gate this on `selfLive`. Hiding the element until it has
+            // frames is a deadlock: a display:none video stops decoding, so
+            // videoWidth stays 0, so selfLive stays false, so it stays hidden —
+            // one mute→unmute cycle and the self-view was black for the rest of
+            // the call while the camera button still read "on". The state label
+            // overlays this element rather than replacing it.
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: camOn ? "block" : "none",
+            }}
           />
-        ) : null}
-        {camOn && !selfLive ? (
-          <span className="uc-self-state" data-id="self-starting">Starting camera…</span>
-        ) : null}
-        {!camOn ? <span className="uc-self-state" data-id="self-cam-off">Camera off</span> : null}
-        <span className="uc-tile-label">
-          {!micOn ? <MicOff size={11} data-id="self-muted" /> : null}
-          <span className="n">You</span>
-        </span>
-      </div>
+          {!camOn ? (
+            // Camera off → show MY avatar (3D model over the avatar background, or
+            // a circular image fallback) instead of a blank tile.
+            <ParticipantAvatarTile
+              name={resolveName(userId, userId, false, profiles)}
+              glbUrl={profiles[userId]?.avatarGlbUrl ?? null}
+              imageUrl={profiles[userId]?.avatarUrl ?? null}
+              backgroundUrl={profiles[userId]?.backgroundUrl ?? null}
+            />
+          ) : null}
+          {camOn && !selfLive ? (
+            <span className="uc-self-state" data-id="self-starting">
+              Starting camera…
+            </span>
+          ) : null}
+          {!camOn ? (
+            <span className="uc-self-state" data-id="self-cam-off">
+              Camera off
+            </span>
+          ) : null}
+          <span className="uc-tile-label">
+            {!micOn ? <MicOff size={11} data-id="self-muted" /> : null}
+            <span className="n">You</span>
+          </span>
+        </div>
 
-      {/* ── subtitle overlay slot (shown when transcript collapsed) ───────── */}
-      {subtitleSlot}
+        {/* ── subtitle overlay slot (shown when transcript collapsed) ───────── */}
+        {subtitleSlot}
 
-      {/* ── control bar, floating bottom-center ───────────────────────────── */}
-      <div
-        className="uc-ctrlbar"
-        style={{
-          border: `1px solid ${C.hairline}`,
-          background: C.panel,
-        }}
-      >
-        {/* Mic and camera are the primary controls — pressed constantly, under
+        {/* ── control bar, floating bottom-center ───────────────────────────── */}
+        <div
+          className="uc-ctrlbar"
+          style={{
+            border: `1px solid ${C.hairline}`,
+            background: C.panel,
+          }}
+        >
+          {/* Mic and camera are the primary controls — pressed constantly, under
             time pressure. They're the largest, and their OFF state is the loud
             one. Captions and add-bot are secondary and deliberately quiet: they
             used to wear the brand orange, which ranked "captions" above "mute". */}
-        <CtrlButton
-          dataId="call-mic"
-          label={micOn ? 'Mute mic' : 'Unmute mic'}
-          active={false}
-          off={!micOn}
-          primary
-          onClick={toggleMic} data-id="toggle-mic"
-        >
-          {micOn ? <Mic size={23} /> : <MicOff size={23} />}
-        </CtrlButton>
-        <CtrlButton
-          dataId="call-camera"
-          label={camOn ? 'Stop camera' : 'Start camera'}
-          active={false}
-          off={!camOn}
-          primary
-          onClick={toggleCam} data-id="toggle-cam"
-        >
-          {camOn ? <Video size={23} /> : <VideoOff size={23} />}
-        </CtrlButton>
-        <span style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.14)' }} />
-        {onToggleTranscript ? (
           <CtrlButton
-            dataId="call-captions"
-            label="Toggle transcript"
-            active={!transcriptCollapsed}
-            off={false}
-            onClick={onToggleTranscript} data-id="toggle-transcript"
+            dataId="call-mic"
+            label={micOn ? "Mute mic" : "Unmute mic"}
+            active={false}
+            off={!micOn}
+            primary
+            onClick={toggleMic}
+            data-id="toggle-mic"
           >
-            <Captions size={19} />
+            {micOn ? <Mic size={23} /> : <MicOff size={23} />}
           </CtrlButton>
-        ) : null}
-        {onAddPerson ? (
-          <CtrlButton dataId="call-add-person" label="Add person" active={false} off={false} onClick={onAddPerson} data-id="add-person">
-            <UserPlus size={19} />
+          <CtrlButton
+            dataId="call-camera"
+            label={camOn ? "Stop camera" : "Start camera"}
+            active={false}
+            off={!camOn}
+            primary
+            onClick={toggleCam}
+            data-id="toggle-cam"
+          >
+            {camOn ? <Video size={23} /> : <VideoOff size={23} />}
           </CtrlButton>
-        ) : null}
-        {/* Hidden once a bot is on the roster — offering "Add ugly-bot" during a
+          <span
+            style={{
+              width: 1,
+              height: 28,
+              background: "rgba(255,255,255,0.14)",
+            }}
+          />
+          {onToggleTranscript ? (
+            <CtrlButton
+              dataId="call-captions"
+              label="Toggle transcript"
+              active={!transcriptCollapsed}
+              off={false}
+              onClick={onToggleTranscript}
+              data-id="toggle-transcript"
+            >
+              <Captions size={19} />
+            </CtrlButton>
+          ) : null}
+          {onAddPerson ? (
+            <CtrlButton
+              dataId="call-add-person"
+              label="Add person"
+              active={false}
+              off={false}
+              onClick={onAddPerson}
+              data-id="add-person"
+            >
+              <UserPlus size={19} />
+            </CtrlButton>
+          ) : null}
+          {/* Hidden once a bot is on the roster — offering "Add ugly-bot" during a
             call whose stage says UGLY BOT · AI just makes people hesitate over
             what it would even do. */}
-        {!botParticipant ? (
-          <CtrlButton dataId="call-add-bot" label="Add ugly-bot" active={false} off={false} onClick={() => { addBot(); }} data-id="add-ugly-bot">
-            <BotIcon size={19} />
-          </CtrlButton>
-        ) : null}
-        <button
-          type="button"
-          data-id="call-end"
-          onClick={() => void leave()}
-          aria-label="End call"
-          title="End call"
-          className="uc-ctrl-end"
-          // The one irreversible control on the bar wore the SAME brand orange
-          // as the accent used by every toggle, so the destructive action was
-          // the least distinguishable thing on screen. Red, and only red here.
-          style={{ border: 'none', background: C.danger, color: '#fff' }}
-        >
-          <PhoneOff size={20} />
-        </button>
+          {!botParticipant ? (
+            <CtrlButton
+              dataId="call-add-bot"
+              label="Add ugly-bot"
+              active={false}
+              off={false}
+              onClick={() => {
+                addBot();
+              }}
+              data-id="add-ugly-bot"
+            >
+              <BotIcon size={19} />
+            </CtrlButton>
+          ) : null}
+          <button
+            type="button"
+            data-id="call-end"
+            onClick={() => void leave()}
+            aria-label="End call"
+            title="End call"
+            className="uc-ctrl-end"
+            // The one irreversible control on the bar wore the SAME brand orange
+            // as the accent used by every toggle, so the destructive action was
+            // the least distinguishable thing on screen. Red, and only red here.
+            style={{ border: "none", background: C.danger, color: "#fff" }}
+          >
+            <PhoneOff size={20} />
+          </button>
+        </div>
       </div>
-    </div>
-  );
-});
+    );
+  },
+);
 
 // Square dark control button (mock .cbig).
 function CtrlButton({
@@ -989,24 +1209,24 @@ function CtrlButton({
   // "disabled" rather than "you are muted". Off is now filled red; on is full
   // contrast; the brand orange is reserved for a deliberately-enabled toggle.
   const border = off
-    ? '1px solid #ef4444'
+    ? "1px solid #ef4444"
     : active
       ? `1px solid ${C.brand}`
       : dashed
         ? `1px dashed ${C.brand}`
-        : '1px solid rgba(255,255,255,0.22)';
+        : "1px solid rgba(255,255,255,0.22)";
   return (
     <button
       type="button"
       data-id={dataId}
-      className={`uc-ctrl${primary ? ' primary' : ''}`}
+      className={`uc-ctrl${primary ? " primary" : ""}`}
       onClick={onClick}
       aria-label={label}
       title={label}
       aria-pressed={active || off}
       style={{
-        display: 'grid',
-        placeItems: 'center',
+        display: "grid",
+        placeItems: "center",
         border,
         // Muted/camera-off is FILLED red: the one state worth reading from
         // across the room, and the only thing on the bar wearing red besides
@@ -1016,9 +1236,13 @@ function CtrlButton({
         // orange fill — as a solid accent block it was the loudest control on
         // the stage, ranking "captions are on" above "you are muted". Orange
         // means someone is talking; it shouldn't carry a second meaning here.
-        background: off ? '#ef4444' : active ? 'rgba(255,85,0,0.14)' : 'rgba(255,255,255,0.08)',
-        color: off ? '#fff' : active || dashed ? C.brand : '#fff',
-        cursor: 'pointer',
+        background: off
+          ? "#ef4444"
+          : active
+            ? "rgba(255,85,0,0.14)"
+            : "rgba(255,255,255,0.08)",
+        color: off ? "#fff" : active || dashed ? C.brand : "#fff",
+        cursor: "pointer",
       }}
     >
       {children}
@@ -1073,7 +1297,7 @@ function CallTile({
       data-id="call-tile-peer"
       // The ring answers "which one of them is talking" — a question a 1:1
       // doesn't ask. There, the audio pulse carries the signal instead.
-      className={`uc-tile${speaking && !hero ? ' speaking' : ''}`}
+      className={`uc-tile${speaking && !hero ? " speaking" : ""}`}
       data-participant={participant.userId}
     >
       {participant.isBot && botSocket ? (
@@ -1103,7 +1327,9 @@ function CallTile({
           on a live video plate was unreadable. */}
       <span className="uc-tile-label">
         {muted ? <MicOff size={12} data-id="peer-muted" /> : null}
-        {camOff && !participant.isBot ? <VideoOff size={12} data-id="peer-cam-off" /> : null}
+        {camOff && !participant.isBot ? (
+          <VideoOff size={12} data-id="peer-cam-off" />
+        ) : null}
         <span className="n">{name}</span>
         {participant.isBot ? <span className="ai">AI</span> : null}
       </span>
@@ -1120,7 +1346,10 @@ function CallWaiting(): React.ReactElement {
     <div className="uc-waiting" data-id="call-waiting">
       <span className="ring" aria-hidden />
       <div className="t">Waiting for others to join</div>
-      <div className="s">They&rsquo;ve been notified. You can leave and they&rsquo;ll still get the call.</div>
+      <div className="s">
+        They&rsquo;ve been notified. You can leave and they&rsquo;ll still get
+        the call.
+      </div>
     </div>
   );
 }
@@ -1133,20 +1362,42 @@ function SpeakingPulse(): React.ReactElement {
   return (
     <div
       data-id="speaking-pulse"
-      style={{ position: 'absolute', left: '50%', bottom: 18, transform: 'translateX(-50%)', display: 'flex', alignItems: 'flex-end', gap: 3, height: 18, zIndex: 3 }}
+      style={{
+        position: "absolute",
+        left: "50%",
+        bottom: 18,
+        transform: "translateX(-50%)",
+        display: "flex",
+        alignItems: "flex-end",
+        gap: 3,
+        height: 18,
+        zIndex: 3,
+      }}
     >
       <style>{`@keyframes uc-eq {0%,100%{height:4px}50%{height:16px}}`}</style>
       {[0, 1, 2, 3].map((i) => (
         <span
           key={i}
-          style={{ width: 3, background: '#ff5500', borderRadius: 1, height: 4, animation: `uc-eq 0.7s ease-in-out ${i * 0.12}s infinite` }}
+          style={{
+            width: 3,
+            background: "#ff5500",
+            borderRadius: 1,
+            height: 4,
+            animation: `uc-eq 0.7s ease-in-out ${i * 0.12}s infinite`,
+          }}
         />
       ))}
     </div>
   );
 }
 
-function RemoteTile({ stream, speakerId }: { stream: MediaStream; speakerId?: string }): React.ReactElement {
+function RemoteTile({
+  stream,
+  speakerId,
+}: {
+  stream: MediaStream;
+  speakerId?: string;
+}): React.ReactElement {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     if (ref.current) ref.current.srcObject = stream;
@@ -1154,7 +1405,16 @@ function RemoteTile({ stream, speakerId }: { stream: MediaStream; speakerId?: st
   // Route remote audio to the lobby-chosen speaker (where supported).
   useEffect(() => {
     const el = ref.current;
-    if (el?.setSinkId && speakerId) void el.setSinkId(speakerId).catch(() => undefined);
+    if (el?.setSinkId && speakerId)
+      void el.setSinkId(speakerId).catch(() => undefined);
   }, [speakerId]);
-  return <video ref={ref} autoPlay playsInline data-id="remote-video" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />;
+  return (
+    <video
+      ref={ref}
+      autoPlay
+      playsInline
+      data-id="remote-video"
+      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+    />
+  );
 }

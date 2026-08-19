@@ -10,26 +10,33 @@
  * fire-and-forget — failures are logged, never block message creation. To avoid
  * loops, a bot's webhook is NOT fired for a message that bot itself authored.
  */
-import { collections } from '../shared/collections';
-import type { CollectionDef } from 'ugly-app/shared';
-import { isBot } from './bots';
+import { collections } from "../shared/collections";
+import type { CollectionDef } from "ugly-app/shared";
+import { isBot } from "./bots";
 
 interface WebhookDb {
   getDoc<T>(collection: CollectionDef<T>, id: string): Promise<T | null>;
 }
 
-export type WebhookEventType = 'message.created' | 'message.updated' | 'message.reacted';
+export type WebhookEventType =
+  "message.created" | "message.updated" | "message.reacted";
 
 async function signHmac(secret: string, body: string): Promise<string> {
   const key = await crypto.subtle.importKey(
-    'raw',
+    "raw",
     new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
+    { name: "HMAC", hash: "SHA-256" },
     false,
-    ['sign'],
+    ["sign"],
   );
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body));
-  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const sig = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(body),
+  );
+  return [...new Uint8Array(sig)]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 async function post(
@@ -38,11 +45,14 @@ async function post(
   payload: unknown,
 ): Promise<void> {
   const body = JSON.stringify(payload);
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (secret) headers['X-Ugly-Chat-Signature'] = `sha256=${await signHmac(secret, body)}`;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (secret)
+    headers["X-Ugly-Chat-Signature"] = `sha256=${await signHmac(secret, body)}`;
   try {
     const res = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers,
       body,
       signal: AbortSignal.timeout(10_000),
@@ -67,35 +77,41 @@ export async function fireMessageWebhooks(
   const conv = await db.getDoc(collections.conversation, conversationId);
   if (!conv) return;
   const appId = conv.appId;
-  const authorId = typeof message.userId === 'string' ? message.userId : '';
+  const authorId = typeof message.userId === "string" ? message.userId : "";
   // Include the conversation's `custom` so the receiving app can route the event
   // (e.g. love distinguishes coach vs couple conversations) without storing
   // conversations itself.
-  const base = { event, appId, conversationId, custom: conv.custom ?? null, message };
+  const base = {
+    event,
+    appId,
+    conversationId,
+    custom: conv.custom ?? null,
+    message,
+  };
   const targets: Promise<void>[] = [];
 
   // 1. Conversation-level webhook (observes everything).
-  if (typeof conv.webhookUrl === 'string' && conv.webhookUrl) {
+  if (typeof conv.webhookUrl === "string" && conv.webhookUrl) {
     targets.push(
       post(conv.webhookUrl, conv.webhookSecret, {
         ...base,
-        target: 'conversation',
+        target: "conversation",
       }),
     );
   }
 
   // 2. Each bot member's webhook (so the app can reply) — skip the author bot.
-  const botIds = Object.keys((conv.bots) ?? {}).filter(
+  const botIds = Object.keys(conv.bots ?? {}).filter(
     (id) => isBot(id) && id !== authorId,
   );
   for (const botId of botIds) {
     const bot = await db.getDoc(collections.bot, botId);
     const url = bot?.webhookUrl;
-    if (typeof url === 'string' && url) {
+    if (typeof url === "string" && url) {
       targets.push(
         post(url, bot.webhookSecret, {
           ...base,
-          target: 'bot',
+          target: "bot",
           botId,
         }),
       );

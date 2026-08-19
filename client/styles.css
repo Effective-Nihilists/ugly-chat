@@ -1901,12 +1901,60 @@ a.uc-src:hover {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
   font-size: 12px;
 }
-.uc-browser-share > svg { flex: none; color: var(--app-primary); }
-.uc-browser-share > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.uc-browser-share button { display: grid; place-items: center; flex: none; width: 24px; height: 24px; padding: 0; border: 0; background: transparent; color: var(--app-foreground-muted); cursor: pointer; }
-.uc-browser-draft-sources { padding: 8px 10px; border-bottom: 1px solid var(--app-border); background: var(--app-tertiary); display: grid; gap: 5px; }
-.uc-browser-draft-sources > span { font-size: 11px; opacity: .7; }
-.uc-browser-draft-sources > div { display: flex; gap: 6px; overflow-x: auto; }
-.uc-browser-draft-sources a { min-width: 120px; max-width: 190px; padding: 6px; border: 1px solid var(--app-border); color: var(--app-foreground); text-decoration: none; display: flex; gap: 6px; align-items: center; }
-.uc-browser-draft-sources a span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.uc-browser-draft-sources a small { opacity: .65; }
+.uc-browser-share > svg {
+  flex: none;
+  color: var(--app-primary);
+}
+.uc-browser-share > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.uc-browser-share button {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--app-foreground-muted);
+  cursor: pointer;
+}
+.uc-browser-draft-sources {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--app-border);
+  background: var(--app-tertiary);
+  display: grid;
+  gap: 5px;
+}
+.uc-browser-draft-sources > span {
+  font-size: 11px;
+  opacity: 0.7;
+}
+.uc-browser-draft-sources > div {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+}
+.uc-browser-draft-sources a {
+  min-width: 120px;
+  max-width: 190px;
+  padding: 6px;
+  border: 1px solid var(--app-border);
+  color: var(--app-foreground);
+  text-decoration: none;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.uc-browser-draft-sources a span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.uc-browser-draft-sources a small {
+  opacity: 0.65;
+}

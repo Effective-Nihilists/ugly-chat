@@ -5,11 +5,11 @@ import React, {
   useLayoutEffect,
   useRef,
   useState,
-} from 'react';
-import type { ReactNode } from 'react';
-import { ChevronDown } from 'lucide-react';
-import { useVirtualizer } from '@tanstack/react-virtual';
-import type { ChatMessage } from 'ugly-app/conversation/shared';
+} from "react";
+import type { ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import type { ChatMessage } from "ugly-app/conversation/shared";
 
 // Distance-from-bottom (px) that still counts as "pinned to the bottom".
 const BOTTOM_THRESHOLD = 60;
@@ -20,13 +20,20 @@ const LOAD_MORE_THRESHOLD = 250;
 
 // A markdown body can throw mid-render; isolate each row so one bad message
 // can't blank the whole thread (mirrors the monolith's VirtualItemErrorBoundary).
-class RowErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+class RowErrorBoundary extends Component<
+  { children: ReactNode },
+  { failed: boolean }
+> {
   override state: { failed: boolean } = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
   }
   override render() {
-    return this.state.failed ? <div style={{ height: 48 }} /> : this.props.children;
+    return this.state.failed ? (
+      <div style={{ height: 48 }} />
+    ) : (
+      this.props.children
+    );
   }
 }
 
@@ -115,7 +122,11 @@ export function VirtualMessageList({
   useLayoutEffect(() => {
     const last = messages[messages.length - 1];
     const lastChanged = last?.id !== prevLastIdRef.current;
-    if (lastChanged && !isLoadingMoreRef.current && prevLastIdRef.current !== undefined) {
+    if (
+      lastChanged &&
+      !isLoadingMoreRef.current &&
+      prevLastIdRef.current !== undefined
+    ) {
       if (atBottomRef.current || last?.userId === currentUserId) {
         scrollToBottom();
       }
@@ -148,7 +159,11 @@ export function VirtualMessageList({
     const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
     atBottomRef.current = dist <= BOTTOM_THRESHOLD;
     setShowButton(dist > SCROLL_BUTTON_THRESHOLD);
-    if (el.scrollTop < LOAD_MORE_THRESHOLD && hasMore && !isLoadingMoreRef.current) {
+    if (
+      el.scrollTop < LOAD_MORE_THRESHOLD &&
+      hasMore &&
+      !isLoadingMoreRef.current
+    ) {
       isLoadingMoreRef.current = true;
       prevScrollHeightRef.current = el.scrollHeight;
       onLoadMore();
@@ -162,7 +177,8 @@ export function VirtualMessageList({
     const el = scrollRef.current;
     if (!el) return;
     const ro = new ResizeObserver(() => {
-      if (atBottomRef.current && !programmaticRef.current) el.scrollTop = el.scrollHeight;
+      if (atBottomRef.current && !programmaticRef.current)
+        el.scrollTop = el.scrollHeight;
     });
     ro.observe(el);
     if (innerRef.current) ro.observe(innerRef.current);
@@ -175,71 +191,94 @@ export function VirtualMessageList({
   const totalSize = virtualizer.getTotalSize();
 
   return (
-    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-      <div style={{ flex: 1, minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
+    <div
+      style={{
+        flex: 1,
+        minHeight: 0,
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
       <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        onClick={() => { onBackgroundClick?.(); }}
-        data-testid="conversation-scroll-container"
-        style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }} data-id="div"
+        style={{
+          flex: 1,
+          minHeight: 0,
+          position: "relative",
+          display: "flex",
+          flexDirection: "column",
+        }}
       >
         <div
-          ref={innerRef}
-          data-testid="message-list-inner"
-          style={{ height: totalSize, width: '100%', position: 'relative' }}
-        >
-          {items.map((row) => {
-            const item = messages[row.index];
-            if (!item) return null;
-            return (
-              <div
-                key={item.id}
-                data-index={row.index}
-                data-message-id={item.id}
-                ref={virtualizer.measureElement}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  transform: `translateY(${row.start}px)`,
-                }}
-              >
-                <RowErrorBoundary>{renderItem(item)}</RowErrorBoundary>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      {showButton ? (
-        <button
-          type="button"
-          data-id="scroll-to-latest"
-          onClick={scrollToBottom}
-          aria-label="Scroll to latest"
-          title="Scroll to latest"
-          style={{
-            position: 'absolute',
-            right: 16,
-            bottom: 12,
-            width: 38,
-            height: 38,
-            borderRadius: '50%',
-            border: '1px solid var(--app-border)',
-            background: 'var(--app-main)',
-            color: 'var(--app-foreground)',
-            boxShadow: 'var(--app-shadow-button-default)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            zIndex: 3,
+          ref={scrollRef}
+          onScroll={handleScroll}
+          onClick={() => {
+            onBackgroundClick?.();
           }}
+          data-testid="conversation-scroll-container"
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
+            overflowX: "hidden",
+          }}
+          data-id="div"
         >
-          <ChevronDown size={20} />
-        </button>
-      ) : null}
+          <div
+            ref={innerRef}
+            data-testid="message-list-inner"
+            style={{ height: totalSize, width: "100%", position: "relative" }}
+          >
+            {items.map((row) => {
+              const item = messages[row.index];
+              if (!item) return null;
+              return (
+                <div
+                  key={item.id}
+                  data-index={row.index}
+                  data-message-id={item.id}
+                  ref={virtualizer.measureElement}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    transform: `translateY(${row.start}px)`,
+                  }}
+                >
+                  <RowErrorBoundary>{renderItem(item)}</RowErrorBoundary>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        {showButton ? (
+          <button
+            type="button"
+            data-id="scroll-to-latest"
+            onClick={scrollToBottom}
+            aria-label="Scroll to latest"
+            title="Scroll to latest"
+            style={{
+              position: "absolute",
+              right: 16,
+              bottom: 12,
+              width: 38,
+              height: 38,
+              borderRadius: "50%",
+              border: "1px solid var(--app-border)",
+              background: "var(--app-main)",
+              color: "var(--app-foreground)",
+              boxShadow: "var(--app-shadow-button-default)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              zIndex: 3,
+            }}
+          >
+            <ChevronDown size={20} />
+          </button>
+        ) : null}
       </div>
       {bottom}
     </div>

@@ -10,9 +10,9 @@
  * The call (`VideoCall.join`) re-acquires its own stream from the chosen ids —
  * permission is already granted here, so there's no second prompt.
  */
-import React, { useEffect, useRef, useState } from 'react';
-import { Mic, Video as VideoIcon, X } from 'lucide-react';
-import { useAvDevices, type DevicePrefs } from './useAvDevices';
+import React, { useEffect, useRef, useState } from "react";
+import { Mic, Video as VideoIcon, X } from "lucide-react";
+import { useAvDevices, type DevicePrefs } from "./useAvDevices";
 
 export interface CallLobbyProps {
   /** Name of who you're calling / who's calling, for the header. */
@@ -22,11 +22,16 @@ export interface CallLobbyProps {
   onCancel: () => void;
 }
 
-const LABEL = '#fff';
-const DIM = 'rgba(255,255,255,0.55)';
-const LINE = 'rgba(255,255,255,0.16)';
+const LABEL = "#fff";
+const DIM = "rgba(255,255,255,0.55)";
+const LINE = "rgba(255,255,255,0.16)";
 
-export function CallLobby({ peerName, title, onJoin, onCancel }: CallLobbyProps): React.ReactElement {
+export function CallLobby({
+  peerName,
+  title,
+  onJoin,
+  onCancel,
+}: CallLobbyProps): React.ReactElement {
   const av = useAvDevices();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -42,13 +47,15 @@ export function CallLobby({ peerName, title, onJoin, onCancel }: CallLobbyProps)
   // (Re)acquire the local preview whenever permission lands or the chosen
   // camera/mic changes. Tears down the previous stream + audio graph first.
   useEffect(() => {
-    if (av.permission !== 'granted') return undefined;
+    if (av.permission !== "granted") return undefined;
     const state = { cancelled: false };
     let audioCtx: AudioContext | null = null;
     let raf = 0;
 
     const stop = (): void => {
-      streamRef.current?.getTracks().forEach((t) => { t.stop(); });
+      streamRef.current?.getTracks().forEach((t) => {
+        t.stop();
+      });
       streamRef.current = null;
       if (raf) cancelAnimationFrame(raf);
       if (audioCtx) void audioCtx.close().catch(() => undefined);
@@ -57,11 +64,17 @@ export function CallLobby({ peerName, title, onJoin, onCancel }: CallLobbyProps)
     void (async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: av.selected.cameraId ? { deviceId: { exact: av.selected.cameraId } } : true,
-          audio: av.selected.micId ? { deviceId: { exact: av.selected.micId } } : true,
+          video: av.selected.cameraId
+            ? { deviceId: { exact: av.selected.cameraId } }
+            : true,
+          audio: av.selected.micId
+            ? { deviceId: { exact: av.selected.micId } }
+            : true,
         });
         if (state.cancelled) {
-          stream.getTracks().forEach((t) => { t.stop(); });
+          stream.getTracks().forEach((t) => {
+            t.stop();
+          });
           return;
         }
         streamRef.current = stream;
@@ -93,12 +106,16 @@ export function CallLobby({ peerName, title, onJoin, onCancel }: CallLobbyProps)
   }, [av.permission, av.selected.cameraId, av.selected.micId]);
 
   const handleJoin = (): void => {
-    streamRef.current?.getTracks().forEach((t) => { t.stop(); });
+    streamRef.current?.getTracks().forEach((t) => {
+      t.stop();
+    });
     streamRef.current = null;
     onJoin(av.selected);
   };
   const handleCancel = (): void => {
-    streamRef.current?.getTracks().forEach((t) => { t.stop(); });
+    streamRef.current?.getTracks().forEach((t) => {
+      t.stop();
+    });
     streamRef.current = null;
     onCancel();
   };
@@ -107,36 +124,56 @@ export function CallLobby({ peerName, title, onJoin, onCancel }: CallLobbyProps)
     <div
       data-id="call-lobby"
       style={{
-        position: 'fixed',
+        position: "fixed",
         inset: 0,
         zIndex: 1000,
-        display: 'grid',
-        placeItems: 'center',
-        background: 'rgba(4,5,8,0.82)',
-        backdropFilter: 'blur(6px)',
+        display: "grid",
+        placeItems: "center",
+        background: "rgba(4,5,8,0.82)",
+        backdropFilter: "blur(6px)",
       }}
     >
       <div
         style={{
-          width: 'min(440px, 92vw)',
-          background: '#0b0d12',
+          width: "min(440px, 92vw)",
+          background: "#0b0d12",
           border: `1px solid ${LINE}`,
           color: LABEL,
           padding: 18,
-          display: 'flex',
-          flexDirection: 'column',
+          display: "flex",
+          flexDirection: "column",
           gap: 14,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontFamily: 'var(--app-font-heading, sans-serif)', fontWeight: 800, fontSize: 16 }}>
-            {title ?? (peerName ? `Call ${peerName}` : 'Start video call')}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "var(--app-font-heading, sans-serif)",
+              fontWeight: 800,
+              fontSize: 16,
+            }}
+          >
+            {title ?? (peerName ? `Call ${peerName}` : "Start video call")}
           </div>
           <button
             type="button"
             onClick={handleCancel}
             aria-label="Cancel"
-            style={{ border: 'none', background: 'transparent', color: DIM, cursor: 'pointer', display: 'grid', placeItems: 'center' }} data-id="cancel"
+            style={{
+              border: "none",
+              background: "transparent",
+              color: DIM,
+              cursor: "pointer",
+              display: "grid",
+              placeItems: "center",
+            }}
+            data-id="cancel"
           >
             <X size={18} />
           </button>
@@ -145,12 +182,12 @@ export function CallLobby({ peerName, title, onJoin, onCancel }: CallLobbyProps)
         {/* Preview */}
         <div
           style={{
-            position: 'relative',
-            width: '100%',
-            aspectRatio: '4 / 3',
-            background: 'linear-gradient(135deg, #20232b, #101218)',
+            position: "relative",
+            width: "100%",
+            aspectRatio: "4 / 3",
+            background: "linear-gradient(135deg, #20232b, #101218)",
             border: `1px solid ${LINE}`,
-            overflow: 'hidden',
+            overflow: "hidden",
           }}
         >
           <video
@@ -158,51 +195,129 @@ export function CallLobby({ peerName, title, onJoin, onCancel }: CallLobbyProps)
             autoPlay
             muted
             playsInline
-            style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              transform: "scaleX(-1)",
+            }}
           />
-          {av.permission !== 'granted' ? (
-            <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: DIM, fontSize: 13, padding: 16, textAlign: 'center' }}>
-              {av.permission === 'requesting' ? 'Requesting camera & mic…' : 'Camera preview appears here'}
+          {av.permission !== "granted" ? (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "grid",
+                placeItems: "center",
+                color: DIM,
+                fontSize: 13,
+                padding: 16,
+                textAlign: "center",
+              }}
+            >
+              {av.permission === "requesting"
+                ? "Requesting camera & mic…"
+                : "Camera preview appears here"}
             </div>
           ) : null}
           {/* Mic level bar */}
-          {av.permission === 'granted' ? (
-            <div style={{ position: 'absolute', left: 10, right: 10, bottom: 10, height: 4, background: 'rgba(255,255,255,0.15)' }}>
-              <div style={{ height: '100%', width: `${Math.round(level * 100)}%`, background: '#ff5500', transition: 'width 80ms linear' }} />
+          {av.permission === "granted" ? (
+            <div
+              style={{
+                position: "absolute",
+                left: 10,
+                right: 10,
+                bottom: 10,
+                height: 4,
+                background: "rgba(255,255,255,0.15)",
+              }}
+            >
+              <div
+                style={{
+                  height: "100%",
+                  width: `${Math.round(level * 100)}%`,
+                  background: "#ff5500",
+                  transition: "width 80ms linear",
+                }}
+              />
             </div>
           ) : null}
         </div>
 
         {/* Permission-denied help */}
-        {av.permission === 'denied' && av.error ? (
-          <div style={{ border: `1px solid rgba(248,113,113,0.5)`, background: 'rgba(248,113,113,0.08)', padding: 12, fontSize: 12.5, lineHeight: 1.45 }}>
-            <div style={{ fontWeight: 700, marginBottom: 4 }}>{av.error.title}</div>
+        {av.permission === "denied" && av.error ? (
+          <div
+            style={{
+              border: `1px solid rgba(248,113,113,0.5)`,
+              background: "rgba(248,113,113,0.08)",
+              padding: 12,
+              fontSize: 12.5,
+              lineHeight: 1.45,
+            }}
+          >
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>
+              {av.error.title}
+            </div>
             <div style={{ color: DIM }}>{av.error.help}</div>
           </div>
         ) : null}
 
         {/* Device pickers (shown once we have labels) */}
-        {av.permission === 'granted' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <DevicePicker icon={<VideoIcon size={14} />} label="Camera" value={av.selected.cameraId} options={av.cameras} onChange={av.setCamera} />
-            <DevicePicker icon={<Mic size={14} />} label="Microphone" value={av.selected.micId} options={av.mics} onChange={av.setMic} />
+        {av.permission === "granted" ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <DevicePicker
+              icon={<VideoIcon size={14} />}
+              label="Camera"
+              value={av.selected.cameraId}
+              options={av.cameras}
+              onChange={av.setCamera}
+            />
+            <DevicePicker
+              icon={<Mic size={14} />}
+              label="Microphone"
+              value={av.selected.micId}
+              options={av.mics}
+              onChange={av.setMic}
+            />
             {av.speakers.length > 0 ? (
-              <DevicePicker icon={<span style={{ fontSize: 12 }}>🔊</span>} label="Speaker" value={av.selected.speakerId} options={av.speakers} onChange={av.setSpeaker} />
+              <DevicePicker
+                icon={<span style={{ fontSize: 12 }}>🔊</span>}
+                label="Speaker"
+                value={av.selected.speakerId}
+                options={av.speakers}
+                onChange={av.setSpeaker}
+              />
             ) : null}
           </div>
         ) : null}
 
         {/* Actions */}
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button type="button" onClick={handleCancel} style={btn(false)} data-id="cancel-2">
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <button
+            type="button"
+            onClick={handleCancel}
+            style={btn(false)}
+            data-id="cancel-2"
+          >
             Cancel
           </button>
-          {av.permission === 'denied' ? (
-            <button type="button" onClick={() => void av.request()} style={btn(true)} data-id="retry">
+          {av.permission === "denied" ? (
+            <button
+              type="button"
+              onClick={() => void av.request()}
+              style={btn(true)}
+              data-id="retry"
+            >
               Retry
             </button>
           ) : (
-            <button type="button" data-id="call-lobby-join" onClick={handleJoin} disabled={av.permission !== 'granted'} style={btn(true, av.permission !== 'granted')}>
+            <button
+              type="button"
+              data-id="call-lobby-join"
+              onClick={handleJoin}
+              disabled={av.permission !== "granted"}
+              style={btn(true, av.permission !== "granted")}
+            >
               Join
             </button>
           )}
@@ -226,24 +341,38 @@ function DevicePicker({
   onChange: (id: string) => void;
 }): React.ReactElement {
   return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: DIM, width: 92, flexShrink: 0 }}>
+    <label
+      style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 }}
+    >
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          color: DIM,
+          width: 92,
+          flexShrink: 0,
+        }}
+      >
         {icon}
         {label}
       </span>
       <select
-        value={value ?? ''}
-        onChange={(e) => { onChange(e.target.value); }}
+        value={value ?? ""}
+        onChange={(e) => {
+          onChange(e.target.value);
+        }}
         style={{
           flex: 1,
           minWidth: 0,
-          background: '#14161b',
+          background: "#14161b",
           color: LABEL,
           border: `1px solid ${LINE}`,
           borderRadius: 0,
-          padding: '6px 8px',
+          padding: "6px 8px",
           fontSize: 12.5,
-        }} data-id="select"
+        }}
+        data-id="select"
       >
         {options.map((o) => (
           <option key={o.id} value={o.id}>
@@ -257,14 +386,14 @@ function DevicePicker({
 
 function btn(primary: boolean, disabled = false): React.CSSProperties {
   return {
-    padding: '8px 18px',
+    padding: "8px 18px",
     borderRadius: 0,
-    border: primary ? 'none' : `1px solid ${LINE}`,
-    background: primary ? '#ff5500' : 'transparent',
-    color: primary ? '#fff' : LABEL,
+    border: primary ? "none" : `1px solid ${LINE}`,
+    background: primary ? "#ff5500" : "transparent",
+    color: primary ? "#fff" : LABEL,
     fontWeight: 700,
     fontSize: 13,
-    cursor: disabled ? 'not-allowed' : 'pointer',
+    cursor: disabled ? "not-allowed" : "pointer",
     opacity: disabled ? 0.5 : 1,
   };
 }

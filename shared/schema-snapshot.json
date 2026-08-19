@@ -21,11 +21,7 @@
       },
       "provider": {
         "type": "enum",
-        "values": [
-          "magic-link",
-          "google",
-          "uglybot"
-        ],
+        "values": ["magic-link", "google", "uglybot"],
         "required": true
       },
       "providerKey": {
@@ -148,11 +144,7 @@
       },
       "mode": {
         "type": "enum",
-        "values": [
-          "public",
-          "private",
-          "restricted"
-        ],
+        "values": ["public", "private", "restricted"],
         "required": false
       },
       "title": {
@@ -235,13 +227,7 @@
           },
           "level": {
             "type": "enum",
-            "values": [
-              "log",
-              "info",
-              "warn",
-              "error",
-              "debug"
-            ],
+            "values": ["log", "info", "warn", "error", "debug"],
             "required": true
           },
           "projectId": {
@@ -254,22 +240,12 @@
           },
           "source": {
             "type": "enum",
-            "values": [
-              "browser",
-              "server",
-              "client",
-              "lazyview",
-              "perf"
-            ],
+            "values": ["browser", "server", "client", "lazyview", "perf"],
             "required": true
           },
           "type": {
             "type": "enum",
-            "values": [
-              "console",
-              "exception",
-              "unhandled"
-            ],
+            "values": ["console", "exception", "unhandled"],
             "required": true
           },
           "userId": {
@@ -295,13 +271,7 @@
             },
             "level": {
               "type": "enum",
-              "values": [
-                "log",
-                "info",
-                "warn",
-                "error",
-                "debug"
-              ],
+              "values": ["log", "info", "warn", "error", "debug"],
               "required": true
             },
             "message": {
@@ -387,21 +357,12 @@
       },
       "status": {
         "type": "enum",
-        "values": [
-          "pending",
-          "captured",
-          "resolved",
-          "declined"
-        ],
+        "values": ["pending", "captured", "resolved", "declined"],
         "required": true
       },
       "type": {
         "type": "enum",
-        "values": [
-          "bug",
-          "feature",
-          "design"
-        ],
+        "values": ["bug", "feature", "design"],
         "required": true
       },
       "url": {
@@ -533,11 +494,7 @@
       },
       "visibility": {
         "type": "enum",
-        "values": [
-          "normal",
-          "silent",
-          "hidden"
-        ],
+        "values": ["normal", "silent", "hidden"],
         "required": false
       }
     }

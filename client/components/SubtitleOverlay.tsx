@@ -6,12 +6,16 @@
  *
  * Visual source: mockups/call-bot.html / call-2p.html (.subs / .sub-line).
  */
-import React from 'react';
-import type { Turn } from '../../shared/transcript';
-import type { SpeakerProfiles } from './TranscriptPanel';
+import React from "react";
+import type { Turn } from "../../shared/transcript";
+import type { SpeakerProfiles } from "./TranscriptPanel";
 
-function speakerName(id: string, meId: string, profiles: SpeakerProfiles): string {
-  if (id === meId) return 'You';
+function speakerName(
+  id: string,
+  meId: string,
+  profiles: SpeakerProfiles,
+): string {
+  if (id === meId) return "You";
   return profiles[id]?.name ?? id.slice(0, 8);
 }
 
@@ -39,7 +43,7 @@ export function SubtitleOverlay({
         return (
           <div
             key={`${turn.speaker}-${turn.at}-${i}`}
-            className={`uc-sub-line${active ? ' active' : ' past'}`}
+            className={`uc-sub-line${active ? " active" : " past"}`}
           >
             <span className="who">{name}</span>
             {turn.text}

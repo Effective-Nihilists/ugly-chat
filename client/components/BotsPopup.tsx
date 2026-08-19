@@ -1,9 +1,16 @@
-import { crossOriginProps } from 'ugly-app/client';
-import React, { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, MessageSquare, Bot as BotIcon, X } from 'lucide-react';
-import type { AppSocket } from 'ugly-app/client';
-import type { AppRegistry } from '../../shared/api';
-import { startBotChat, modelLabel, type BotDoc } from '../lib/bots';
+import { crossOriginProps } from "ugly-app/client";
+import React, { useEffect, useState } from "react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  MessageSquare,
+  Bot as BotIcon,
+  X,
+} from "lucide-react";
+import type { AppSocket } from "ugly-app/client";
+import type { AppRegistry } from "../../shared/api";
+import { startBotChat, modelLabel, type BotDoc } from "../lib/bots";
 
 // Popups render in the router's portal, OUTSIDE <AppProvider>, so they can't
 // use useApp()/useRouter() — deps are passed in by the opener instead. We pass
@@ -13,7 +20,7 @@ type Socket = AppSocket<AppRegistry>;
 interface PopupOpener {
   openPopup: (
     content: React.ReactNode,
-    opts?: { mode?: 'block' | 'transient' | 'contextMenu' },
+    opts?: { mode?: "block" | "transient" | "contextMenu" },
   ) => { hide: () => void };
 }
 
@@ -37,13 +44,15 @@ export function openBotsPopup(
 ): void {
   const handle = router.openPopup(
     <BotsPopup
-      onClose={() => { handle.hide(); }}
+      onClose={() => {
+        handle.hide();
+      }}
       socket={socket}
       userId={userId}
       editBot={editBot}
       navigate={navigate}
     />,
-    { mode: 'transient' },
+    { mode: "transient" },
   );
 }
 
@@ -52,7 +61,13 @@ export function openBotsPopup(
  * Same actions as the old page; create/edit close the popup and open the bot
  * editor PAGE (`bot/:botId`), chat closes the popup and navigates in.
  */
-export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPopupProps): React.ReactElement {
+export function BotsPopup({
+  onClose,
+  socket,
+  userId,
+  editBot,
+  navigate,
+}: BotsPopupProps): React.ReactElement {
   const [bots, setBots] = useState<BotDoc[]>([]);
   const [featured, setFeatured] = useState<BotDoc[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,40 +77,66 @@ export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPo
   useEffect(() => {
     const refetch = (): void => {
       void socket
-        .request('botListMine', {})
+        .request("botListMine", {})
         .then((res) => {
-          setBots(((res as { bots?: BotDoc[] }).bots ?? []));
+          setBots((res as { bots?: BotDoc[] }).bots ?? []);
           setLoading(false);
         })
-        .catch(() => { setLoading(false); });
+        .catch(() => {
+          setLoading(false);
+        });
     };
     refetch();
-    const unsub = socket.trackDocs('bot', { keys: { ownerId: userId } }, () => { refetch(); });
-    return () => { unsub(); };
+    const unsub = socket.trackDocs("bot", { keys: { ownerId: userId } }, () => {
+      refetch();
+    });
+    return () => {
+      unsub();
+    };
   }, [socket, userId]);
 
   // Curated built-in bots (Ugly Bot). A fresh account owns no custom bots, so
   // without this the flagship bot has no UI entry point at all.
   useEffect(() => {
     void socket
-      .request('botListFeatured', {})
-      .then((res) => { setFeatured((res as { bots?: BotDoc[] }).bots ?? []); })
-      .catch(() => { /* non-fatal: featured section just stays empty */ });
+      .request("botListFeatured", {})
+      .then((res) => {
+        setFeatured((res as { bots?: BotDoc[] }).bots ?? []);
+      })
+      .catch(() => {
+        /* non-fatal: featured section just stays empty */
+      });
   }, [socket]);
 
   const remove = (botId: string): void => {
-    void socket.request('botDelete', { botId }).catch((err: unknown) => { console.error('[Bots] delete failed', err); });
+    void socket.request("botDelete", { botId }).catch((err: unknown) => {
+      console.error("[Bots] delete failed", err);
+    });
   };
 
   return (
     <div style={modal}>
       <div style={modalHead}>
         <span style={modalTitle}>My bots</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <button type="button" onClick={() => { onClose(); editBot('new'); }} style={primaryBtn} data-id="new-bot">
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              editBot("new");
+            }}
+            style={primaryBtn}
+            data-id="new-bot"
+          >
             <Plus size={16} /> New bot
           </button>
-          <button type="button" aria-label="Close" onClick={onClose} style={closeBtn} data-id="close">
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onClose}
+            style={closeBtn}
+            data-id="close"
+          >
             <X size={16} />
           </button>
         </div>
@@ -105,26 +146,41 @@ export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPo
         {featured.length > 0 ? (
           <div style={{ marginBottom: 18 }}>
             <div style={sectionLabel}>Featured</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {featured.map((b) => (
                 <div key={b._id} style={botRow} data-id={`featured-${b._id}`}>
                   {botAvatarUri(b) ? (
-                    <img {...crossOriginProps(botAvatarUri(b) ?? '')} src={botAvatarUri(b)} alt="" style={avatarImg} />
+                    <img
+                      {...crossOriginProps(botAvatarUri(b) ?? "")}
+                      src={botAvatarUri(b)}
+                      alt=""
+                      style={avatarImg}
+                    />
                   ) : (
-                    <div style={avatarFallback}><BotIcon size={22} style={{ opacity: 0.6 }} /></div>
+                    <div style={avatarFallback}>
+                      <BotIcon size={22} style={{ opacity: 0.6 }} />
+                    </div>
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={botName}>{b.name}</div>
                     {/* modelLabel() maps the raw enum to its display name — the
                         panel used to leak `deepseek_v4_flash` while the header
                         two inches away rendered "DeepSeek V4 Flash". */}
-                    <div style={botSub}>Built-in{b.model ? ` · ${modelLabel(b.model)}` : ''}</div>
+                    <div style={botSub}>
+                      Built-in{b.model ? ` · ${modelLabel(b.model)}` : ""}
+                    </div>
                   </div>
                   <button
                     type="button"
                     title="Chat"
-                    onClick={() => { onClose(); void startBotChat(socket, userId, b, (cid) => { navigate(cid); }); }}
-                    style={iconBtn} data-id="featured-chat"
+                    onClick={() => {
+                      onClose();
+                      void startBotChat(socket, userId, b, (cid) => {
+                        navigate(cid);
+                      });
+                    }}
+                    style={iconBtn}
+                    data-id="featured-chat"
                   >
                     <MessageSquare size={18} />
                   </button>
@@ -137,73 +193,183 @@ export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPo
         {loading ? (
           <Hint text="Loading…" />
         ) : bots.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--app-foreground)' }}>
+          <div
+            style={{
+              textAlign: "center",
+              padding: "40px 16px",
+              color: "var(--app-foreground)",
+            }}
+          >
             <BotIcon size={40} style={{ opacity: 0.4 }} />
             <p style={{ opacity: 0.6, marginTop: 12, fontSize: 14 }}>
-              No bots yet. Create one to define a persona, model, greeting, and starter buttons.
+              No bots yet. Create one to define a persona, model, greeting, and
+              starter buttons.
             </p>
-            <button type="button" onClick={() => { onClose(); editBot('new'); }} style={{ ...primaryBtn, margin: '8px auto 0' }} data-id="new-bot-2">
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                editBot("new");
+              }}
+              style={{ ...primaryBtn, margin: "8px auto 0" }}
+              data-id="new-bot-2"
+            >
               <Plus size={16} /> New bot
             </button>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {bots.map((b) => (
               <div
                 key={b._id}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
+                  display: "flex",
+                  alignItems: "center",
                   gap: 12,
                   padding: 12,
                   borderRadius: 0,
-                  border: '1px solid var(--app-border)',
-                  background: 'var(--app-tertiary)',
+                  border: "1px solid var(--app-border)",
+                  background: "var(--app-tertiary)",
                 }}
               >
                 {botAvatarUri(b) ? (
-                  <img {...crossOriginProps(botAvatarUri(b) ?? '')} src={botAvatarUri(b)} alt="" style={{ width: 48, height: 48, borderRadius: 0, border: '1px solid var(--app-border)', objectFit: 'cover', flexShrink: 0 }} />
+                  <img
+                    {...crossOriginProps(botAvatarUri(b) ?? "")}
+                    src={botAvatarUri(b)}
+                    alt=""
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 0,
+                      border: "1px solid var(--app-border)",
+                      objectFit: "cover",
+                      flexShrink: 0,
+                    }}
+                  />
                 ) : (
-                  <div style={{ width: 48, height: 48, borderRadius: 0, border: '1px solid var(--app-border)', background: 'var(--app-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 0,
+                      border: "1px solid var(--app-border)",
+                      background: "var(--app-secondary)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
                     <BotIcon size={22} style={{ opacity: 0.6 }} />
                   </div>
                 )}
                 <button
                   type="button"
-                  onClick={() => { onClose(); void startBotChat(socket, userId, b, (cid) => { navigate(cid); }); }}
+                  onClick={() => {
+                    onClose();
+                    void startBotChat(socket, userId, b, (cid) => {
+                      navigate(cid);
+                    });
+                  }}
                   aria-label={`Chat with ${b.name}`}
-                  style={{ flex: 1, minWidth: 0, textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer', padding: 0 }}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    textAlign: "left",
+                    border: "none",
+                    background: "transparent",
+                    cursor: "pointer",
+                    padding: 0,
+                  }}
                   data-id="bot-open"
                 >
-                  <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--app-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.name}</div>
-                  <div style={{ fontSize: 13, color: 'var(--app-foreground)', opacity: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.model ?? ''}</div>
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      fontSize: 16,
+                      color: "var(--app-foreground)",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {b.name}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      color: "var(--app-foreground)",
+                      opacity: 0.5,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {b.model ?? ""}
+                  </div>
                 </button>
                 <button
                   type="button"
-                  title="Chat" aria-label={`Chat with ${b.name}`}
-                  onClick={() => { onClose(); void startBotChat(socket, userId, b, (cid) => { navigate(cid); }); }}
-                  style={iconBtn} data-id="button"
+                  title="Chat"
+                  aria-label={`Chat with ${b.name}`}
+                  onClick={() => {
+                    onClose();
+                    void startBotChat(socket, userId, b, (cid) => {
+                      navigate(cid);
+                    });
+                  }}
+                  style={iconBtn}
+                  data-id="button"
                 >
                   <MessageSquare size={18} />
                 </button>
-                <button type="button" title="Edit" aria-label={`Edit ${b.name}`} onClick={() => { onClose(); editBot(b._id); }} style={iconBtn} data-id="button-2">
+                <button
+                  type="button"
+                  title="Edit"
+                  aria-label={`Edit ${b.name}`}
+                  onClick={() => {
+                    onClose();
+                    editBot(b._id);
+                  }}
+                  style={iconBtn}
+                  data-id="button-2"
+                >
                   <Pencil size={18} />
                 </button>
                 {confirmId === b._id ? (
                   <button
                     type="button"
-                    title="Confirm delete" aria-label={`Confirm delete ${b.name}`}
-                    onClick={() => { remove(b._id); setConfirmId(null); }}
-                    style={{ ...iconBtn, width: 'auto', padding: '0 12px', gap: 6, color: '#fff', background: 'var(--app-error)', border: 'none', fontSize: 13, fontWeight: 700 }} data-id="delete"
+                    title="Confirm delete"
+                    aria-label={`Confirm delete ${b.name}`}
+                    onClick={() => {
+                      remove(b._id);
+                      setConfirmId(null);
+                    }}
+                    style={{
+                      ...iconBtn,
+                      width: "auto",
+                      padding: "0 12px",
+                      gap: 6,
+                      color: "#fff",
+                      background: "var(--app-error)",
+                      border: "none",
+                      fontSize: 13,
+                      fontWeight: 700,
+                    }}
+                    data-id="delete"
                   >
                     <Trash2 size={16} /> Delete?
                   </button>
                 ) : (
                   <button
                     type="button"
-                    title="Delete" aria-label={`Delete ${b.name}`}
-                    onClick={() => { setConfirmId(b._id); }}
-                    style={{ ...iconBtn, color: 'var(--app-error)' }} data-id="button-3"
+                    title="Delete"
+                    aria-label={`Delete ${b.name}`}
+                    onClick={() => {
+                      setConfirmId(b._id);
+                    }}
+                    style={{ ...iconBtn, color: "var(--app-error)" }}
+                    data-id="button-3"
                   >
                     <Trash2 size={18} />
                   </button>
@@ -218,84 +384,150 @@ export function BotsPopup({ onClose, socket, userId, editBot, navigate }: BotsPo
 }
 
 function Hint({ text }: { text: string }): React.ReactElement {
-  return <div style={{ padding: '40px 8px', textAlign: 'center', fontSize: 14, color: 'var(--app-foreground)', opacity: 0.45 }}>{text}</div>;
+  return (
+    <div
+      style={{
+        padding: "40px 8px",
+        textAlign: "center",
+        fontSize: 14,
+        color: "var(--app-foreground)",
+        opacity: 0.45,
+      }}
+    >
+      {text}
+    </div>
+  );
 }
 
 // Built-in bots carry `avatarUrl` (string); custom bots carry an `avatar`
 // object; either may link a character whose WEBP thumbnail wins. Resolve
 // whichever is present for display, character thumbnail first.
 function botAvatarUri(b: BotDoc): string | undefined {
-  return b.characterThumbnail ?? b.avatar?.image.uri ?? (b as { avatarUrl?: string | null }).avatarUrl ?? undefined;
+  return (
+    b.characterThumbnail ??
+    b.avatar?.image.uri ??
+    (b as { avatarUrl?: string | null }).avatarUrl ??
+    undefined
+  );
 }
 
 const sectionLabel: React.CSSProperties = {
-  fontSize: 12, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase',
-  color: 'var(--app-foreground)', opacity: 0.5, margin: '0 0 8px 2px',
+  fontSize: 12,
+  fontWeight: 700,
+  letterSpacing: 0.4,
+  textTransform: "uppercase",
+  color: "var(--app-foreground)",
+  opacity: 0.5,
+  margin: "0 0 8px 2px",
 };
 const botRow: React.CSSProperties = {
-  display: 'flex', alignItems: 'center', gap: 12, padding: 12, borderRadius: 0,
-  border: '1px solid var(--app-border)', background: 'var(--app-tertiary)',
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  padding: 12,
+  borderRadius: 0,
+  border: "1px solid var(--app-border)",
+  background: "var(--app-tertiary)",
 };
 const avatarImg: React.CSSProperties = {
-  width: 48, height: 48, borderRadius: 0, border: '1px solid var(--app-border)', objectFit: 'cover', flexShrink: 0,
+  width: 48,
+  height: 48,
+  borderRadius: 0,
+  border: "1px solid var(--app-border)",
+  objectFit: "cover",
+  flexShrink: 0,
 };
 const avatarFallback: React.CSSProperties = {
-  width: 48, height: 48, borderRadius: 0, border: '1px solid var(--app-border)', background: 'var(--app-secondary)',
-  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  width: 48,
+  height: 48,
+  borderRadius: 0,
+  border: "1px solid var(--app-border)",
+  background: "var(--app-secondary)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0,
 };
 const botName: React.CSSProperties = {
-  fontWeight: 700, fontSize: 16, color: 'var(--app-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+  fontWeight: 700,
+  fontSize: 16,
+  color: "var(--app-foreground)",
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
 };
 const botSub: React.CSSProperties = {
-  fontSize: 13, color: 'var(--app-foreground)', opacity: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+  fontSize: 13,
+  color: "var(--app-foreground)",
+  opacity: 0.5,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
 };
 
 const modal: React.CSSProperties = {
-  width: 'min(560px, 92vw)',
-  background: 'var(--app-main)',
-  border: '1px solid var(--app-border)',
+  width: "min(560px, 92vw)",
+  background: "var(--app-main)",
+  border: "1px solid var(--app-border)",
   borderRadius: 16,
-  display: 'flex',
-  flexDirection: 'column',
-  boxShadow: '0 12px 40px rgba(0,0,0,0.25)',
-  overflow: 'hidden',
+  display: "flex",
+  flexDirection: "column",
+  boxShadow: "0 12px 40px rgba(0,0,0,0.25)",
+  overflow: "hidden",
 };
 const modalHead: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
   gap: 8,
-  padding: '12px 14px',
-  borderBottom: '1px solid var(--app-border)',
+  padding: "12px 14px",
+  borderBottom: "1px solid var(--app-border)",
 };
 const modalTitle: React.CSSProperties = {
-  fontFamily: 'var(--app-font-heading)',
+  fontFamily: "var(--app-font-heading)",
   fontWeight: 800,
   fontSize: 18,
-  color: 'var(--app-foreground)',
+  color: "var(--app-foreground)",
 };
 const modalBody: React.CSSProperties = {
   padding: 14,
-  maxHeight: '64vh',
-  overflowY: 'auto',
+  maxHeight: "64vh",
+  overflowY: "auto",
 };
 const closeBtn: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
   width: 30,
   height: 30,
-  border: 'none',
-  background: 'transparent',
-  color: 'var(--app-foreground)',
-  cursor: 'pointer',
+  border: "none",
+  background: "transparent",
+  color: "var(--app-foreground)",
+  cursor: "pointer",
 };
 const iconBtn: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38,
-  borderRadius: 10, border: '1px solid var(--app-border)', background: 'var(--app-main)',
-  color: 'var(--app-foreground)', cursor: 'pointer', flexShrink: 0,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 38,
+  height: 38,
+  borderRadius: 10,
+  border: "1px solid var(--app-border)",
+  background: "var(--app-main)",
+  color: "var(--app-foreground)",
+  cursor: "pointer",
+  flexShrink: 0,
 };
 const primaryBtn: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 14px', borderRadius: 11,
-  border: 'none', background: 'var(--app-primary)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 7,
+  padding: "9px 14px",
+  borderRadius: 11,
+  border: "none",
+  background: "var(--app-primary)",
+  color: "#fff",
+  fontSize: 14,
+  fontWeight: 700,
+  cursor: "pointer",
 };

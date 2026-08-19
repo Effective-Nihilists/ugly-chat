@@ -11,7 +11,7 @@ export function formatTokens(n: number): string {
 }
 
 export function formatCost(usd: number): string {
-  if (usd === 0) return '$0.00';
+  if (usd === 0) return "$0.00";
   // Use 3 decimal places for sub-cent amounts; 2 otherwise.
   return `$${usd < 0.01 ? usd.toFixed(3) : usd.toFixed(2)}`;
 }
@@ -34,7 +34,9 @@ export function sumTelemetry(msgs: MsgTelemetry[]): {
   totalCostUsd: number;
   model: string;
 } {
-  let totalTokens = 0, totalCostUsd = 0, model = '';
+  let totalTokens = 0,
+    totalCostUsd = 0,
+    model = "";
   for (const m of msgs) {
     totalTokens += m.outputTokens || 0;
     totalCostUsd += m.costUsd || 0;

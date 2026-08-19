@@ -10,10 +10,14 @@
  *   2. user picks camera/mic/speaker → persisted to localStorage.
  *   3. lobby reads `selected` ids to build its preview + hands them to the call.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { classifyMediaError, hasMediaDevices, type ClassifiedMediaError } from './mediaErrors';
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  classifyMediaError,
+  hasMediaDevices,
+  type ClassifiedMediaError,
+} from "./mediaErrors";
 
-export type PermissionState = 'pending' | 'requesting' | 'granted' | 'denied';
+export type PermissionState = "pending" | "requesting" | "granted" | "denied";
 
 export interface AvDevice {
   id: string;
@@ -25,10 +29,14 @@ export interface DevicePrefs {
   speakerId?: string | undefined;
 }
 
-const LS = { camera: 'uglychat:webcam', mic: 'uglychat:mic', speaker: 'uglychat:speaker' } as const;
+const LS = {
+  camera: "uglychat:webcam",
+  mic: "uglychat:mic",
+  speaker: "uglychat:speaker",
+} as const;
 
 function lsGet(key: string): string | undefined {
-  if (typeof window === 'undefined') return undefined;
+  if (typeof window === "undefined") return undefined;
   try {
     return window.localStorage.getItem(key) ?? undefined;
   } catch {
@@ -36,7 +44,7 @@ function lsGet(key: string): string | undefined {
   }
 }
 function lsSet(key: string, val: string): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(key, val);
   } catch {
@@ -45,7 +53,10 @@ function lsSet(key: string, val: string): void {
 }
 
 // Pick the persisted id if it still exists, else the first device.
-function resolveSelected(list: AvDevice[], saved: string | undefined): string | undefined {
+function resolveSelected(
+  list: AvDevice[],
+  saved: string | undefined,
+): string | undefined {
   if (list.length === 0) return undefined;
   if (saved && list.some((d) => d.id === saved)) return saved;
   return list[0]?.id;
@@ -66,7 +77,7 @@ export interface UseAvDevices {
 }
 
 export function useAvDevices(): UseAvDevices {
-  const [permission, setPermission] = useState<PermissionState>('pending');
+  const [permission, setPermission] = useState<PermissionState>("pending");
   const [error, setError] = useState<ClassifiedMediaError | null>(null);
   const [cameras, setCameras] = useState<AvDevice[]>([]);
   const [mics, setMics] = useState<AvDevice[]>([]);
@@ -84,9 +95,15 @@ export function useAvDevices(): UseAvDevices {
       id: d.deviceId,
       label: d.label || fallback,
     });
-    const cams = devices.filter((d) => d.kind === 'videoinput').map((d, i) => toDev(d, `Camera ${i + 1}`));
-    const microphones = devices.filter((d) => d.kind === 'audioinput').map((d, i) => toDev(d, `Microphone ${i + 1}`));
-    const spk = devices.filter((d) => d.kind === 'audiooutput').map((d, i) => toDev(d, `Speaker ${i + 1}`));
+    const cams = devices
+      .filter((d) => d.kind === "videoinput")
+      .map((d, i) => toDev(d, `Camera ${i + 1}`));
+    const microphones = devices
+      .filter((d) => d.kind === "audioinput")
+      .map((d, i) => toDev(d, `Microphone ${i + 1}`));
+    const spk = devices
+      .filter((d) => d.kind === "audiooutput")
+      .map((d, i) => toDev(d, `Speaker ${i + 1}`));
     setCameras(cams);
     setMics(microphones);
     setSpeakers(spk);
@@ -100,21 +117,26 @@ export function useAvDevices(): UseAvDevices {
   const request = useCallback(async (): Promise<boolean> => {
     if (!hasMediaDevices()) {
       setError(classifyMediaError(null));
-      setPermission('denied');
+      setPermission("denied");
       return false;
     }
-    setPermission('requesting');
+    setPermission("requesting");
     setError(null);
     try {
       // Probe to trigger the prompt + unlock device labels; release immediately.
-      const probe = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      probe.getTracks().forEach((t) => { t.stop(); });
+      const probe = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+      probe.getTracks().forEach((t) => {
+        t.stop();
+      });
       await enumerate();
-      setPermission('granted');
+      setPermission("granted");
       return true;
     } catch (err) {
       setError(classifyMediaError(err));
-      setPermission('denied');
+      setPermission("denied");
       // Even on a partial/denied grant some labels may be available.
       await enumerate().catch(() => undefined);
       return false;
@@ -125,8 +147,10 @@ export function useAvDevices(): UseAvDevices {
   useEffect(() => {
     if (!hasMediaDevices()) return undefined;
     const onChange = (): void => void enumerate().catch(() => undefined);
-    navigator.mediaDevices.addEventListener('devicechange', onChange);
-    return () => { navigator.mediaDevices.removeEventListener('devicechange', onChange); };
+    navigator.mediaDevices.addEventListener("devicechange", onChange);
+    return () => {
+      navigator.mediaDevices.removeEventListener("devicechange", onChange);
+    };
   }, [enumerate]);
 
   const setCamera = useCallback((id: string) => {
@@ -146,5 +170,16 @@ export function useAvDevices(): UseAvDevices {
   const reqRef = useRef(request);
   reqRef.current = request;
 
-  return { permission, error, cameras, mics, speakers, selected, request, setCamera, setMic, setSpeaker };
+  return {
+    permission,
+    error,
+    cameras,
+    mics,
+    speakers,
+    selected,
+    request,
+    setCamera,
+    setMic,
+    setSpeaker,
+  };
 }

@@ -13,6 +13,7 @@
 ### Task 1: Theme module (pure logic, TDD)
 
 **Files:**
+
 - Create: `client/lib/theme.ts`
 - Test: `tests/unit/theme.test.ts`
 
@@ -20,24 +21,35 @@
 
 ```ts
 // tests/unit/theme.test.ts
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { THEMES, normalizeTheme, applyThemeAttr } from '../../client/lib/theme';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { THEMES, normalizeTheme, applyThemeAttr } from "../../client/lib/theme";
 
-describe('theme', () => {
-  it('lists the five themes with auto first', () => {
-    expect(THEMES.map((t) => t.id)).toEqual(['auto', 'light', 'dark', 'cosmic-latte', 'vim']);
+describe("theme", () => {
+  it("lists the five themes with auto first", () => {
+    expect(THEMES.map((t) => t.id)).toEqual([
+      "auto",
+      "light",
+      "dark",
+      "cosmic-latte",
+      "vim",
+    ]);
   });
-  it('normalizes unknown values to auto', () => {
-    expect(normalizeTheme('nope')).toBe('auto');
-    expect(normalizeTheme('vim')).toBe('vim');
-    expect(normalizeTheme(null)).toBe('auto');
+  it("normalizes unknown values to auto", () => {
+    expect(normalizeTheme("nope")).toBe("auto");
+    expect(normalizeTheme("vim")).toBe("vim");
+    expect(normalizeTheme(null)).toBe("auto");
   });
-  it('removes the data-theme attribute for auto, sets it otherwise', () => {
-    const el = { dataset: {} as Record<string, string>, removeAttribute: vi.fn(() => { delete (el.dataset as Record<string,string>).theme; }) } as unknown as HTMLElement;
-    applyThemeAttr(el, 'vim');
-    expect(el.dataset.theme).toBe('vim');
-    applyThemeAttr(el, 'auto');
-    expect(el.removeAttribute).toHaveBeenCalledWith('data-theme');
+  it("removes the data-theme attribute for auto, sets it otherwise", () => {
+    const el = {
+      dataset: {} as Record<string, string>,
+      removeAttribute: vi.fn(() => {
+        delete (el.dataset as Record<string, string>).theme;
+      }),
+    } as unknown as HTMLElement;
+    applyThemeAttr(el, "vim");
+    expect(el.dataset.theme).toBe("vim");
+    applyThemeAttr(el, "auto");
+    expect(el.removeAttribute).toHaveBeenCalledWith("data-theme");
   });
 });
 ```
@@ -51,39 +63,40 @@ Expected: FAIL — cannot resolve `../../client/lib/theme`.
 
 ```ts
 // client/lib/theme.ts
-export type ThemeId = 'auto' | 'light' | 'dark' | 'cosmic-latte' | 'vim';
+export type ThemeId = "auto" | "light" | "dark" | "cosmic-latte" | "vim";
 
 export const THEMES: { id: ThemeId; label: string }[] = [
-  { id: 'auto', label: 'Auto' },
-  { id: 'light', label: 'Light' },
-  { id: 'dark', label: 'Dark' },
-  { id: 'cosmic-latte', label: 'Latte' },
-  { id: 'vim', label: 'Vim' },
+  { id: "auto", label: "Auto" },
+  { id: "light", label: "Light" },
+  { id: "dark", label: "Dark" },
+  { id: "cosmic-latte", label: "Latte" },
+  { id: "vim", label: "Vim" },
 ];
 
-const KEY = 'uglychat-theme';
+const KEY = "uglychat-theme";
 const IDS = new Set(THEMES.map((t) => t.id));
 
 export function normalizeTheme(value: string | null | undefined): ThemeId {
-  return value && IDS.has(value as ThemeId) ? (value as ThemeId) : 'auto';
+  return value && IDS.has(value as ThemeId) ? (value as ThemeId) : "auto";
 }
 
 export function loadTheme(): ThemeId {
-  if (typeof window === 'undefined') return 'auto';
+  if (typeof window === "undefined") return "auto";
   return normalizeTheme(window.localStorage.getItem(KEY));
 }
 
 export function saveTheme(theme: ThemeId): void {
-  if (typeof window !== 'undefined') window.localStorage.setItem(KEY, theme);
+  if (typeof window !== "undefined") window.localStorage.setItem(KEY, theme);
 }
 
 export function applyThemeAttr(el: HTMLElement, theme: ThemeId): void {
-  if (theme === 'auto') el.removeAttribute('data-theme');
+  if (theme === "auto") el.removeAttribute("data-theme");
   else el.dataset.theme = theme;
 }
 
 export function applyTheme(theme: ThemeId): void {
-  if (typeof document !== 'undefined') applyThemeAttr(document.documentElement, theme);
+  if (typeof document !== "undefined")
+    applyThemeAttr(document.documentElement, theme);
 }
 ```
 
@@ -104,6 +117,7 @@ git commit -m "feat(theme): add theme module with persistence + attribute apply"
 ### Task 2: Rework styles.css into attribute-scoped themes
 
 **Files:**
+
 - Modify: `client/styles.css:1-130` (the `:root` block and the `@media (prefers-color-scheme: dark)` block)
 
 Current state (verified): `:root` holds the light tokens (`--app-primary:#ff5500`, `--app-main:#fff`, `--app-foreground:#000`, …) and a `@media (prefers-color-scheme: dark) { :root { … } }` overrides them. We keep light as the base `:root`, and add explicit theme blocks. Token values come from `ugly-studio/client/styles.css` (dark/cosmic-latte/vim) mapped onto the `--app-*` names this app uses.
@@ -129,18 +143,31 @@ to:
 - [ ] **Step 2: Add an explicit dark block** (so picking "Dark" works regardless of OS). Insert after the closing `}` of the media query (~line 131):
 
 ```css
-:root[data-theme='dark'] {
-  --app-primary: #ff5500; --app-primary-rgb: 255, 85, 0;
-  --app-secondary: #1a1d23; --app-secondary-rgb: 26, 29, 35;
-  --app-tertiary: #141720; --app-tertiary-rgb: 20, 23, 32;
-  --app-sidebar: #1e2128; --app-main: #0f1115; --app-main-rgb: 15, 17, 21;
-  --app-border: #2a2d35; --app-border-rgb: 42, 45, 53;
-  --app-foreground: #ffffff; --app-foreground-rgb: 255, 255, 255;
-  --app-input: #12141a; --app-error: #e3120b; --app-error-rgb: 227, 18, 11;
-  --app-foreground-10: rgba(255,255,255,0.1); --app-foreground-20: rgba(255,255,255,0.2);
-  --app-foreground-50: rgba(255,255,255,0.5); --app-foreground-60: rgba(255,255,255,0.6);
-  --app-foreground-80: rgba(255,255,255,0.8); --app-primary-20: rgba(255,85,0,0.2);
-  --app-error-20: rgba(227,18,11,0.2); --app-foreground-muted: rgba(255,255,255,0.55);
+:root[data-theme="dark"] {
+  --app-primary: #ff5500;
+  --app-primary-rgb: 255, 85, 0;
+  --app-secondary: #1a1d23;
+  --app-secondary-rgb: 26, 29, 35;
+  --app-tertiary: #141720;
+  --app-tertiary-rgb: 20, 23, 32;
+  --app-sidebar: #1e2128;
+  --app-main: #0f1115;
+  --app-main-rgb: 15, 17, 21;
+  --app-border: #2a2d35;
+  --app-border-rgb: 42, 45, 53;
+  --app-foreground: #ffffff;
+  --app-foreground-rgb: 255, 255, 255;
+  --app-input: #12141a;
+  --app-error: #e3120b;
+  --app-error-rgb: 227, 18, 11;
+  --app-foreground-10: rgba(255, 255, 255, 0.1);
+  --app-foreground-20: rgba(255, 255, 255, 0.2);
+  --app-foreground-50: rgba(255, 255, 255, 0.5);
+  --app-foreground-60: rgba(255, 255, 255, 0.6);
+  --app-foreground-80: rgba(255, 255, 255, 0.8);
+  --app-primary-20: rgba(255, 85, 0, 0.2);
+  --app-error-20: rgba(227, 18, 11, 0.2);
+  --app-foreground-muted: rgba(255, 255, 255, 0.55);
   --app-gradient-default: linear-gradient(135deg, #282d36 0%, #1a1d23 100%);
   --app-gradient-debug: linear-gradient(135deg, #2a2832 0%, #1e1c26 100%);
 }
@@ -149,21 +176,35 @@ to:
 - [ ] **Step 3: Add the cosmic-latte block** (warm cream + serif; values from `ugly-studio/client/styles.css:187-237`):
 
 ```css
-:root[data-theme='cosmic-latte'] {
-  --app-font-heading: 'Playfair Display', 'Cormorant Garamond', Georgia, serif;
-  --app-font-body: 'Cormorant Garamond', 'EB Garamond', Georgia, serif;
-  --app-font-body-weight: 500; --app-font-body-weight-bold: 700;
-  --app-primary: #ff5500; --app-primary-rgb: 255, 85, 0;
-  --app-secondary: #f5edd6; --app-secondary-rgb: 245, 237, 214;
-  --app-tertiary: #fdf6e3; --app-tertiary-rgb: 253, 246, 227;
-  --app-sidebar: #f5edd6; --app-main: #fff8e7; --app-main-rgb: 255, 248, 231;
-  --app-border: #e6dcc0; --app-border-rgb: 230, 220, 192;
-  --app-foreground: #3a342a; --app-foreground-rgb: 58, 52, 42;
-  --app-input: #fffdf5; --app-error: #a44a3a; --app-error-rgb: 164, 74, 58;
-  --app-foreground-10: rgba(58,52,42,0.1); --app-foreground-20: rgba(58,52,42,0.2);
-  --app-foreground-50: rgba(58,52,42,0.5); --app-foreground-60: rgba(58,52,42,0.6);
-  --app-foreground-80: rgba(58,52,42,0.8); --app-primary-20: rgba(255,85,0,0.2);
-  --app-error-20: rgba(164,74,58,0.2); --app-foreground-muted: rgba(58,52,42,0.55);
+:root[data-theme="cosmic-latte"] {
+  --app-font-heading: "Playfair Display", "Cormorant Garamond", Georgia, serif;
+  --app-font-body: "Cormorant Garamond", "EB Garamond", Georgia, serif;
+  --app-font-body-weight: 500;
+  --app-font-body-weight-bold: 700;
+  --app-primary: #ff5500;
+  --app-primary-rgb: 255, 85, 0;
+  --app-secondary: #f5edd6;
+  --app-secondary-rgb: 245, 237, 214;
+  --app-tertiary: #fdf6e3;
+  --app-tertiary-rgb: 253, 246, 227;
+  --app-sidebar: #f5edd6;
+  --app-main: #fff8e7;
+  --app-main-rgb: 255, 248, 231;
+  --app-border: #e6dcc0;
+  --app-border-rgb: 230, 220, 192;
+  --app-foreground: #3a342a;
+  --app-foreground-rgb: 58, 52, 42;
+  --app-input: #fffdf5;
+  --app-error: #a44a3a;
+  --app-error-rgb: 164, 74, 58;
+  --app-foreground-10: rgba(58, 52, 42, 0.1);
+  --app-foreground-20: rgba(58, 52, 42, 0.2);
+  --app-foreground-50: rgba(58, 52, 42, 0.5);
+  --app-foreground-60: rgba(58, 52, 42, 0.6);
+  --app-foreground-80: rgba(58, 52, 42, 0.8);
+  --app-primary-20: rgba(255, 85, 0, 0.2);
+  --app-error-20: rgba(164, 74, 58, 0.2);
+  --app-foreground-muted: rgba(58, 52, 42, 0.55);
 }
 ```
 
@@ -172,20 +213,33 @@ Also add the webfonts to the existing Google Fonts `@import`/`<link>` (find the 
 - [ ] **Step 4: Add the vim block** (phosphor green; values from `ugly-studio/client/styles.css:257-311`):
 
 ```css
-:root[data-theme='vim'] {
-  --app-font-heading: 'Space Mono', 'JetBrains Mono', monospace;
-  --app-font-body: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
-  --app-primary: #15d34c; --app-primary-rgb: 21, 211, 76;
-  --app-secondary: #0a0a0a; --app-secondary-rgb: 10, 10, 10;
-  --app-tertiary: #050505; --app-tertiary-rgb: 5, 5, 5;
-  --app-sidebar: #0a0a0a; --app-main: #000000; --app-main-rgb: 0, 0, 0;
-  --app-border: #0fa83b; --app-border-rgb: 15, 168, 59;
-  --app-foreground: #15d34c; --app-foreground-rgb: 21, 211, 76;
-  --app-input: #0a0a0a; --app-error: #ff4444; --app-error-rgb: 255, 68, 68;
-  --app-foreground-10: rgba(21,211,76,0.1); --app-foreground-20: rgba(21,211,76,0.2);
-  --app-foreground-50: rgba(21,211,76,0.5); --app-foreground-60: rgba(21,211,76,0.6);
-  --app-foreground-80: rgba(21,211,76,0.8); --app-primary-20: rgba(21,211,76,0.2);
-  --app-error-20: rgba(255,68,68,0.2); --app-foreground-muted: rgba(21,211,76,0.55);
+:root[data-theme="vim"] {
+  --app-font-heading: "Space Mono", "JetBrains Mono", monospace;
+  --app-font-body: "JetBrains Mono", "SF Mono", Menlo, monospace;
+  --app-primary: #15d34c;
+  --app-primary-rgb: 21, 211, 76;
+  --app-secondary: #0a0a0a;
+  --app-secondary-rgb: 10, 10, 10;
+  --app-tertiary: #050505;
+  --app-tertiary-rgb: 5, 5, 5;
+  --app-sidebar: #0a0a0a;
+  --app-main: #000000;
+  --app-main-rgb: 0, 0, 0;
+  --app-border: #0fa83b;
+  --app-border-rgb: 15, 168, 59;
+  --app-foreground: #15d34c;
+  --app-foreground-rgb: 21, 211, 76;
+  --app-input: #0a0a0a;
+  --app-error: #ff4444;
+  --app-error-rgb: 255, 68, 68;
+  --app-foreground-10: rgba(21, 211, 76, 0.1);
+  --app-foreground-20: rgba(21, 211, 76, 0.2);
+  --app-foreground-50: rgba(21, 211, 76, 0.5);
+  --app-foreground-60: rgba(21, 211, 76, 0.6);
+  --app-foreground-80: rgba(21, 211, 76, 0.8);
+  --app-primary-20: rgba(21, 211, 76, 0.2);
+  --app-error-20: rgba(255, 68, 68, 0.2);
+  --app-foreground-muted: rgba(21, 211, 76, 0.55);
   --app-on-primary: #000000;
 }
 ```
@@ -207,6 +261,7 @@ git commit -m "feat(theme): attribute-scoped themes (auto/dark/light/cosmic-latt
 ### Task 3: Apply persisted theme on boot
 
 **Files:**
+
 - Modify: `client/main.tsx` (the entry that calls `bootstrapApp`)
 
 - [ ] **Step 1: Apply the theme before render**
@@ -214,7 +269,7 @@ git commit -m "feat(theme): attribute-scoped themes (auto/dark/light/cosmic-latt
 At the top of `client/main.tsx`, after the imports and before `bootstrapApp({…})`, add:
 
 ```ts
-import { loadTheme, applyTheme } from './lib/theme';
+import { loadTheme, applyTheme } from "./lib/theme";
 
 // Apply persisted theme ASAP so first paint is correct (auto = no attribute → OS media query).
 applyTheme(loadTheme());
@@ -236,6 +291,7 @@ git commit -m "feat(theme): apply persisted theme on boot"
 ### Task 4: Theme picker UI
 
 **Files:**
+
 - Create: `client/components/ThemePicker.tsx`
 - Modify: `client/components/Sidebar.tsx:173-184` (footer — add a row above the existing button row)
 
@@ -243,14 +299,32 @@ git commit -m "feat(theme): apply persisted theme on boot"
 
 ```tsx
 // client/components/ThemePicker.tsx
-import React, { useState } from 'react';
-import { THEMES, loadTheme, saveTheme, applyTheme, type ThemeId } from '../lib/theme';
+import React, { useState } from "react";
+import {
+  THEMES,
+  loadTheme,
+  saveTheme,
+  applyTheme,
+  type ThemeId,
+} from "../lib/theme";
 
 export function ThemePicker(): React.ReactElement {
   const [theme, setTheme] = useState<ThemeId>(() => loadTheme());
-  const pick = (id: ThemeId): void => { setTheme(id); saveTheme(id); applyTheme(id); };
+  const pick = (id: ThemeId): void => {
+    setTheme(id);
+    saveTheme(id);
+    applyTheme(id);
+  };
   return (
-    <div style={{ display: 'flex', gap: 2, padding: '8px 10px', borderTop: '1px solid var(--app-border)', flexWrap: 'wrap' }}>
+    <div
+      style={{
+        display: "flex",
+        gap: 2,
+        padding: "8px 10px",
+        borderTop: "1px solid var(--app-border)",
+        flexWrap: "wrap",
+      }}
+    >
       {THEMES.map((t) => {
         const on = t.id === theme;
         return (
@@ -259,10 +333,14 @@ export function ThemePicker(): React.ReactElement {
             type="button"
             onClick={() => pick(t.id)}
             style={{
-              fontFamily: 'var(--app-font-mono, monospace)', fontSize: 10, letterSpacing: '0.04em',
-              padding: '5px 8px', border: `1px solid ${on ? 'var(--app-primary)' : 'transparent'}`,
-              color: on ? 'var(--app-primary)' : 'var(--app-foreground-60)',
-              background: on ? 'var(--app-primary-20)' : 'transparent', cursor: 'pointer',
+              fontFamily: "var(--app-font-mono, monospace)",
+              fontSize: 10,
+              letterSpacing: "0.04em",
+              padding: "5px 8px",
+              border: `1px solid ${on ? "var(--app-primary)" : "transparent"}`,
+              color: on ? "var(--app-primary)" : "var(--app-foreground-60)",
+              background: on ? "var(--app-primary-20)" : "transparent",
+              cursor: "pointer",
             }}
           >
             {t.label.toLowerCase()}
@@ -281,9 +359,9 @@ export function ThemePicker(): React.ReactElement {
 In `client/components/Sidebar.tsx`, import `ThemePicker` and render `<ThemePicker />` immediately above the existing footer `<div>` (the Bots / Feedback / All Chats row at lines 173-184).
 
 ```tsx
-import { ThemePicker } from './ThemePicker';
+import { ThemePicker } from "./ThemePicker";
 // …just before the footer button row:
-<ThemePicker />
+<ThemePicker />;
 ```
 
 - [ ] **Step 3: Verify manually**

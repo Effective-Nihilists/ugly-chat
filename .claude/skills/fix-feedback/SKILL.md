@@ -17,6 +17,7 @@ If it reports "No prod Cloudflare D1 found", the app hasn't been deployed yet �
 `npm run deploy` first.
 
 For each piece of feedback:
+
 1. Understand the user's issue or request
 2. Implement the fix or feature — **no matter how large or complex**
 3. Run `npm run build` to verify it compiles
@@ -61,6 +62,7 @@ Cross-reference what you see with `context.elementMap` (next section) to transla
 ## Using element maps
 
 Feedback may include an `elementMap` field — a JSON snapshot of every interactive element on the page with:
+
 - **Structural:** `dataId`, `tag`, `role`, `ariaLabel`, `text`, bounding `rect`
 - **Visual:** `computedStyle` with colors, fonts, spacing, shadows, opacity
 - **Animation:** `duration`, `easing` from `data-anim-*` attributes
@@ -68,6 +70,7 @@ Feedback may include an `elementMap` field — a JSON snapshot of every interact
 - **Theme:** `themeVars` with all `--app-*` CSS custom properties
 
 Use this to:
+
 - Map visual descriptions ("the button in the top right") to specific `data-id` values and source files
 - See exact computed styles causing design issues (e.g., low contrast, wrong font size)
 - Read animation configs (duration, easing) to adjust motion timing

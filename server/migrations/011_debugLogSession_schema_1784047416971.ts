@@ -1,4 +1,4 @@
-import type { query as pgQuery } from 'ugly-app/server';
+import type { query as pgQuery } from "ugly-app/server";
 
 // Schema migration: create collection "debugLogSession"
 
@@ -10,7 +10,13 @@ export async function up(query: typeof pgQuery): Promise<void> {
     updated  TIMESTAMPTZ NOT NULL DEFAULT now(),
     version  INTEGER NOT NULL DEFAULT 1
   )`);
-  await query(`CREATE INDEX IF NOT EXISTS "idx_debugLogSession_data" ON "debugLogSession" USING GIN (data)`);
-  await query(`CREATE INDEX IF NOT EXISTS "idx_debugLogSession_userId" ON "debugLogSession" ((data->>'userId'))`);
-  await query(`CREATE INDEX IF NOT EXISTS "idx_debugLogSession_expiresAt" ON "debugLogSession" ((data->>'expiresAt'))`);
+  await query(
+    `CREATE INDEX IF NOT EXISTS "idx_debugLogSession_data" ON "debugLogSession" USING GIN (data)`,
+  );
+  await query(
+    `CREATE INDEX IF NOT EXISTS "idx_debugLogSession_userId" ON "debugLogSession" ((data->>'userId'))`,
+  );
+  await query(
+    `CREATE INDEX IF NOT EXISTS "idx_debugLogSession_expiresAt" ON "debugLogSession" ((data->>'expiresAt'))`,
+  );
 }

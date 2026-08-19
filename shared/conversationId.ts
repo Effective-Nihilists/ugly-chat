@@ -1,9 +1,9 @@
 // Stable id for a 1:1 conversation between two userIds (order-independent), so
 // re-opening a DM finds the existing room rather than creating a duplicate.
-const DM_PREFIX = 'dm-';
+const DM_PREFIX = "dm-";
 
 export function directConversationId(a: string, b: string): string {
-  return `${DM_PREFIX}${[a, b].sort().join('+')}`;
+  return `${DM_PREFIX}${[a, b].sort().join("+")}`;
 }
 
 /**
@@ -23,7 +23,7 @@ export function directConversationId(a: string, b: string): string {
  * minter honest with each other.
  */
 /** A 1:1 room with a bot: `bc-<botId>-<userId>`. */
-const BOT_CHAT_PREFIX = 'bc-';
+const BOT_CHAT_PREFIX = "bc-";
 
 /**
  * Is this room a one-to-one conversation (with a person OR a bot)?
@@ -37,12 +37,17 @@ const BOT_CHAT_PREFIX = 'bc-';
 export function isDirectRoom(conversationId: string, type?: string): boolean {
   if (conversationId.startsWith(BOT_CHAT_PREFIX)) return true;
   if (conversationId.startsWith(DM_PREFIX)) return true;
-  return type === 'direct';
+  return type === "direct";
 }
 
-export function directConversationPeer(roomId: string, meId: string): string | null {
-  const body = roomId.startsWith(DM_PREFIX) ? roomId.slice(DM_PREFIX.length) : roomId;
-  const sep = body.includes('+') ? '+' : body.includes(':') ? ':' : '';
+export function directConversationPeer(
+  roomId: string,
+  meId: string,
+): string | null {
+  const body = roomId.startsWith(DM_PREFIX)
+    ? roomId.slice(DM_PREFIX.length)
+    : roomId;
+  const sep = body.includes("+") ? "+" : body.includes(":") ? ":" : "";
   if (!sep) return null;
   const parts = body.split(sep).filter(Boolean);
   if (parts.length !== 2 || !parts.includes(meId)) return null;

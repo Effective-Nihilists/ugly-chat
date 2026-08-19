@@ -7,12 +7,15 @@
  * back to every ugly.bot app).
  */
 function uglyBotUrl(): string {
-  return (window as unknown as Record<string, string>).__UGLY_BOT_URL__ ?? 'https://ugly.bot';
+  return (
+    (window as unknown as Record<string, string>).__UGLY_BOT_URL__ ??
+    "https://ugly.bot"
+  );
 }
 
 /** Open ugly.bot's user settings in a new tab. */
 export function openUglyBotSettings(): void {
-  window.open(`${uglyBotUrl()}/settings`, '_blank', 'noopener');
+  window.open(`${uglyBotUrl()}/settings`, "_blank", "noopener");
 }
 
 /**
@@ -22,11 +25,14 @@ export function openUglyBotSettings(): void {
  * its form state). With `characterId` set it edits that character, otherwise
  * it starts a new one.
  */
-export function openUglyBotCharacterCreator(returnUrl: string, characterId?: string | null): void {
-  const page = characterId ? `characters/${characterId}` : 'characters/new';
+export function openUglyBotCharacterCreator(
+  returnUrl: string,
+  characterId?: string | null,
+): void {
+  const page = characterId ? `characters/${characterId}` : "characters/new";
   window.open(
     `${uglyBotUrl()}/${page}?return=${encodeURIComponent(returnUrl)}&for=ugly-chat`,
-    '_blank',
-    'noopener',
+    "_blank",
+    "noopener",
   );
 }

@@ -20,9 +20,11 @@ If it reports "No prod Cloudflare D1 found", the app hasn't been deployed yet â€
 `npm run deploy` first.
 
 ## Types: `bug`, `design`, `feature`
+
 - Each report includes the `url`/`page`, `userId` (null = logged out), and the
   recent console logs captured when it was filed.
 - A `screenshotUri` is shown when one was attached.
 
 # Notes
+
 <!-- Claude: append observations here -->

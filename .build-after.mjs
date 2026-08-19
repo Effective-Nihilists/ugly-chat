@@ -1,76 +1,99 @@
 // Rebuild the design-review page as a before/after. Images are inlined as data
 // URIs — the Artifact CSP blocks every external host.
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync, writeFileSync } from "fs";
 
-const OUT = '/private/tmp/claude-502/-Users-admin-Documents-GitHub-app/d5977315-1b83-4ef5-afd1-79c6b2779812/scratchpad/video-call-review.html';
-const before = (f) => `data:image/png;base64,${readFileSync(`.shots-before/${f}`).toString('base64')}`;
-const after = (f) => `data:image/png;base64,${readFileSync(`.shots/${f}`).toString('base64')}`;
+const OUT =
+  "/private/tmp/claude-502/-Users-admin-Documents-GitHub-app/d5977315-1b83-4ef5-afd1-79c6b2779812/scratchpad/video-call-review.html";
+const before = (f) =>
+  `data:image/png;base64,${readFileSync(`.shots-before/${f}`).toString("base64")}`;
+const after = (f) =>
+  `data:image/png;base64,${readFileSync(`.shots/${f}`).toString("base64")}`;
 
 const pairs = [
   {
-    id: 'group',
-    kicker: 'Scenario 01',
-    title: 'Group call — three people',
+    id: "group",
+    kicker: "Scenario 01",
+    title: "Group call — three people",
     thesis:
-      'The stage composed <code>participants.find(p =&gt; p.userId !== userId)</code> — exactly one peer, forever. All three were verified publishing (<code>session=yes tracks=2</code>), the transcript named all three, and the stage rendered one. It now composes the full roster.',
-    b: before('group3-desktop.png'),
-    a: after('group3-desktop.png'),
-    bc: 'Before · three publishing, one rendered. Every client reported peerTiles:1.',
-    ac: 'After · peerTiles:2 on every client. Named plates, reserved control band, stats strip gone.',
+      "The stage composed <code>participants.find(p =&gt; p.userId !== userId)</code> — exactly one peer, forever. All three were verified publishing (<code>session=yes tracks=2</code>), the transcript named all three, and the stage rendered one. It now composes the full roster.",
+    b: before("group3-desktop.png"),
+    a: after("group3-desktop.png"),
+    bc: "Before · three publishing, one rendered. Every client reported peerTiles:1.",
+    ac: "After · peerTiles:2 on every client. Named plates, reserved control band, stats strip gone.",
   },
   {
-    id: 'groupm',
-    kicker: 'Scenario 02',
-    title: 'The same call, on a phone',
+    id: "groupm",
+    kicker: "Scenario 02",
+    title: "The same call, on a phone",
     thesis:
-      'A composer sat permanently across the video just above the controls, so the first thing you saw in a call was a text box — and it covered the bottom row of tiles. Typing now lives behind the transcript toggle.',
-    b: before('group-mobile.png'),
-    a: after('group3-mobile.png'),
-    bc: 'Before · composer across the stage, captions floating over a face.',
-    ac: 'After · both peers tiled and named, captions anchored clear of the labels.',
+      "A composer sat permanently across the video just above the controls, so the first thing you saw in a call was a text box — and it covered the bottom row of tiles. Typing now lives behind the transcript toggle.",
+    b: before("group-mobile.png"),
+    a: after("group3-mobile.png"),
+    bc: "Before · composer across the stage, captions floating over a face.",
+    ac: "After · both peers tiled and named, captions anchored clear of the labels.",
   },
   {
-    id: 'bot',
-    kicker: 'Scenario 03',
-    title: 'Bot call — the AI with a face',
+    id: "bot",
+    kicker: "Scenario 03",
+    title: "Bot call — the AI with a face",
     thesis:
       'Calling the bot was dead end to end: <code>videoBotJoin</code> gated on the static built-in map the canonical Ugly Bot had already left, so every attempt threw <code>not a bot</code> and the avatar never joined. The stage showed a grey disc reading <b>WF</b> — literally <code>initials("Waiting for others…")</code>.',
-    b: before('bot-desktop.png'),
-    a: after('bot-desktop.png'),
-    bc: 'Before · “ringing · nobody has joined yet”, and the famous WF disc.',
-    ac: 'After · the bot joins, renders, and is named — with the model it is actually running.',
+    b: before("bot-desktop.png"),
+    a: after("bot-desktop.png"),
+    bc: "Before · “ringing · nobody has joined yet”, and the famous WF disc.",
+    ac: "After · the bot joins, renders, and is named — with the model it is actually running.",
   },
   {
-    id: 'one',
-    kicker: 'Scenario 04',
-    title: '1:1 — and the raw id in the header',
+    id: "one",
+    kicker: "Scenario 04",
+    title: "1:1 — and the raw id in the header",
     thesis:
-      'Creating a 1:1 returned <code>errorAccessDenied</code> on production: <code>conversationCreateDirect</code> called <code>conversationUserAdd</code> on a <code>direct</code> conversation, which hard-rejects non-groups. The header showed <code>dm-t4ECy</code> because the id format was re-derived inline in three places, none of which stripped the <code>dm-</code> prefix.',
-    b: before('1to1-mobile.png'),
-    a: after('1to1-mobile.png'),
-    bc: 'Before · raw conversation id where a person’s name belongs.',
-    ac: 'After · “Tom Reed”, resolved from one parser that lives next to the minter.',
+      "Creating a 1:1 returned <code>errorAccessDenied</code> on production: <code>conversationCreateDirect</code> called <code>conversationUserAdd</code> on a <code>direct</code> conversation, which hard-rejects non-groups. The header showed <code>dm-t4ECy</code> because the id format was re-derived inline in three places, none of which stripped the <code>dm-</code> prefix.",
+    b: before("1to1-mobile.png"),
+    a: after("1to1-mobile.png"),
+    bc: "Before · raw conversation id where a person’s name belongs.",
+    ac: "After · “Tom Reed”, resolved from one parser that lives next to the minter.",
   },
 ];
 
 const bugs = [
-  ['Bot calls', '<code>videoBotJoin</code> gated on <code>botUser()</code> — the static built-in map the canonical bot left when it moved to the <code>bot</code> collection. Every bot call threw <code>not a bot</code>.', 'Gate on <code>isBot</code>; 4 unit tests.'],
-  ['1:1 creation', '<code>conversationCreateDirect</code> ran <code>conversationUserAdd</code> on a <code>direct</code> conversation, which hard-rejects non-groups → <code>errorAccessDenied</code>.', 'Drop it — <code>conversationCreate</code> already adds both owners.'],
-  ['DM titles', 'The <code>dm-A+B</code> id was parsed inline in three places, none stripping the prefix, so half of all DMs resolved a peer id of <code>dm-&lt;ourOwnId&gt;</code>.', 'One parser beside the minter; 6 unit tests.'],
-  ['Who is talking', 'The speaking ring came only from typed-message TTS — on a real call, nobody was ever marked as speaking.', 'Measure it from live audio; single winner with hysteresis.'],
-  ['Stale deploys', 'Two deploys of a server fix reported success while prod ran the old code.', '<code>rm -rf dist</code>; verify behaviour on prod, not the deploy log.'],
+  [
+    "Bot calls",
+    "<code>videoBotJoin</code> gated on <code>botUser()</code> — the static built-in map the canonical bot left when it moved to the <code>bot</code> collection. Every bot call threw <code>not a bot</code>.",
+    "Gate on <code>isBot</code>; 4 unit tests.",
+  ],
+  [
+    "1:1 creation",
+    "<code>conversationCreateDirect</code> ran <code>conversationUserAdd</code> on a <code>direct</code> conversation, which hard-rejects non-groups → <code>errorAccessDenied</code>.",
+    "Drop it — <code>conversationCreate</code> already adds both owners.",
+  ],
+  [
+    "DM titles",
+    "The <code>dm-A+B</code> id was parsed inline in three places, none stripping the prefix, so half of all DMs resolved a peer id of <code>dm-&lt;ourOwnId&gt;</code>.",
+    "One parser beside the minter; 6 unit tests.",
+  ],
+  [
+    "Who is talking",
+    "The speaking ring came only from typed-message TTS — on a real call, nobody was ever marked as speaking.",
+    "Measure it from live audio; single winner with hysteresis.",
+  ],
+  [
+    "Stale deploys",
+    "Two deploys of a server fix reported success while prod ran the old code.",
+    "<code>rm -rf dist</code>; verify behaviour on prod, not the deploy log.",
+  ],
 ];
 
 const remaining = [
-  'Peer video is cropped edge-to-edge rather than fit — on a real call this crops faces and shared content.',
-  'The mobile self-view can sit in “Starting camera…” for the whole call when the local track never produces frames — the state is now named, but the underlying cause is unfixed.',
+  "Peer video is cropped edge-to-edge rather than fit — on a real call this crops faces and shared content.",
+  "The mobile self-view can sit in “Starting camera…” for the whole call when the local track never produces frames — the state is now named, but the underlying cause is unfixed.",
   'The sidebar files a group conversation under <span class="mono">// DIRECT</span>.',
-  'Source-card quality/dedup, and the STT console flood (<code>send DROPPED stt:audio — ws null</code>) are still open from the earlier passes.',
+  "Source-card quality/dedup, and the STT console flood (<code>send DROPPED stt:audio — ws null</code>) are still open from the earlier passes.",
 ];
 
 const shot = (src, cap, tag) => `
   <figure class="shot">
-    <div class="tag ${tag === 'Before' ? 'b' : 'a'}">${tag}</div>
+    <div class="tag ${tag === "Before" ? "b" : "a"}">${tag}</div>
     <img src="${src}" alt="${cap}" loading="lazy" />
     <figcaption>${cap}</figcaption>
   </figure>`;
@@ -81,8 +104,8 @@ const section = (p) => `
     <h2>${p.title}</h2>
     <p class="thesis">${p.thesis}</p>
     <div class="pair">
-      ${shot(p.b, p.bc, 'Before')}
-      ${shot(p.a, p.ac, 'After')}
+      ${shot(p.b, p.bc, "Before")}
+      ${shot(p.a, p.ac, "After")}
     </div>
   </section>`;
 
@@ -188,7 +211,7 @@ const html = `<title>Video call — the pass · ugly.chat</title>
     </div>
   </header>
 
-  ${pairs.map(section).join('')}
+  ${pairs.map(section).join("")}
 
   <section class="block">
     <div class="skicker">What was actually broken</div>
@@ -198,7 +221,7 @@ const html = `<title>Video call — the pass · ugly.chat</title>
     <table>
       <thead><tr><th>Area</th><th>What was wrong</th><th>Fix</th></tr></thead>
       <tbody>
-        ${bugs.map(([a, b, c]) => `<tr><td>${a}</td><td>${b}</td><td>${c}</td></tr>`).join('')}
+        ${bugs.map(([a, b, c]) => `<tr><td>${a}</td><td>${b}</td><td>${c}</td></tr>`).join("")}
       </tbody>
     </table>
   </section>
@@ -206,7 +229,7 @@ const html = `<title>Video call — the pass · ugly.chat</title>
   <section class="block">
     <div class="skicker">Still open</div>
     <h2>What I did not fix.</h2>
-    <ul class="rem">${remaining.map((r) => `<li>${r}</li>`).join('')}</ul>
+    <ul class="rem">${remaining.map((r) => `<li>${r}</li>`).join("")}</ul>
   </section>
 
   <footer>
@@ -216,4 +239,4 @@ const html = `<title>Video call — the pass · ugly.chat</title>
 </div>`;
 
 writeFileSync(OUT, html);
-console.log('wrote', OUT, (html.length / 1024 / 1024).toFixed(2), 'MB');
+console.log("wrote", OUT, (html.length / 1024 / 1024).toFixed(2), "MB");

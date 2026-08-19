@@ -16,6 +16,7 @@ If it reports "No prod Cloudflare D1 found", the app hasn't been deployed yet â€
 `npm run deploy` first.
 
 For each error:
+
 1. Find the relevant source file (`source: 'browser'` errors include
    `context.recentLogs` â€” the console history right before the error)
 2. Understand the root cause

@@ -1,6 +1,6 @@
-import React, { createContext, useCallback, useContext, useState } from 'react';
-import { useTTS } from 'ugly-app/client';
-import type { UglyBotSocket } from 'ugly-app/client';
+import React, { createContext, useCallback, useContext, useState } from "react";
+import { useTTS } from "ugly-app/client";
+import type { UglyBotSocket } from "ugly-app/client";
 
 // Read a message aloud via ugly.bot's WebSocket TTS (InWorld). Exposed through
 // context so the many message bubbles share ONE `useTTS` instance instead of
@@ -42,7 +42,9 @@ export function VoiceProvider({
       const t = text.trim();
       if (!t) return;
       setSpeakingId(id);
-      void tts.play(t).catch(() => { setSpeakingId(null); });
+      void tts.play(t).catch(() => {
+        setSpeakingId(null);
+      });
     },
     [tts],
   );

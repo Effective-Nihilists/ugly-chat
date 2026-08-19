@@ -22,42 +22,45 @@ Examples:
 
 ```ts
 // Initial page load on iOS
-inspect_ux({ url_path: '/feed', device: 'ios' })
+inspect_ux({ url_path: "/feed", device: "ios" });
 
 // SPA navigation jank
-inspect_ux({ actions: [{ click: '[data-id=settings-link]' }, { wait: 800 }] })
+inspect_ux({ actions: [{ click: "[data-id=settings-link]" }, { wait: 800 }] });
 
 // Popup entry transition
-inspect_ux({ url_path: '/profile', actions: [{ click: '[data-id=edit-btn]' }, { wait: 600 }] })
+inspect_ux({
+  url_path: "/profile",
+  actions: [{ click: "[data-id=edit-btn]" }, { wait: 600 }],
+});
 
 // Mobile keyboard covering input
 inspect_ux({
-  url_path: '/signup',
-  device: 'ios',
+  url_path: "/signup",
+  device: "ios",
   actions: [
-    { focus: '[data-id=email-field]' },
+    { focus: "[data-id=email-field]" },
     { simulate_keyboard: true },
     { wait: 400 },
   ],
-})
+});
 
 // Scroll-driven animations
-inspect_ux({ actions: [{ scroll: { to: 2000 } }, { wait: 1200 }] })
+inspect_ux({ actions: [{ scroll: { to: 2000 } }, { wait: 1200 }] });
 ```
 
 ## What to act on
 
 The returned `UglyInspectReport` is structured JSON. Treat each of these as a build failure that must be fixed before declaring done:
 
-| Field | Defect threshold |
-|---|---|
-| `cls.total` | > 0.1 — significant layout shift during the window |
-| `longTasks[]` | Any entry > 100ms while an animation is in flight (`during` set) |
-| `overlaps[]` | Any entry — two interactive controls share screen space |
-| `safeAreaViolations[]` | Any entry — interactive element spills under notch / home indicator |
-| `keyboard.coveredInputs[]` | Any entry — focused input rendered behind the on-screen keyboard |
-| `animations[].droppedFrames` | > 2 dropped per animation |
-| `popups[].droppedFrames` | > 2 — popup entry stutters |
+| Field                        | Defect threshold                                                    |
+| ---------------------------- | ------------------------------------------------------------------- |
+| `cls.total`                  | > 0.1 — significant layout shift during the window                  |
+| `longTasks[]`                | Any entry > 100ms while an animation is in flight (`during` set)    |
+| `overlaps[]`                 | Any entry — two interactive controls share screen space             |
+| `safeAreaViolations[]`       | Any entry — interactive element spills under notch / home indicator |
+| `keyboard.coveredInputs[]`   | Any entry — focused input rendered behind the on-screen keyboard    |
+| `animations[].droppedFrames` | > 2 dropped per animation                                           |
+| `popups[].droppedFrames`     | > 2 — popup entry stutters                                          |
 
 For each defect:
 
@@ -67,6 +70,6 @@ For each defect:
 
 ## Don't
 
-- Don't use `inspect_ux` for *aesthetic* judgments ("does this look pretty?"). For those, use `dev_server_screenshot` + `analyze_image`. `inspect_ux` is for objective, measurable defects only.
+- Don't use `inspect_ux` for _aesthetic_ judgments ("does this look pretty?"). For those, use `dev_server_screenshot` + `analyze_image`. `inspect_ux` is for objective, measurable defects only.
 - Don't gate trivial fixes (typo, copy change, color tweak) on a clean inspect_ux run.
 - Don't accept "the report has overlaps but they're decorative" without checking — if the report flagged it, the elements are tagged as interactive (`[data-id]`, `[role]`, `button`, `input`, `a`).

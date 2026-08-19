@@ -1,4 +1,4 @@
-import type { D1Migration, SqliteExec } from 'ugly-app/server';
+import type { D1Migration, SqliteExec } from "ugly-app/server";
 
 /**
  * Restore filter keys that were only ever stored inside `_id`.
@@ -60,7 +60,7 @@ import type { D1Migration, SqliteExec } from 'ugly-app/server';
  * resolves for only 1 of the 7 rows. The fixed writer populates it going forward.
  */
 export const repairIdOnlyFields: D1Migration = {
-  name: '001_repair_id_only_fields',
+  name: "001_repair_id_only_fields",
   async up(exec: SqliteExec): Promise<void> {
     // conversationUser._id = "<conversationId>:<userId>"
     await exec.run(

@@ -7,8 +7,8 @@
  * Runs on Cloudflare Workers (global fetch only). Caps work to keep it cheap:
  * at most 2 URLs/message, 5s timeout, 512 KB of HTML scanned.
  */
-import type { DbSurface } from './handlers';
-import { collections } from '../shared/collections';
+import type { DbSurface } from "./handlers";
+import { collections } from "../shared/collections";
 
 export interface LinkPreview {
   url: string;
@@ -27,7 +27,7 @@ export function extractUrls(text: string | null | undefined): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const raw of found) {
-    const u = raw.replace(/[.,!?]+$/, '');
+    const u = raw.replace(/[.,!?]+$/, "");
     if (!seen.has(u)) {
       seen.add(u);
       out.push(u);
@@ -39,10 +39,16 @@ export function extractUrls(text: string | null | undefined): string[] {
 
 /** Pull a meta tag's content by property/name, tolerant of attribute order. */
 function metaContent(html: string, key: string): string | undefined {
-  const k = key.replace(/[:]/g, '\\:');
+  const k = key.replace(/[:]/g, "\\:");
   const patterns = [
-    new RegExp(`<meta[^>]+(?:property|name)=["']${k}["'][^>]*\\bcontent=["']([^"']*)["']`, 'i'),
-    new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]*(?:property|name)=["']${k}["']`, 'i'),
+    new RegExp(
+      `<meta[^>]+(?:property|name)=["']${k}["'][^>]*\\bcontent=["']([^"']*)["']`,
+      "i",
+    ),
+    new RegExp(
+      `<meta[^>]+content=["']([^"']*)["'][^>]*(?:property|name)=["']${k}["']`,
+      "i",
+    ),
   ];
   for (const re of patterns) {
     const m = re.exec(html);
@@ -53,9 +59,9 @@ function metaContent(html: string, key: string): string | undefined {
 
 function decodeEntities(s: string): string {
   return s
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&#x27;/gi, "'");
@@ -69,21 +75,30 @@ function titleTag(html: string): string | undefined {
 export async function fetchOpenGraph(url: string): Promise<LinkPreview | null> {
   try {
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'UglyChatBot/1.0 (+https://ugly.chat)', Accept: 'text/html' },
+      headers: {
+        "User-Agent": "UglyChatBot/1.0 (+https://ugly.chat)",
+        Accept: "text/html",
+      },
       signal: AbortSignal.timeout(5000),
-      redirect: 'follow',
+      redirect: "follow",
     });
     if (!res.ok) return null;
-    const ct = res.headers.get('content-type') ?? '';
-    if (!ct.includes('text/html')) return null;
+    const ct = res.headers.get("content-type") ?? "";
+    if (!ct.includes("text/html")) return null;
     // Read at most ~512 KB.
     const html = (await res.text()).slice(0, 512 * 1024);
 
-    const title = metaContent(html, 'og:title') ?? metaContent(html, 'twitter:title') ?? titleTag(html);
-    const image = metaContent(html, 'og:image') ?? metaContent(html, 'twitter:image');
+    const title =
+      metaContent(html, "og:title") ??
+      metaContent(html, "twitter:title") ??
+      titleTag(html);
+    const image =
+      metaContent(html, "og:image") ?? metaContent(html, "twitter:image");
     const description =
-      metaContent(html, 'og:description') ?? metaContent(html, 'twitter:description') ?? metaContent(html, 'description');
-    const siteName = metaContent(html, 'og:site_name');
+      metaContent(html, "og:description") ??
+      metaContent(html, "twitter:description") ??
+      metaContent(html, "description");
+    const siteName = metaContent(html, "og:site_name");
 
     if (!title && !image) return null; // nothing worth showing
     const preview: LinkPreview = { url };
@@ -112,19 +127,26 @@ function absolutize(image: string, base: string): string {
  */
 export async function unfurlMessageLinks(
   db: DbSurface,
-  msg: { _id?: string; text?: string | null; markdown?: string | null; linkPreviews?: unknown },
+  msg: {
+    _id?: string;
+    text?: string | null;
+    markdown?: string | null;
+    linkPreviews?: unknown;
+  },
 ): Promise<void> {
   if (!msg._id) return;
   if (Array.isArray(msg.linkPreviews) && msg.linkPreviews.length > 0) return; // already done
-  const urls = extractUrls(msg.markdown ?? msg.text ?? '');
+  const urls = extractUrls(msg.markdown ?? msg.text ?? "");
   if (urls.length === 0) return;
 
-  const previews = (await Promise.all(urls.map((u) => fetchOpenGraph(u)))).filter(
-    (p): p is LinkPreview => p !== null,
-  );
+  const previews = (
+    await Promise.all(urls.map((u) => fetchOpenGraph(u)))
+  ).filter((p): p is LinkPreview => p !== null);
   if (previews.length === 0) return;
 
   // Patch only `linkPreviews` (dot-path partial update) so we never clobber a
   // concurrent edit — no read-modify-write of the whole message doc.
-  await db.setDocFields(collections.message, msg._id, { linkPreviews: previews });
+  await db.setDocFields(collections.message, msg._id, {
+    linkPreviews: previews,
+  });
 }

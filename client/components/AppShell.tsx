@@ -97,12 +97,21 @@ export function AppShell({
       }}
     >
       {browserShare ? (
-        <div className="uc-browser-share" role="status" data-id="browser-share-notice">
+        <div
+          className="uc-browser-share"
+          role="status"
+          data-id="browser-share-notice"
+        >
           <MessageSquare size={15} />
           <span>
             Choose a conversation for <strong>{browserShare.title}</strong>
           </span>
-          <button type="button" aria-label="Cancel page share" onClick={clearBrowserShare} data-id="cancel-browser-share">
+          <button
+            type="button"
+            aria-label="Cancel page share"
+            onClick={clearBrowserShare}
+            data-id="cancel-browser-share"
+          >
             <X size={14} />
           </button>
         </div>
@@ -139,10 +148,13 @@ function BrowserConversationBridge(): React.ReactElement | null {
     );
   }, [activeConversationId, conversations, embed.embedded]);
 
-  useEffect(() =>
-    onBrowserConversationSelection((conversationId) => {
-      router.push(":conversationId", { conversationId });
-    }), [router]);
+  useEffect(
+    () =>
+      onBrowserConversationSelection((conversationId) => {
+        router.push(":conversationId", { conversationId });
+      }),
+    [router],
+  );
 
   return null;
 }

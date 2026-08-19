@@ -13,11 +13,11 @@
  * second joiner doesn't re-push the caller. DMs only for now (the conversation
  * id encodes the two members); group fan-out is a follow-up.
  */
-import { uglyBotRequest } from './uglybot';
-import { isBot } from './bots';
-import { collections } from '../shared/collections';
-import type { UserPublicDoc } from '../shared/collections';
-import type { CollectionDef } from 'ugly-app/shared';
+import { uglyBotRequest } from "./uglybot";
+import { isBot } from "./bots";
+import { collections } from "../shared/collections";
+import type { UserPublicDoc } from "../shared/collections";
+import type { CollectionDef } from "ugly-app/shared";
 
 interface CallParticipantLike {
   userId: string;
@@ -27,7 +27,10 @@ interface CallStateLike {
   participants?: Record<string, CallParticipantLike>;
 }
 interface DbLike {
-  getByIds<T>(collection: CollectionDef<T>, ids: string[]): Promise<(T | null)[]>;
+  getByIds<T>(
+    collection: CollectionDef<T>,
+    ids: string[],
+  ): Promise<(T | null)[]>;
 }
 
 export async function notifyIncomingCall(
@@ -42,16 +45,18 @@ export async function notifyIncomingCall(
 
   // DM recipients: the other '+'-joined member(s) who are humans (not the bot,
   // not the caller). Group rooms (nanoid id, no '+') are a follow-up.
-  if (!conversationId.includes('+')) return;
+  if (!conversationId.includes("+")) return;
   const recipients = conversationId
-    .split('+')
+    .split("+")
     .filter(Boolean)
     .filter((id) => id !== callerId && !isBot(id));
   if (recipients.length === 0) return;
 
-  let callerName = 'Someone';
+  let callerName = "Someone";
   try {
-    const [doc] = await db.getByIds<UserPublicDoc>(collections.userPublic, [callerId]);
+    const [doc] = await db.getByIds<UserPublicDoc>(collections.userPublic, [
+      callerId,
+    ]);
     if (doc?.name) callerName = doc.name;
   } catch {
     /* name is best-effort */
@@ -61,28 +66,29 @@ export async function notifyIncomingCall(
   // the click target must be an ABSOLUTE ugly.chat URL — ugly.bot's service
   // worker opens it, taking the user to the conversation on ugly.chat.
   const base =
-    (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.PUBLIC_APP_URL ?? 'https://ugly.chat';
-  const url = `${base.replace(/\/$/, '')}/${conversationId}`;
+    (globalThis as { process?: { env?: Record<string, string | undefined> } })
+      .process?.env?.PUBLIC_APP_URL ?? "https://ugly.chat";
+  const url = `${base.replace(/\/$/, "")}/${conversationId}`;
 
   await Promise.all(
     recipients.map((targetUserId) =>
-      uglyBotRequest('pushSend', {
+      uglyBotRequest("pushSend", {
         targetUserId,
         title: `${callerName} is calling`,
-        body: 'Incoming video call',
+        body: "Incoming video call",
         path: url,
         // Compose a "ring" from the framework's generic notification primitives:
         // a bundled ring sound (escalates to a high-priority/full-screen alert)
         // + Accept/Decline action buttons + the iOS INCOMING_CALL category.
-        sound: 'ring',
-        category: 'INCOMING_CALL',
+        sound: "ring",
+        category: "INCOMING_CALL",
         buttons: [
-          { id: 'accept', title: 'Accept' },
-          { id: 'decline', title: 'Decline' },
+          { id: "accept", title: "Accept" },
+          { id: "decline", title: "Decline" },
         ],
-        data: { type: 'call', conversationId, callerId },
+        data: { type: "call", conversationId, callerId },
       }).catch((err: unknown) => {
-        console.warn('[callNotify] push failed', (err as Error).message);
+        console.warn("[callNotify] push failed", (err as Error).message);
       }),
     ),
   );
@@ -91,8 +97,9 @@ export async function notifyIncomingCall(
 // Absolute click target (ugly.bot delivers the push; its SW opens this URL).
 function convUrl(conversationId: string): string {
   const base =
-    (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.PUBLIC_APP_URL ?? 'https://ugly.chat';
-  return `${base.replace(/\/$/, '')}/${conversationId}`;
+    (globalThis as { process?: { env?: Record<string, string | undefined> } })
+      .process?.env?.PUBLIC_APP_URL ?? "https://ugly.chat";
+  return `${base.replace(/\/$/, "")}/${conversationId}`;
 }
 
 /**
@@ -109,32 +116,34 @@ export async function notifyNewMessage(
   text: string,
 ): Promise<void> {
   if (isBot(senderId)) return;
-  if (!conversationId.includes('+')) return; // DM only for now
+  if (!conversationId.includes("+")) return; // DM only for now
   const recipients = conversationId
-    .split('+')
+    .split("+")
     .filter(Boolean)
     .filter((id) => id !== senderId && !isBot(id));
   if (recipients.length === 0) return;
 
-  let senderName = 'New message';
+  let senderName = "New message";
   try {
-    const [doc] = await db.getByIds<UserPublicDoc>(collections.userPublic, [senderId]);
+    const [doc] = await db.getByIds<UserPublicDoc>(collections.userPublic, [
+      senderId,
+    ]);
     if (doc?.name) senderName = doc.name;
   } catch {
     /* best-effort */
   }
-  const preview = text.trim().replace(/\s+/g, ' ').slice(0, 140);
+  const preview = text.trim().replace(/\s+/g, " ").slice(0, 140);
   const url = convUrl(conversationId);
 
   await Promise.all(
     recipients.map((targetUserId) =>
-      uglyBotRequest('pushSend', {
+      uglyBotRequest("pushSend", {
         targetUserId,
         title: senderName,
-        body: preview || 'Sent a message',
+        body: preview || "Sent a message",
         path: url,
       }).catch((err: unknown) => {
-        console.warn('[notifyNewMessage] push failed', (err as Error).message);
+        console.warn("[notifyNewMessage] push failed", (err as Error).message);
       }),
     ),
   );

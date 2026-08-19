@@ -1,6 +1,12 @@
-import { z } from 'zod';
-import type { InferDocType } from 'ugly-app/shared';
-import { defineCollections, d1, AvatarSchema, ProfileFieldsSchema, defaultAvatar } from 'ugly-app/shared';
+import { z } from "zod";
+import type { InferDocType } from "ugly-app/shared";
+import {
+  defineCollections,
+  d1,
+  AvatarSchema,
+  ProfileFieldsSchema,
+  defaultAvatar,
+} from "ugly-app/shared";
 
 // ─── Schemas & Types ─────────────────────────────────────────────────────────
 // Chat schemas are aligned with `ugly-app/conversation` (the conversation engine
@@ -18,10 +24,10 @@ export type Todo = InferDocType<typeof TodoSchema>;
 // Conversation — type/title + chat metadata (image, mode, bots, typing, activity).
 export const ConversationSchema = z
   .object({
-    type: z.string().default('chat'),
-    title: z.string().default(''),
+    type: z.string().default("chat"),
+    title: z.string().default(""),
     image: z.unknown().nullable().optional(),
-    mode: z.enum(['public', 'private', 'restricted']).optional(),
+    mode: z.enum(["public", "private", "restricted"]).optional(),
     lastHuman: z.number().optional(),
     lastUser: z.number().optional(),
     chargeUserIds: z.array(z.string()).optional(),
@@ -50,7 +56,7 @@ export const MessageSchema = z
     edited: z.boolean().optional(),
     deleted: z.boolean().optional(),
     parentMessageId: z.string().nullable().optional(),
-    visibility: z.enum(['normal', 'silent', 'hidden']).optional(),
+    visibility: z.enum(["normal", "silent", "hidden"]).optional(),
     systemType: z.string().optional(),
     // Target userId for membership system messages (memberAdd/Remove/Leave).
     systemParam: z.string().optional(),
@@ -172,10 +178,10 @@ export type BotButton = z.infer<typeof BotButtonSchema>;
 // 2D image + background), defaulting to `defaultAvatar`.
 export const BotSchema = ProfileFieldsSchema.extend({
   ownerId: z.string(),
-  name: z.string().default('Bot'),
+  name: z.string().default("Bot"),
   avatar: AvatarSchema.default(defaultAvatar),
-  instruction: z.string().default(''),
-  model: z.string().default('deepseek_v4_flash'),
+  instruction: z.string().default(""),
+  model: z.string().default("deepseek_v4_flash"),
   firstMessage: z.string().nullable().optional(),
   buttons: z.array(BotButtonSchema).optional(),
   // Linked ugly.bot character: id + saved WEBP thumbnail URL (set via the
@@ -261,12 +267,25 @@ const botIndexes: { fields: Record<string, 1 | -1> }[] = [
 export const collections = defineCollections({
   todo: {
     schema: TodoSchema,
-    meta: { cache: false, trackable: true, public: false, cascadeFrom: null, trackKeys: ['userId'], db: d1 },
+    meta: {
+      cache: false,
+      trackable: true,
+      public: false,
+      cascadeFrom: null,
+      trackKeys: ["userId"],
+      db: d1,
+    },
     indexes: todoIndexes,
   },
   conversation: {
     schema: ConversationSchema,
-    meta: { cache: false, trackable: true, public: false, cascadeFrom: null, db: d1 },
+    meta: {
+      cache: false,
+      trackable: true,
+      public: false,
+      cascadeFrom: null,
+      db: d1,
+    },
     indexes: conversationIndexes,
   },
   message: {
@@ -274,22 +293,50 @@ export const collections = defineCollections({
     // Plain CRUD collection on D1 — Postgres FTS dropped. Search is a bounded,
     // indexed getDocs(by conversationId) + in-JS substring filter (see
     // conversationMessageSearch in server/handlers.ts).
-    meta: { cache: false, trackable: true, public: false, cascadeFrom: 'conversation', trackKeys: ['conversationId'], db: d1 },
+    meta: {
+      cache: false,
+      trackable: true,
+      public: false,
+      cascadeFrom: "conversation",
+      trackKeys: ["conversationId"],
+      db: d1,
+    },
     indexes: messageIndexes,
   },
   messageReaction: {
     schema: MessageReactionSchema,
-    meta: { cache: false, trackable: true, public: false, cascadeFrom: 'conversation', trackKeys: ['conversationId', 'messageId'], db: d1 },
+    meta: {
+      cache: false,
+      trackable: true,
+      public: false,
+      cascadeFrom: "conversation",
+      trackKeys: ["conversationId", "messageId"],
+      db: d1,
+    },
     indexes: messageReactionIndexes,
   },
   conversationUser: {
     schema: ConversationUserSchema,
-    meta: { cache: false, trackable: true, public: false, cascadeFrom: 'conversation', trackKeys: ['conversationId', 'userId'], db: d1 },
+    meta: {
+      cache: false,
+      trackable: true,
+      public: false,
+      cascadeFrom: "conversation",
+      trackKeys: ["conversationId", "userId"],
+      db: d1,
+    },
     indexes: conversationUserIndexes,
   },
   userConversation: {
     schema: UserConversationSchema,
-    meta: { cache: false, trackable: true, public: false, cascadeFrom: 'conversation', trackKeys: ['userId'], db: d1 },
+    meta: {
+      cache: false,
+      trackable: true,
+      public: false,
+      cascadeFrom: "conversation",
+      trackKeys: ["userId"],
+      db: d1,
+    },
     indexes: userConversationIndexes,
   },
   userPublic: {
@@ -307,11 +354,24 @@ export const collections = defineCollections({
   },
   collabDoc: {
     schema: CollabDocSchema,
-    meta: { cache: false, trackable: false, public: false, cascadeFrom: null, db: d1 },
+    meta: {
+      cache: false,
+      trackable: false,
+      public: false,
+      cascadeFrom: null,
+      db: d1,
+    },
   },
   bot: {
     schema: BotSchema,
-    meta: { cache: true, trackable: true, public: true, cascadeFrom: null, trackKeys: ['ownerId'], db: d1 },
+    meta: {
+      cache: true,
+      trackable: true,
+      public: true,
+      cascadeFrom: null,
+      trackKeys: ["ownerId"],
+      db: d1,
+    },
     indexes: botIndexes,
   },
 });

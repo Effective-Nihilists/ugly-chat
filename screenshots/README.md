@@ -17,17 +17,17 @@ source.
 
 ## Screens (keys)
 
-| key | route | mock |
-| --- | --- | --- |
-| `list` | `/chat` | conversation-list.html |
-| `chat-bot` | `/chat/<UGLY_BOT>+<user>` | chat.html |
-| `chat-human` | `/chat/dm-<user>+<partner>` | chat-human.html |
-| `new-chat` | `/new` | new-chat.html |
-| `new-group` | `/new-group` | new-group.html |
-| `settings-group` | `/settings/grp-screenshot-demo` | chat-settings.html |
-| `settings` | `/settings` | (no matching mock element) |
-| `call-bot` | `/chat/<bot dm>` → start call | call-bot.html |
-| `call-2p` | `/chat/<human dm>` → start call | call-2p.html |
+| key              | route                           | mock                       |
+| ---------------- | ------------------------------- | -------------------------- |
+| `list`           | `/chat`                         | conversation-list.html     |
+| `chat-bot`       | `/chat/<UGLY_BOT>+<user>`       | chat.html                  |
+| `chat-human`     | `/chat/dm-<user>+<partner>`     | chat-human.html            |
+| `new-chat`       | `/new`                          | new-chat.html              |
+| `new-group`      | `/new-group`                    | new-group.html             |
+| `settings-group` | `/settings/grp-screenshot-demo` | chat-settings.html         |
+| `settings`       | `/settings`                     | (no matching mock element) |
+| `call-bot`       | `/chat/<bot dm>` → start call   | call-bot.html              |
+| `call-2p`        | `/chat/<human dm>` → start call | call-2p.html               |
 
 Calls are **best effort** (fake media devices); a true 2-person call needs two
 live peers, so `call-2p` may only show one side or fail — capture it manually if

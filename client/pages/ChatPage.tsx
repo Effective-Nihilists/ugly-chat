@@ -1,40 +1,99 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ThumbsUp, ThumbsDown, Heart, Laugh, HelpCircle, AlertTriangle, Trash2, Video, Paperclip, X, FileText, Pencil, Volume2, VolumeX, Pin, Settings, Check, Palette, Copy, ChevronDown } from 'lucide-react';
-import { useApp, uploadBlob, promoteBlob, downscaleImage, useSafeAreaInsets, crossOriginProps } from 'ugly-app/client';
-import { MdastViewer } from 'ugly-app/markdown/client';
-import { ConversationInput } from '../components/ConversationInput';
-import { VirtualMessageList } from '../components/VirtualMessageList';
-import { createPortal } from 'react-dom';
-import { extractImages, extractFiles, ChatImage, ChatFile, ImageZoomViewer } from '../components/ChatMedia';
-import { nextSelectedId } from '../lib/messageSelection';
-import { directConversationPeer, isDirectRoom } from '../../shared/conversationId';
-import type { ChatMessage, ChatUser, ChatTypingEntry } from 'ugly-app/conversation/shared';
-import type { DBObject } from 'ugly-app/shared';
-import type { UserConversation } from '../../shared/collections';
-import { type VideoCallHandle } from '../components/VideoCall';
-import { CallLayout } from '../components/CallLayout';
-import { VoiceProvider, useVoice } from '../components/VoiceProvider';
-import { useRouter } from '../router';
-import { Avatar, pingConversationActivity } from '../lib/conversations';
-import { browserDraftSources, browserShareMarkdown, clearBrowserShare, useBrowserShare, type BrowserDraftSource } from '../lib/browserShare';
-import { BrowserDraftSources } from '../components/BrowserDraftSources';
-import { modelLabel, BOT_MODELS, BOT_MODES, IMAGE_MODELS, IMAGE_SIZES } from '../lib/bots';
-import { UGLY_BOT_ID } from '../../shared/bots';
-import type { MsgTelemetry } from '../../shared/telemetry';
-import { formatTokens, formatCost } from '../../shared/telemetry';
-import { TelemetryStrip } from '../components/TelemetryStrip';
-import { HumanTelemetryStrip } from '../components/HumanTelemetryStrip';
-import { openThemeMenu } from '../components/ThemeMenu';
-import { type StatMsg, replyLatencyMs } from '../../shared/humanStats';
-import { formatDuration } from '../../shared/duration';
-import { useBrowserEmbed } from '../lib/browserEmbed';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  ThumbsUp,
+  ThumbsDown,
+  Heart,
+  Laugh,
+  HelpCircle,
+  AlertTriangle,
+  Trash2,
+  Video,
+  Paperclip,
+  X,
+  FileText,
+  Pencil,
+  Volume2,
+  VolumeX,
+  Pin,
+  Settings,
+  Check,
+  Palette,
+  Copy,
+  ChevronDown,
+} from "lucide-react";
+import {
+  useApp,
+  uploadBlob,
+  promoteBlob,
+  downscaleImage,
+  useSafeAreaInsets,
+  crossOriginProps,
+} from "ugly-app/client";
+import { MdastViewer } from "ugly-app/markdown/client";
+import { ConversationInput } from "../components/ConversationInput";
+import { VirtualMessageList } from "../components/VirtualMessageList";
+import { createPortal } from "react-dom";
+import {
+  extractImages,
+  extractFiles,
+  ChatImage,
+  ChatFile,
+  ImageZoomViewer,
+} from "../components/ChatMedia";
+import { nextSelectedId } from "../lib/messageSelection";
+import {
+  directConversationPeer,
+  isDirectRoom,
+} from "../../shared/conversationId";
+import type {
+  ChatMessage,
+  ChatUser,
+  ChatTypingEntry,
+} from "ugly-app/conversation/shared";
+import type { DBObject } from "ugly-app/shared";
+import type { UserConversation } from "../../shared/collections";
+import { type VideoCallHandle } from "../components/VideoCall";
+import { CallLayout } from "../components/CallLayout";
+import { VoiceProvider, useVoice } from "../components/VoiceProvider";
+import { useRouter } from "../router";
+import { Avatar, pingConversationActivity } from "../lib/conversations";
+import {
+  browserDraftSources,
+  browserShareMarkdown,
+  clearBrowserShare,
+  useBrowserShare,
+  type BrowserDraftSource,
+} from "../lib/browserShare";
+import { BrowserDraftSources } from "../components/BrowserDraftSources";
+import {
+  modelLabel,
+  BOT_MODELS,
+  BOT_MODES,
+  IMAGE_MODELS,
+  IMAGE_SIZES,
+} from "../lib/bots";
+import { UGLY_BOT_ID } from "../../shared/bots";
+import type { MsgTelemetry } from "../../shared/telemetry";
+import { formatTokens, formatCost } from "../../shared/telemetry";
+import { TelemetryStrip } from "../components/TelemetryStrip";
+import { HumanTelemetryStrip } from "../components/HumanTelemetryStrip";
+import { openThemeMenu } from "../components/ThemeMenu";
+import { type StatMsg, replyLatencyMs } from "../../shared/humanStats";
+import { formatDuration } from "../../shared/duration";
+import { useBrowserEmbed } from "../lib/browserEmbed";
 
 // Open a markdown link. MdastViewer's default link handler calls
 // `global.open(...)` for non-mention links, which throws in the browser
 // (`global` is undefined) — so links silently do nothing. Passing our own
 // `openUri` overrides that with a real `window.open`.
 function openLink(uri: string): Promise<void> {
-  if (typeof window !== 'undefined') window.open(uri, '_blank', 'noopener');
+  if (typeof window !== "undefined") window.open(uri, "_blank", "noopener");
   return Promise.resolve();
 }
 
@@ -59,15 +118,15 @@ interface Source {
 // source titles, so cards show real quotes/ampersands instead of raw entities.
 function decodeEntities(s: string): string {
   let out = s;
-  let prev = '';
+  let prev = "";
   for (let i = 0; i < 3 && out !== prev; i++) {
     prev = out;
     out = out
       .replace(/&quot;/g, '"')
       .replace(/&#0?39;|&apos;/g, "'")
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&amp;/g, '&');
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&amp;/g, "&");
   }
   return out;
 }
@@ -101,12 +160,18 @@ interface MsgButton {
   uri?: string;
   type?: string;
 }
-function normalizeButton(b: unknown): { text: string; prompt: string | null; uri: string | null } | null {
-  if (!b || typeof b !== 'object') return null;
+function normalizeButton(
+  b: unknown,
+): { text: string; prompt: string | null; uri: string | null } | null {
+  if (!b || typeof b !== "object") return null;
   const o = b as MsgButton;
-  const text = (o.label ?? o.text ?? '').trim();
+  const text = (o.label ?? o.text ?? "").trim();
   if (!text) return null;
-  return { text, prompt: (o.prompt ?? o.text ?? o.label ?? null), uri: o.uri ?? null };
+  return {
+    text,
+    prompt: o.prompt ?? o.text ?? o.label ?? null,
+    uri: o.uri ?? null,
+  };
 }
 
 interface ConversationDoc extends DBObject {
@@ -137,20 +202,31 @@ interface PendingAttachment {
 
 // ugly.bot uses lucide icons, never emoji.
 const REACTION_ICON: Record<string, React.ComponentType<{ size?: number }>> = {
-  thumbsUp: ThumbsUp, thumbsDown: ThumbsDown, heart: Heart,
-  tearsOfJoy: Laugh, question: HelpCircle, exclamation: AlertTriangle,
+  thumbsUp: ThumbsUp,
+  thumbsDown: ThumbsDown,
+  heart: Heart,
+  tearsOfJoy: Laugh,
+  question: HelpCircle,
+  exclamation: AlertTriangle,
 };
 
 const toMs = (v: unknown): number =>
-  typeof v === 'number' ? v : v ? new Date(v as string).getTime() : Date.now();
+  typeof v === "number" ? v : v ? new Date(v as string).getTime() : Date.now();
 
 const splitId = (docId: string): string => {
-  const i = docId.indexOf(':');
+  const i = docId.indexOf(":");
   return i === -1 ? docId : docId.slice(i + 1);
 };
 
 // ugly.bot's six reactions, in picker order.
-const REACTIONS = ['thumbsUp', 'thumbsDown', 'heart', 'tearsOfJoy', 'question', 'exclamation'] as const;
+const REACTIONS = [
+  "thumbsUp",
+  "thumbsDown",
+  "heart",
+  "tearsOfJoy",
+  "question",
+  "exclamation",
+] as const;
 
 // Messages fetched on open. More than a screenful so the thread fills + scrolls,
 // but far below the old flat 200 so first paint stays fast on long conversations.
@@ -158,18 +234,27 @@ const INITIAL_MSG_LIMIT = 75;
 const LOAD_MORE_STEP = 100;
 
 function useNarrow(): boolean {
-  const [narrow, setNarrow] = useState(() => (typeof window === 'undefined' ? false : window.innerWidth < 820));
+  const [narrow, setNarrow] = useState(() =>
+    typeof window === "undefined" ? false : window.innerWidth < 820,
+  );
   useEffect(() => {
-    const f = (): void => { setNarrow(window.innerWidth < 820); };
-    window.addEventListener('resize', f);
-    return () => { window.removeEventListener('resize', f); };
+    const f = (): void => {
+      setNarrow(window.innerWidth < 820);
+    };
+    window.addEventListener("resize", f);
+    return () => {
+      window.removeEventListener("resize", f);
+    };
   }, []);
   return narrow;
 }
 
 // Short HH:MM clock for a message timestamp (peer name-row + own footer).
 function clock(ms: number): string {
-  return new Date(ms).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  return new Date(ms).toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 // One full thread row (mock parity): own = right-aligned gradient bubble with a
@@ -199,20 +284,44 @@ function MessageBody(props: {
   humanStatsOn?: boolean;
   humanSeen?: boolean;
 }): React.ReactElement {
-  const { msg, isOwn, sender, firstOfRun, stacked, daySep, onReact, onDelete, onEdit, onPin, pinned, onButton,
-    onOpenImage, isSelected, onSelect, humanIdx, humanSorted, humanMeId, humanStatsOn, humanSeen } = props;
+  const {
+    msg,
+    isOwn,
+    sender,
+    firstOfRun,
+    stacked,
+    daySep,
+    onReact,
+    onDelete,
+    onEdit,
+    onPin,
+    pinned,
+    onButton,
+    onOpenImage,
+    isSelected,
+    onSelect,
+    humanIdx,
+    humanSorted,
+    humanMeId,
+    humanStatsOn,
+    humanSeen,
+  } = props;
   const voice = useVoice();
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const reactions = msg.reactionCount
     ? Object.entries(msg.reactionCount).filter(([, n]) => n > 0)
     : [];
-  const buttons = (((msg as { buttons?: unknown[] }).buttons ?? [])
+  const buttons = ((msg as { buttons?: unknown[] }).buttons ?? [])
     .map(normalizeButton)
-    .filter(Boolean)) as { text: string; prompt: string | null; uri: string | null }[];
-  const text = msg.markdown ?? msg.text ?? '';
+    .filter(Boolean) as {
+    text: string;
+    prompt: string | null;
+    uri: string | null;
+  }[];
+  const text = msg.markdown ?? msg.text ?? "";
   const hasText = text.trim().length > 0;
   // Split image attachments out of the markdown so we can size/place them with
   // the edge-to-edge / centered rules (the leftover text renders as usual).
@@ -250,379 +359,655 @@ function MessageBody(props: {
       setSaving(false);
     }
   };
-  const isError = msg.color === 'error';
+  const isError = msg.color === "error";
   return (
     <>
       {daySep ? (
-        <div className="uc-daysep"><span>{daySep}</span></div>
+        <div className="uc-daysep">
+          <span>{daySep}</span>
+        </div>
       ) : null}
-      <div className={`uc-msg${isOwn ? ' me' : ''}`}>
+      <div className={`uc-msg${isOwn ? " me" : ""}`}>
         {/* Square avatar — peers only, on the first message of a run. */}
         {!isOwn && firstOfRun ? (
           <div className="uc-avatar-slot">
-            <Avatar image={sender.avatarUrl} seed={sender.id} label={sender.name} size={30} />
+            <Avatar
+              image={sender.avatarUrl}
+              seed={sender.id}
+              label={sender.name}
+              size={30}
+            />
           </div>
         ) : !isOwn ? (
           <div className="uc-avatar-slot" style={{ width: 30 }} />
         ) : null}
         <div
           className="uc-msgcol"
-          onClick={(e) => { e.stopPropagation(); onSelect(msg.id); }}
-          style={{ position: 'relative' }} data-id="div"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect(msg.id);
+          }}
+          style={{ position: "relative" }}
+          data-id="div"
         >
           {/* Peer sender name + timestamp, first of a run only. */}
           {!isOwn && firstOfRun ? (
             <div className="uc-metarow">
-              <span className={`sender${sender.isBot ? ' bot' : ''}`}>{sender.name}</span>
-              {isSelected ? <span className="t">{clock(msg.created)}</span> : null}
+              <span className={`sender${sender.isBot ? " bot" : ""}`}>
+                {sender.name}
+              </span>
+              {isSelected ? (
+                <span className="t">{clock(msg.created)}</span>
+              ) : null}
             </div>
           ) : null}
           {hasText ? (
-          <div
-            className={`uc-bubble ${isOwn ? 'own' : 'peer'}${stacked ? ' stack' : ''}${isError ? ' err' : ''}${mediaBubble ? ' media' : ''}${isSelected ? ' selected' : ''}`}
-          >
-        {editing ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 260 }}>
-            <textarea
-              autoFocus
-              value={draft}
-              disabled={saving}
-              onChange={(e) => { setDraft(e.target.value); }}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  e.preventDefault();
-                  setEditing(false);
-                } else if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  void saveEdit();
-                }
-              }}
-              rows={Math.min(8, Math.max(1, draft.split('\n').length))}
-              style={{
-                resize: 'vertical',
-                width: '100%',
-                font: 'inherit',
-                fontSize: 14,
-                lineHeight: '20px',
-                color: 'var(--app-foreground)',
-                background: 'var(--app-main)',
-                border: '1px solid var(--app-border)',
-                borderRadius: 6,
-                padding: '6px 8px',
-                outline: 'none',
-              }} data-id="textarea"
-            />
-            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => { setEditing(false); }}
-                disabled={saving}
-                style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--app-border)', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }} data-id="cancel"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => void saveEdit()}
-                disabled={saving || !draft.trim()}
-                style={{ fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 6, border: 'none', background: 'var(--app-primary)', color: '#fff', cursor: 'pointer', opacity: saving || !draft.trim() ? 0.6 : 1 }} data-id="button"
-              >
-                {saving ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            {edgeToEdge ? (
-              <div className="uc-media">
-                {images.map((im, i) => (
-                  <ChatImage key={`${im.url}-${i}`} src={im.url} alt={im.alt} edgeToEdge onOpen={onOpenImage} isSelected={isSelected} />
-                ))}
-              </div>
-            ) : null}
-            {hasBody ? (
-              <div className={`${mediaBubble ? 'uc-cap' : ''}${hasArabic ? ' uc-arabic' : ''}`.trim() || undefined} {...(hasArabic ? { dir: 'auto' as const } : {})}>
-                {(msg as { botMode?: string }).botMode === 'lie' ? (
-                  <span className="uc-lie-tag" title="Lie mode: this answer is deliberately, satirically false.">Lie</span>
-                ) : null}
-                <MdastViewer markdown={bodyText} width={520} openUri={openLink} />
-                {(msg as { edited?: unknown }).edited ? (
-                  <span style={{ fontSize: 11, opacity: 0.5, marginLeft: 6 }}>(edited)</span>
-                ) : null}
-              </div>
-            ) : null}
-            {hasImages && !edgeToEdge ? (
-              <div className="uc-media uc-media-centered">
-                {images.map((im, i) => (
-                  <ChatImage key={`${im.url}-${i}`} src={im.url} alt={im.alt} edgeToEdge={false} onOpen={onOpenImage} isSelected={isSelected} />
-                ))}
-              </div>
-            ) : null}
-          </>
-        )}
-      </div>
-      ) : null}
-
-      {((msg as { linkPreviews?: LinkPreview[] }).linkPreviews ?? []).map((lp, i) => (
-        <a
-          key={`${lp.url}-${i}`}
-          href={lp.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            display: 'block',
-            maxWidth: 320,
-            border: '1px solid var(--app-border)',
-            borderRadius: 10,
-            overflow: 'hidden',
-            background: 'var(--app-main)',
-            textDecoration: 'none',
-            color: 'var(--app-foreground)',
-          }} data-id="a"
-        >
-          {lp.image ? (
-            <img {...crossOriginProps(lp.image)}
-              src={lp.image}
-              alt=""
-              style={{ width: '100%', maxHeight: 168, objectFit: 'cover', display: 'block' }}
-            />
-          ) : null}
-          <div style={{ padding: '8px 11px' }}>
-            {lp.siteName ? (
-              <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', opacity: 0.55 }}>
-                {lp.siteName}
-              </div>
-            ) : null}
-            <div style={{ fontSize: 14, fontWeight: 600, lineHeight: '18px', marginTop: 2 }}>
-              {lp.title ?? lp.url}
-            </div>
-            {lp.description ? (
-              <div style={{ fontSize: 12, opacity: 0.65, marginTop: 3, lineHeight: '16px', maxHeight: 32, overflow: 'hidden' }}>
-                {lp.description}
-              </div>
-            ) : null}
-          </div>
-        </a>
-      ))}
-
-      {files.length > 0 ? (
-        <div className="uc-files">
-          {files.map((f, i) => (
-            <ChatFile key={`${f.url}-${i}`} name={f.name} url={f.url} />
-          ))}
-        </div>
-      ) : null}
-
-      {((msg as { sources?: Source[] }).sources ?? []).length > 0 ? (
-        <div className="uc-sources">
-          <div className="uc-mono-label">Sources</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {(msg as { sources?: Source[] }).sources!.map((s, i) => {
-              const domain =
-                s.citation && s.citation.length > 0
-                  ? s.citation
-                  : s.url && s.url.length > 0
-                    ? s.url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0] ?? ''
-                    : '';
-              const title = decodeEntities(
-                s.title.length > 0 ? s.title : domain.length > 0 ? domain : s.url ?? '',
-              );
-              const inner = (
-                <>
-                  <span className="n">[{i + 1}]</span>
-                  <span className="body">
-                    <span className="t">{title}</span>
-                    {domain ? <span className="d">{domain}</span> : null}
-                  </span>
-                </>
-              );
-              return s.url ? (
-                <a
-                  key={`${s.url}-${i}`}
-                  href={s.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="uc-src"
-                  onClick={(e) => { e.stopPropagation(); }}
-                  data-id="source"
+            <div
+              className={`uc-bubble ${isOwn ? "own" : "peer"}${stacked ? " stack" : ""}${isError ? " err" : ""}${mediaBubble ? " media" : ""}${isSelected ? " selected" : ""}`}
+            >
+              {editing ? (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                    minWidth: 260,
+                  }}
                 >
-                  {inner}
-                </a>
+                  <textarea
+                    autoFocus
+                    value={draft}
+                    disabled={saving}
+                    onChange={(e) => {
+                      setDraft(e.target.value);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        e.preventDefault();
+                        setEditing(false);
+                      } else if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        void saveEdit();
+                      }
+                    }}
+                    rows={Math.min(8, Math.max(1, draft.split("\n").length))}
+                    style={{
+                      resize: "vertical",
+                      width: "100%",
+                      font: "inherit",
+                      fontSize: 14,
+                      lineHeight: "20px",
+                      color: "var(--app-foreground)",
+                      background: "var(--app-main)",
+                      border: "1px solid var(--app-border)",
+                      borderRadius: 6,
+                      padding: "6px 8px",
+                      outline: "none",
+                    }}
+                    data-id="textarea"
+                  />
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 6,
+                      justifyContent: "flex-end",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditing(false);
+                      }}
+                      disabled={saving}
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        padding: "4px 10px",
+                        borderRadius: 6,
+                        border: "1px solid var(--app-border)",
+                        background: "transparent",
+                        color: "var(--app-foreground)",
+                        cursor: "pointer",
+                      }}
+                      data-id="cancel"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void saveEdit()}
+                      disabled={saving || !draft.trim()}
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        padding: "4px 12px",
+                        borderRadius: 6,
+                        border: "none",
+                        background: "var(--app-primary)",
+                        color: "#fff",
+                        cursor: "pointer",
+                        opacity: saving || !draft.trim() ? 0.6 : 1,
+                      }}
+                      data-id="button"
+                    >
+                      {saving ? "Saving…" : "Save"}
+                    </button>
+                  </div>
+                </div>
               ) : (
-                <div key={`src-${i}`} className="uc-src" data-id="source">{inner}</div>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
+                <>
+                  {edgeToEdge ? (
+                    <div className="uc-media">
+                      {images.map((im, i) => (
+                        <ChatImage
+                          key={`${im.url}-${i}`}
+                          src={im.url}
+                          alt={im.alt}
+                          edgeToEdge
+                          onOpen={onOpenImage}
+                          isSelected={isSelected}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+                  {hasBody ? (
+                    <div
+                      className={
+                        `${mediaBubble ? "uc-cap" : ""}${hasArabic ? " uc-arabic" : ""}`.trim() ||
+                        undefined
+                      }
+                      {...(hasArabic ? { dir: "auto" as const } : {})}
+                    >
+                      {(msg as { botMode?: string }).botMode === "lie" ? (
+                        <span
+                          className="uc-lie-tag"
+                          title="Lie mode: this answer is deliberately, satirically false."
+                        >
+                          Lie
+                        </span>
+                      ) : null}
+                      <MdastViewer
+                        markdown={bodyText}
+                        width={520}
+                        openUri={openLink}
+                      />
+                      {(msg as { edited?: unknown }).edited ? (
+                        <span
+                          style={{ fontSize: 11, opacity: 0.5, marginLeft: 6 }}
+                        >
+                          (edited)
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {hasImages && !edgeToEdge ? (
+                    <div className="uc-media uc-media-centered">
+                      {images.map((im, i) => (
+                        <ChatImage
+                          key={`${im.url}-${i}`}
+                          src={im.url}
+                          alt={im.alt}
+                          edgeToEdge={false}
+                          onOpen={onOpenImage}
+                          isSelected={isSelected}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </div>
+          ) : null}
 
-      {buttons.length > 0 ? (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', maxWidth: 520 }}>
-          {buttons.map((b, i) => (
-            <button
-              key={`${b.text}-${i}`}
-              type="button"
-              className="uc-msgbtn"
+          {((msg as { linkPreviews?: LinkPreview[] }).linkPreviews ?? []).map(
+            (lp, i) => (
+              <a
+                key={`${lp.url}-${i}`}
+                href={lp.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "block",
+                  maxWidth: 320,
+                  border: "1px solid var(--app-border)",
+                  borderRadius: 10,
+                  overflow: "hidden",
+                  background: "var(--app-main)",
+                  textDecoration: "none",
+                  color: "var(--app-foreground)",
+                }}
+                data-id="a"
+              >
+                {lp.image ? (
+                  <img
+                    {...crossOriginProps(lp.image)}
+                    src={lp.image}
+                    alt=""
+                    style={{
+                      width: "100%",
+                      maxHeight: 168,
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                ) : null}
+                <div style={{ padding: "8px 11px" }}>
+                  {lp.siteName ? (
+                    <div
+                      style={{
+                        fontSize: 11,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                        opacity: 0.55,
+                      }}
+                    >
+                      {lp.siteName}
+                    </div>
+                  ) : null}
+                  <div
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 600,
+                      lineHeight: "18px",
+                      marginTop: 2,
+                    }}
+                  >
+                    {lp.title ?? lp.url}
+                  </div>
+                  {lp.description ? (
+                    <div
+                      style={{
+                        fontSize: 12,
+                        opacity: 0.65,
+                        marginTop: 3,
+                        lineHeight: "16px",
+                        maxHeight: 32,
+                        overflow: "hidden",
+                      }}
+                    >
+                      {lp.description}
+                    </div>
+                  ) : null}
+                </div>
+              </a>
+            ),
+          )}
+
+          {files.length > 0 ? (
+            <div className="uc-files">
+              {files.map((f, i) => (
+                <ChatFile key={`${f.url}-${i}`} name={f.name} url={f.url} />
+              ))}
+            </div>
+          ) : null}
+
+          {((msg as { sources?: Source[] }).sources ?? []).length > 0 ? (
+            <div className="uc-sources">
+              <div className="uc-mono-label">Sources</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {(msg as { sources?: Source[] }).sources!.map((s, i) => {
+                  const domain =
+                    s.citation && s.citation.length > 0
+                      ? s.citation
+                      : s.url && s.url.length > 0
+                        ? (s.url
+                            .replace(/^https?:\/\/(www\.)?/, "")
+                            .split("/")[0] ?? "")
+                        : "";
+                  const title = decodeEntities(
+                    s.title.length > 0
+                      ? s.title
+                      : domain.length > 0
+                        ? domain
+                        : (s.url ?? ""),
+                  );
+                  const inner = (
+                    <>
+                      <span className="n">[{i + 1}]</span>
+                      <span className="body">
+                        <span className="t">{title}</span>
+                        {domain ? <span className="d">{domain}</span> : null}
+                      </span>
+                    </>
+                  );
+                  return s.url ? (
+                    <a
+                      key={`${s.url}-${i}`}
+                      href={s.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="uc-src"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                      data-id="source"
+                    >
+                      {inner}
+                    </a>
+                  ) : (
+                    <div key={`src-${i}`} className="uc-src" data-id="source">
+                      {inner}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
+          {buttons.length > 0 ? (
+            <div
+              style={{
+                display: "flex",
+                gap: 6,
+                flexWrap: "wrap",
+                maxWidth: 520,
+              }}
+            >
+              {buttons.map((b, i) => (
+                <button
+                  key={`${b.text}-${i}`}
+                  type="button"
+                  className="uc-msgbtn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (b.uri) window.open(b.uri, "_blank", "noopener");
+                    else if (b.prompt) onButton(b.prompt);
+                  }}
+                  style={{
+                    fontFamily: "var(--app-font-mono)",
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    letterSpacing: "0.04em",
+                    padding: "7px 13px",
+                    borderRadius: 0,
+                    border: "1.5px solid var(--app-primary)",
+                    background: "transparent",
+                    color: "var(--app-primary)",
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                  data-id="text"
+                >
+                  {b.text}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {isSelected && (msg as { telemetry?: MsgTelemetry }).telemetry ? (
+            <div className="uc-receipt" style={{ padding: "0 4px" }}>
+              <b>
+                {modelLabel(
+                  (msg as { telemetry?: MsgTelemetry }).telemetry!.model,
+                ) || "model"}
+              </b>
+              <span className="dot">·</span>
+              {(
+                (msg as { telemetry?: MsgTelemetry }).telemetry!.latencyMs /
+                1000
+              ).toFixed(1)}
+              s<span className="dot">·</span>↑
+              {formatTokens(
+                (msg as { telemetry?: MsgTelemetry }).telemetry!.inputTokens,
+              )}{" "}
+              ↓
+              {formatTokens(
+                (msg as { telemetry?: MsgTelemetry }).telemetry!.outputTokens,
+              )}{" "}
+              tok
+              <span className="dot">·</span>
+              <span className="cost">
+                {formatCost(
+                  (msg as { telemetry?: MsgTelemetry }).telemetry!.costUsd,
+                )}
+              </span>
+            </div>
+          ) : null}
+
+          {/* Own-message footer (delivered · HH:MM) — bot chats and any non-stats
+          DM. Human-DM stats render their own richer footer below instead. */}
+          {isSelected && isOwn && !humanStatsOn && hasText ? (
+            <div
+              className="uc-receipt"
+              style={{ padding: "0 4px", color: "var(--app-foreground-muted)" }}
+            >
+              <span>delivered</span>
+              <span className="dot">·</span>
+              {clock(msg.created)}
+            </div>
+          ) : null}
+
+          {/* Human DM per-message receipt (no bot, stats enabled) */}
+          {isSelected &&
+          humanStatsOn &&
+          humanSorted &&
+          humanIdx != null &&
+          humanMeId != null ? (
+            <div
+              className="uc-receipt"
+              style={{ padding: "0 4px", color: "var(--app-foreground-muted)" }}
+            >
+              {(() => {
+                const lat = replyLatencyMs(humanSorted, humanIdx, humanMeId);
+                if (!isOwn && lat != null) {
+                  return lat > 3_600_000 ? (
+                    <span className="cost">
+                      left you on read · {formatDuration(lat)}
+                    </span>
+                  ) : (
+                    <span>
+                      replied in {formatDuration(lat)}
+                      {lat < 30_000 ? " · personal best" : ""}
+                    </span>
+                  );
+                }
+                // Count consecutive run of own messages ending at this index
+                let runLen = 0;
+                for (let i = humanIdx; i >= 0; i--) {
+                  const m = humanSorted[i];
+                  if (m?.userId === humanMeId) runLen++;
+                  else break;
+                }
+                return (
+                  <span>
+                    {humanSeen ? "seen" : "delivered"}
+                    {runLen > 1 ? (
+                      <>
+                        <span className="dot">·</span>
+                        {`double-texted ×${runLen}`}
+                      </>
+                    ) : null}
+                  </span>
+                );
+              })()}
+            </div>
+          ) : null}
+
+          {reactions.length > 0 ? (
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+              {reactions.map(([r, n]) => {
+                const Icon = REACTION_ICON[r];
+                return (
+                  <span
+                    key={r}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 5,
+                      fontFamily: "var(--app-font-mono)",
+                      fontSize: 10,
+                      background: "var(--app-tertiary)",
+                      border: "1px solid var(--app-border)",
+                      borderRadius: 0,
+                      padding: "2px 8px",
+                      color: "var(--app-foreground-muted)",
+                    }}
+                  >
+                    {Icon ? <Icon size={12} /> : r} {n}
+                  </span>
+                );
+              })}
+            </div>
+          ) : null}
+
+          {isSelected ? (
+            <div
               onClick={(e) => {
                 e.stopPropagation();
-                if (b.uri) window.open(b.uri, '_blank', 'noopener');
-                else if (b.prompt) onButton(b.prompt);
               }}
               style={{
-                fontFamily: 'var(--app-font-mono)',
-                fontSize: 11.5,
-                fontWeight: 600,
-                letterSpacing: '0.04em',
-                padding: '7px 13px',
-                borderRadius: 0,
-                border: '1.5px solid var(--app-primary)',
-                background: 'transparent',
-                color: 'var(--app-primary)',
-                cursor: 'pointer',
-                textAlign: 'left',
-              }} data-id="text"
-            >
-              {b.text}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      {isSelected && (msg as { telemetry?: MsgTelemetry }).telemetry ? (
-        <div className="uc-receipt" style={{ padding: '0 4px' }}>
-          <b>{modelLabel((msg as { telemetry?: MsgTelemetry }).telemetry!.model) || 'model'}</b>
-          <span className="dot">·</span>
-          {((msg as { telemetry?: MsgTelemetry }).telemetry!.latencyMs / 1000).toFixed(1)}s
-          <span className="dot">·</span>
-          ↑{formatTokens((msg as { telemetry?: MsgTelemetry }).telemetry!.inputTokens)} ↓{formatTokens((msg as { telemetry?: MsgTelemetry }).telemetry!.outputTokens)} tok
-          <span className="dot">·</span>
-          <span className="cost">{formatCost((msg as { telemetry?: MsgTelemetry }).telemetry!.costUsd)}</span>
-        </div>
-      ) : null}
-
-      {/* Own-message footer (delivered · HH:MM) — bot chats and any non-stats
-          DM. Human-DM stats render their own richer footer below instead. */}
-      {isSelected && isOwn && !humanStatsOn && hasText ? (
-        <div className="uc-receipt" style={{ padding: '0 4px', color: 'var(--app-foreground-muted)' }}>
-          <span>delivered</span><span className="dot">·</span>{clock(msg.created)}
-        </div>
-      ) : null}
-
-      {/* Human DM per-message receipt (no bot, stats enabled) */}
-      {isSelected && humanStatsOn && humanSorted && humanIdx != null && humanMeId != null ? (
-        <div className="uc-receipt" style={{ padding: '0 4px', color: 'var(--app-foreground-muted)' }}>
-          {(() => {
-            const lat = replyLatencyMs(humanSorted, humanIdx, humanMeId);
-            if (!isOwn && lat != null) {
-              return lat > 3_600_000
-                ? <span className="cost">left you on read · {formatDuration(lat)}</span>
-                : <span>replied in {formatDuration(lat)}{lat < 30_000 ? ' · personal best' : ''}</span>;
-            }
-            // Count consecutive run of own messages ending at this index
-            let runLen = 0;
-            for (let i = humanIdx; i >= 0; i--) {
-              const m = humanSorted[i];
-              if (m?.userId === humanMeId) runLen++;
-              else break;
-            }
-            return (
-              <span>
-                {humanSeen ? 'seen' : 'delivered'}
-                {runLen > 1 ? <><span className="dot">·</span>{`double-texted ×${runLen}`}</> : null}
-              </span>
-            );
-          })()}
-        </div>
-      ) : null}
-
-      {reactions.length > 0 ? (
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-          {reactions.map(([r, n]) => {
-            const Icon = REACTION_ICON[r];
-            return (
-              <span key={r} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--app-font-mono)', fontSize: 10, background: 'var(--app-tertiary)', border: '1px solid var(--app-border)', borderRadius: 0, padding: '2px 8px', color: 'var(--app-foreground-muted)' }}>
-                {Icon ? <Icon size={12} /> : r} {n}
-              </span>
-            );
-          })}
-        </div>
-      ) : null}
-
-      {isSelected ? (
-        <div
-          onClick={(e) => { e.stopPropagation(); }}
-          style={{
-            position: 'absolute',
-            // Sit clear above the bubble so it doesn't cover the message text.
-            top: -34,
-            right: -4,
-            display: 'flex',
-            gap: 1,
-            background: 'var(--app-main)',
-            border: '1px solid var(--app-border)',
-            borderRadius: 8,
-            padding: '2px 4px',
-            boxShadow: 'var(--app-shadow-button-default)',
-            zIndex: 2,
-          }} data-id="div-2"
-        >
-          {REACTIONS.map((r) => {
-            const Icon = REACTION_ICON[r];
-            return (
-              <button key={r} title={r} onClick={() => { onReact(msg.id, r); }} style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', color: 'var(--app-foreground)' }} data-id="button-2">
-                {Icon ? <Icon size={15} /> : null}
-              </button>
-            );
-          })}
-          {voice.enabled && hasBody && !isOwn ? (
-            <button
-              title={voice.playingId === msg.id ? 'Stop' : 'Read aloud'}
-              onClick={() => {
-                if (voice.playingId === msg.id) { voice.stop(); } else { voice.speak(msg.id, bodyText); }
+                position: "absolute",
+                // Sit clear above the bubble so it doesn't cover the message text.
+                top: -34,
+                right: -4,
+                display: "flex",
+                gap: 1,
+                background: "var(--app-main)",
+                border: "1px solid var(--app-border)",
+                borderRadius: 8,
+                padding: "2px 4px",
+                boxShadow: "var(--app-shadow-button-default)",
+                zIndex: 2,
               }}
-              style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: 0.6, color: 'var(--app-foreground)' }} data-id="button-3"
+              data-id="div-2"
             >
-              {voice.playingId === msg.id ? <VolumeX size={15} /> : <Volume2 size={15} />}
-            </button>
+              {REACTIONS.map((r) => {
+                const Icon = REACTION_ICON[r];
+                return (
+                  <button
+                    key={r}
+                    title={r}
+                    onClick={() => {
+                      onReact(msg.id, r);
+                    }}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      lineHeight: 1,
+                      padding: "3px 4px",
+                      color: "var(--app-foreground)",
+                    }}
+                    data-id="button-2"
+                  >
+                    {Icon ? <Icon size={15} /> : null}
+                  </button>
+                );
+              })}
+              {voice.enabled && hasBody && !isOwn ? (
+                <button
+                  title={voice.playingId === msg.id ? "Stop" : "Read aloud"}
+                  onClick={() => {
+                    if (voice.playingId === msg.id) {
+                      voice.stop();
+                    } else {
+                      voice.speak(msg.id, bodyText);
+                    }
+                  }}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    lineHeight: 1,
+                    padding: "3px 4px",
+                    opacity: 0.6,
+                    color: "var(--app-foreground)",
+                  }}
+                  data-id="button-3"
+                >
+                  {voice.playingId === msg.id ? (
+                    <VolumeX size={15} />
+                  ) : (
+                    <Volume2 size={15} />
+                  )}
+                </button>
+              ) : null}
+              {hasText ? (
+                <button
+                  title={copied ? "Copied" : "Copy"}
+                  onClick={() => {
+                    void navigator.clipboard
+                      .writeText(text)
+                      .then(() => {
+                        setCopied(true);
+                        setTimeout(() => {
+                          setCopied(false);
+                        }, 1200);
+                      })
+                      .catch(() => undefined);
+                  }}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    lineHeight: 1,
+                    padding: "3px 4px",
+                    opacity: copied ? 1 : 0.6,
+                    color: copied
+                      ? "var(--app-primary)"
+                      : "var(--app-foreground)",
+                  }}
+                  data-id="button-4"
+                >
+                  {copied ? <Check size={14} /> : <Copy size={14} />}
+                </button>
+              ) : null}
+              {hasText ? (
+                <button
+                  title={pinned ? "Unpin" : "Pin"}
+                  onClick={() => {
+                    onPin(msg.id);
+                  }}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    lineHeight: 1,
+                    padding: "3px 4px",
+                    opacity: pinned ? 1 : 0.6,
+                    color: pinned
+                      ? "var(--app-primary)"
+                      : "var(--app-foreground)",
+                  }}
+                  data-id="button-5"
+                >
+                  <Pin size={14} fill={pinned ? "currentColor" : "none"} />
+                </button>
+              ) : null}
+              {isOwn && hasText ? (
+                <button
+                  title="Edit"
+                  onClick={startEdit}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    lineHeight: 1,
+                    padding: "3px 4px",
+                    opacity: 0.6,
+                    color: "var(--app-foreground)",
+                  }}
+                  data-id="start-edit"
+                >
+                  <Pencil size={14} />
+                </button>
+              ) : null}
+              {isOwn ? (
+                <button
+                  title="Delete"
+                  onClick={() => {
+                    onDelete(msg.id);
+                  }}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    lineHeight: 1,
+                    padding: "3px 4px",
+                    opacity: 0.6,
+                    color: "var(--app-foreground)",
+                  }}
+                  data-id="button-6"
+                >
+                  <Trash2 size={14} />
+                </button>
+              ) : null}
+            </div>
           ) : null}
-          {hasText ? (
-            <button
-              title={copied ? 'Copied' : 'Copy'}
-              onClick={() => {
-                void navigator.clipboard
-                  .writeText(text)
-                  .then(() => {
-                    setCopied(true);
-                    setTimeout(() => { setCopied(false); }, 1200);
-                  })
-                  .catch(() => undefined);
-              }}
-              style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: copied ? 1 : 0.6, color: copied ? 'var(--app-primary)' : 'var(--app-foreground)' }} data-id="button-4"
-            >
-              {copied ? <Check size={14} /> : <Copy size={14} />}
-            </button>
-          ) : null}
-          {hasText ? (
-            <button
-              title={pinned ? 'Unpin' : 'Pin'}
-              onClick={() => { onPin(msg.id); }}
-              style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: pinned ? 1 : 0.6, color: pinned ? 'var(--app-primary)' : 'var(--app-foreground)' }} data-id="button-5"
-            >
-              <Pin size={14} fill={pinned ? 'currentColor' : 'none'} />
-            </button>
-          ) : null}
-          {isOwn && hasText ? (
-            <button title="Edit" onClick={startEdit} style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: 0.6, color: 'var(--app-foreground)' }} data-id="start-edit">
-              <Pencil size={14} />
-            </button>
-          ) : null}
-          {isOwn ? (
-            <button title="Delete" onClick={() => { onDelete(msg.id); }} style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, padding: '3px 4px', opacity: 0.6, color: 'var(--app-foreground)' }} data-id="button-6">
-              <Trash2 size={14} />
-            </button>
-          ) : null}
-        </div>
-      ) : null}
         </div>
       </div>
     </>
@@ -631,8 +1016,11 @@ function MessageBody(props: {
 
 // One-line preview of a pinned message (markdown/whitespace collapsed).
 function pinnedPreview(d: MessageDoc): string {
-  const raw = (d.text ?? d.markdown ?? '').replace(/[#*_`>~]/g, '').replace(/\s+/g, ' ').trim();
-  return raw.length > 140 ? `${raw.slice(0, 140)}…` : raw || 'Pinned message';
+  const raw = (d.text ?? d.markdown ?? "")
+    .replace(/[#*_`>~]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return raw.length > 140 ? `${raw.slice(0, 140)}…` : raw || "Pinned message";
 }
 
 function toChatMessage(d: MessageDoc): ChatMessage {
@@ -645,7 +1033,7 @@ function toChatMessage(d: MessageDoc): ChatMessage {
     created: toMs(d.created),
     updated: toMs(d.updated),
     parentMessageId: d.parentMessageId ?? null,
-    ...(d.color ? { color: d.color as NonNullable<ChatMessage['color']> } : {}),
+    ...(d.color ? { color: d.color as NonNullable<ChatMessage["color"]> } : {}),
     ...(d.reactionCount ? { reactionCount: d.reactionCount } : {}),
     ...(d.reactionUsers ? { reactionUsers: d.reactionUsers } : {}),
     ...(d.buttons ? { buttons: d.buttons } : {}),
@@ -653,19 +1041,30 @@ function toChatMessage(d: MessageDoc): ChatMessage {
     ...(d.custom?.sources?.length ? { sources: d.custom.sources } : {}),
     ...(d.custom?.botMode ? { botMode: d.custom.botMode } : {}),
     ...(d.edited ? { edited: true } : {}),
-    ...(d.systemType ? { systemType: d.systemType, systemParam: d.systemParam } : {}),
+    ...(d.systemType
+      ? { systemType: d.systemType, systemParam: d.systemParam }
+      : {}),
     ...(d.telemetry ? { telemetry: d.telemetry } : {}),
   } as ChatMessage;
 }
 
-export default function ChatPage({ conversationId }: { conversationId?: string }): React.ReactElement {
+export default function ChatPage({
+  conversationId,
+}: {
+  conversationId?: string;
+}): React.ReactElement {
   const { socket, userId, uglyBotSocket } = useApp();
   const router = useRouter();
   const narrow = useNarrow();
   const embed = useBrowserEmbed();
   const browserShare = useBrowserShare();
-  const [browserDraft, setBrowserDraft] = useState<{ id: string; text: string } | null>(null);
-  const [browserSources, setBrowserSources] = useState<BrowserDraftSource[]>([]);
+  const [browserDraft, setBrowserDraft] = useState<{
+    id: string;
+    text: string;
+  } | null>(null);
+  const [browserSources, setBrowserSources] = useState<BrowserDraftSource[]>(
+    [],
+  );
   // Keyboard-inclusive bottom inset (home-indicator when closed, keyboard height
   // when open). The framework's KeyboardProvider derives the keyboard height from
   // visual-viewport occlusion (window.innerHeight - visualViewport.height), so the
@@ -692,22 +1091,29 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     const measure = (): void => {
       // Layout-viewport bottom not covered by the visual viewport (offsetTop is 0
       // when the document itself isn't scrolled — our chat scrolls an inner pane).
-      const occluded = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      const occluded = Math.max(
+        0,
+        window.innerHeight - vv.height - vv.offsetTop,
+      );
       setViewportBottomInset(occluded);
     };
     measure();
-    vv.addEventListener('resize', measure);
-    vv.addEventListener('scroll', measure);
+    vv.addEventListener("resize", measure);
+    vv.addEventListener("scroll", measure);
     return () => {
-      vv.removeEventListener('resize', measure);
-      vv.removeEventListener('scroll', measure);
+      vv.removeEventListener("resize", measure);
+      vv.removeEventListener("scroll", measure);
     };
   }, []);
   // Effective bottom inset for the composer: the larger of the device/keyboard
   // inset the framework reports and the raw viewport occlusion we measure.
-  const composerBottomInset = Math.max(16, safeArea.bottom, viewportBottomInset);
+  const composerBottomInset = Math.max(
+    16,
+    safeArea.bottom,
+    viewportBottomInset,
+  );
 
-  const roomId = conversationId ?? 'demo-room';
+  const roomId = conversationId ?? "demo-room";
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // Initial message window — kept small for a fast first paint. Long
@@ -717,7 +1123,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const [msgLimit, setMsgLimit] = useState(INITIAL_MSG_LIMIT);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
   const [, setReady] = useState(false);
-  const [title, setTitle] = useState('Conversation');
+  const [title, setTitle] = useState("Conversation");
   const [convImage, setConvImage] = useState<unknown>(null);
   const [profiles, setProfiles] = useState<Record<string, ChatUser>>({});
   // Conversation members + live call participants — people we must be able to
@@ -742,10 +1148,14 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   // Bot-chat extras: the conversation's bot id (if any), its starter buttons
   // (shown persistently above the composer), and the header "⋯" menu state.
   const [botId, setBotId] = useState<string | null>(null);
-  const [botButtons, setBotButtons] = useState<{ label: string; prompt: string }[]>([]);
+  const [botButtons, setBotButtons] = useState<
+    { label: string; prompt: string }[]
+  >([]);
   const [menuOpen, setMenuOpen] = useState(false);
   // Tap-to-select: the single message whose metadata + action menu are revealed.
-  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(
+    null,
+  );
   const selectMessage = useCallback((id: string) => {
     // Don't hijack a click that is really a text drag-selection (desktop copy).
     const sel = window.getSelection();
@@ -754,18 +1164,24 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   }, []);
   // Per-conversation bot config (the ⋯ menu): mode + text model + image model/size.
   const [botModel, setBotModel] = useState<string | null>(null);
-  const [botMode, setBotMode] = useState<string>('chat');
-  const [botImageModel, setBotImageModel] = useState<string>('flux_1_dev');
-  const [botImageSize, setBotImageSize] = useState<string>('square');
+  const [botMode, setBotMode] = useState<string>("chat");
+  const [botImageModel, setBotImageModel] = useState<string>("flux_1_dev");
+  const [botImageSize, setBotImageSize] = useState<string>("square");
   const [typing, setTyping] = useState<ChatTypingEntry[]>([]);
   const [pinnedMessageId, setPinnedMessageId] = useState<string | null>(null);
   const [pinnedMessage, setPinnedMessage] = useState<MessageDoc | null>(null);
-  const [readers, setReaders] = useState<{ userId: string; viewed: number }[]>([]);
+  const [readers, setReaders] = useState<{ userId: string; viewed: number }[]>(
+    [],
+  );
   // Fullscreen image viewer (rendered via a body portal so position:fixed is
   // viewport-relative — the router popup positioner is a transformed ancestor,
   // which would otherwise collapse a fixed overlay to 0×0).
-  const [zoomImg, setZoomImg] = useState<{ src: string; alt: string } | null>(null);
-  const openImage = useCallback((src: string, alt: string) => { setZoomImg({ src, alt }); }, []);
+  const [zoomImg, setZoomImg] = useState<{ src: string; alt: string } | null>(
+    null,
+  );
+  const openImage = useCallback((src: string, alt: string) => {
+    setZoomImg({ src, alt });
+  }, []);
   const [, forceTick] = useState(0);
 
   useEffect(() => {
@@ -795,18 +1211,27 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         // (migrated history, DMs, groups) already exist and the user is already
         // a member — creating/joining them would overwrite their conversation doc
         // and denormalized userConversation row. Never touch them here.
-        if (roomId === 'demo-room') {
-          const existing = await socket.getDoc('conversation', roomId);
+        if (roomId === "demo-room") {
+          const existing = await socket.getDoc("conversation", roomId);
           if (!existing) {
-            await socket.request('conversationCreate', {
-              id: roomId, type: 'group', title: 'Demo Room', mode: 'public', ownerIds: [userId],
+            await socket.request("conversationCreate", {
+              id: roomId,
+              type: "group",
+              title: "Demo Room",
+              mode: "public",
+              ownerIds: [userId],
             });
           }
-          await socket.request('conversationJoin', { conversationId: roomId }).catch(() => undefined);
+          await socket
+            .request("conversationJoin", { conversationId: roomId })
+            .catch(() => undefined);
         }
         // Authoritative title from the denormalized per-user row (same source as
         // the sidebar) — a direct read so the header is correct on first paint.
-        const uc = await socket.getDoc<UserConversation>('userConversation', `${userId}:${roomId}`);
+        const uc = await socket.getDoc<UserConversation>(
+          "userConversation",
+          `${userId}:${roomId}`,
+        );
         if (!isCancelled() && uc?.title) {
           setTitle(uc.title);
         } else if (!isCancelled()) {
@@ -815,44 +1240,61 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           // inline here is exactly how the header ended up showing `dm-G7QvP…`.
           const other = directConversationPeer(roomId, userId);
           if (other) {
-            const res = (await socket.request('profilesGet', { userIds: [other] })) as {
-              profiles?: { name: string; avatar?: { image?: { uri?: string } } }[];
+            const res = (await socket.request("profilesGet", {
+              userIds: [other],
+            })) as {
+              profiles?: {
+                name: string;
+                avatar?: { image?: { uri?: string } };
+              }[];
             };
             const p = res.profiles?.[0];
             if (p?.name && !isCancelled()) setTitle(p.name);
             // Use the partner's avatar in the header (the DM has no conv image).
             const partnerImg = p?.avatar?.image?.uri;
-            if (partnerImg && !isCancelled()) setConvImage((img: unknown) => img ?? partnerImg);
+            if (partnerImg && !isCancelled())
+              setConvImage((img: unknown) => img ?? partnerImg);
           }
         }
       } catch (err) {
-        console.error('[ChatPage] ensure room failed', err);
+        console.error("[ChatPage] ensure room failed", err);
       }
       if (isCancelled()) return;
-      unsubConv = socket.trackDoc<ConversationDoc>('conversation', roomId, (doc) => {
-        if (doc) {
-          if (doc.title) setTitle(doc.title);
-          setConvImage((img: unknown) => doc.image ?? img);
-          // Everyone we may need to name: members + anyone on the call roster.
-          setRosterIds([...Object.keys(doc.users ?? {}), ...Object.keys(doc.call?.participants ?? {})]);
-          // First custom bot member → drives the "⋯ Clear chat" menu + the
-          // persistent starter buttons above the composer.
-          const ids = Object.keys((doc.bots) ?? {});
-          const firstBot = ids.find((b) => b.startsWith('bot-')) ?? null;
-          setBotId((cur) => cur ?? firstBot);
-          setTyping(((doc as { typing?: ChatTypingEntry[] }).typing ?? []));
-          setPinnedMessageId((doc.pinnedMessageId) ?? null);
-        }
-      });
+      unsubConv = socket.trackDoc<ConversationDoc>(
+        "conversation",
+        roomId,
+        (doc) => {
+          if (doc) {
+            if (doc.title) setTitle(doc.title);
+            setConvImage((img: unknown) => doc.image ?? img);
+            // Everyone we may need to name: members + anyone on the call roster.
+            setRosterIds([
+              ...Object.keys(doc.users ?? {}),
+              ...Object.keys(doc.call?.participants ?? {}),
+            ]);
+            // First custom bot member → drives the "⋯ Clear chat" menu + the
+            // persistent starter buttons above the composer.
+            const ids = Object.keys(doc.bots ?? {});
+            const firstBot = ids.find((b) => b.startsWith("bot-")) ?? null;
+            setBotId((cur) => cur ?? firstBot);
+            setTyping((doc as { typing?: ChatTypingEntry[] }).typing ?? []);
+            setPinnedMessageId(doc.pinnedMessageId ?? null);
+          }
+        },
+      );
       // The denormalized userConversation row carries the authoritative sidebar
       // title/image (same source the conversation list uses) — prefer it so the
       // header always matches the list even if the conversation doc lags.
-      unsubUserConv = socket.trackDoc<ConversationDoc>('userConversation', `${userId}:${roomId}`, (doc) => {
-        if (doc) {
-          if (doc.title) setTitle(doc.title);
-          setConvImage((img: unknown) => doc.image ?? img);
-        }
-      });
+      unsubUserConv = socket.trackDoc<ConversationDoc>(
+        "userConversation",
+        `${userId}:${roomId}`,
+        (doc) => {
+          if (doc) {
+            if (doc.title) setTitle(doc.title);
+            setConvImage((img: unknown) => doc.image ?? img);
+          }
+        },
+      );
       // Messages are tracked in their own effect below (so "Load more" can grow
       // the window without re-running this conversation setup).
       setReady(true);
@@ -871,10 +1313,12 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   useEffect(() => {
     if (!menuOpen) return;
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') setMenuOpen(false);
+      if (e.key === "Escape") setMenuOpen(false);
     };
-    window.addEventListener('keydown', onKey);
-    return () => { window.removeEventListener('keydown', onKey); };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+    };
   }, [menuOpen]);
 
   // A 1:1 bot chat (`bc-<botId>-<userId>`) isn't a 2-part DM, so the partner-
@@ -885,22 +1329,32 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     const cancel = { current: false };
     void (async () => {
       try {
-        const res = (await socket.request('profilesGet', { userIds: [botId] })) as {
+        const res = (await socket.request("profilesGet", {
+          userIds: [botId],
+        })) as {
           profiles?: { avatar?: { image?: { uri?: string } } }[];
         };
         const uri = res.profiles?.[0]?.avatar?.image?.uri;
         if (uri && !cancel.current) setConvImage((img: unknown) => img ?? uri);
-      } catch { /* header keeps the monogram fallback */ }
+      } catch {
+        /* header keeps the monogram fallback */
+      }
     })();
-    return () => { cancel.current = true; };
+    return () => {
+      cancel.current = true;
+    };
   }, [botId, socket]);
 
   // display; `hasMore` is true while we're getting a full window (older history
   // likely remains). Marking-read + read-state refresh ride along on each batch.
   useEffect(() => {
     const unsub = socket.trackDocs<MessageDoc>(
-      'message',
-      { keys: { conversationId: roomId }, sort: { created: -1 }, limit: msgLimit },
+      "message",
+      {
+        keys: { conversationId: roomId },
+        sort: { created: -1 },
+        limit: msgLimit,
+      },
       (docs) => {
         const list = (Array.isArray(docs) ? docs : [])
           .filter((d) => !d.deleted)
@@ -908,25 +1362,38 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           .sort((a, b) => a.created - b.created);
         setMessages(list);
         // The bot answered (or an orphan/error reply landed) — stop waiting.
-        if (list.length > 0 && list[list.length - 1]!.userId !== userId) setAwaitingBot(false);
+        if (list.length > 0 && list[list.length - 1]!.userId !== userId)
+          setAwaitingBot(false);
         setHasMoreMessages(list.length >= msgLimit);
         pingConversationActivity();
         // Viewing the conversation clears its unread (on open + as messages
         // arrive while it's focused). Skipped for background tabs.
-        if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        if (
+          typeof document === "undefined" ||
+          document.visibilityState === "visible"
+        ) {
           void socket
-            .request('conversationMarkRead', { conversationId: roomId })
-            .then(() => { pingConversationActivity(); })
+            .request("conversationMarkRead", { conversationId: roomId })
+            .then(() => {
+              pingConversationActivity();
+            })
             .catch(() => undefined);
           // Refresh the simple per-user last-read timestamps (for "Seen").
           void socket
-            .request('conversationReadState', { conversationId: roomId })
-            .then((r) => { setReaders((r as { readers?: { userId: string; viewed: number }[] }).readers ?? []); })
+            .request("conversationReadState", { conversationId: roomId })
+            .then((r) => {
+              setReaders(
+                (r as { readers?: { userId: string; viewed: number }[] })
+                  .readers ?? [],
+              );
+            })
             .catch(() => undefined);
         }
       },
     );
-    return () => { unsub(); };
+    return () => {
+      unsub();
+    };
   }, [socket, roomId, msgLimit]);
 
   // Resolve participant profiles (real names + avatars). Also resolve membership
@@ -938,15 +1405,34 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   // ("yG1edFUS") on every tile, badge and transcript line.
   useEffect(() => {
     const ids = [
-      ...messages.flatMap((m) => [m.userId, (m as { systemParam?: string }).systemParam ?? '']),
+      ...messages.flatMap((m) => [
+        m.userId,
+        (m as { systemParam?: string }).systemParam ?? "",
+      ]),
       ...rosterIds,
     ];
-    const unknown = [...new Set(ids)].filter((id) => id && id !== 'global' && !profiles[id]);
+    const unknown = [...new Set(ids)].filter(
+      (id) => id && id !== "global" && !profiles[id],
+    );
     if (unknown.length === 0) return;
     void socket
-      .request('profilesGet', { userIds: unknown })
+      .request("profilesGet", { userIds: unknown })
       .then((res) => {
-        const list = (res as { profiles?: { id: string; name: string; avatar?: { uri?: string | null; image?: { uri?: string }; background?: { uri?: string } | null }; isBot: boolean }[] }).profiles ?? [];
+        const list =
+          (
+            res as {
+              profiles?: {
+                id: string;
+                name: string;
+                avatar?: {
+                  uri?: string | null;
+                  image?: { uri?: string };
+                  background?: { uri?: string } | null;
+                };
+                isBot: boolean;
+              }[];
+            }
+          ).profiles ?? [];
         setProfiles((prev) => {
           const next = { ...prev };
           for (const p of list) {
@@ -969,7 +1455,9 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           return next;
         });
       })
-      .catch((err: unknown) => { console.error('[ChatPage] profilesGet failed', err); });
+      .catch((err: unknown) => {
+        console.error("[ChatPage] profilesGet failed", err);
+      });
   }, [messages, rosterIds, profiles, socket, userId]);
 
   // Derive the conversation's bot id (drives the ⋯ menu + starter buttons).
@@ -978,7 +1466,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   // isBot (other migrated bots). Runs whenever profiles resolve.
   useEffect(() => {
     if (botId) return;
-    if (roomId.startsWith('bc-') && roomId.endsWith(`-${userId}`)) {
+    if (roomId.startsWith("bc-") && roomId.endsWith(`-${userId}`)) {
       setBotId(roomId.slice(3, roomId.length - userId.length - 1));
       return;
     }
@@ -989,7 +1477,9 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       setBotId(dmPeer);
       return;
     }
-    const botP = Object.values(profiles).find((p) => p.id !== userId && p.isBot);
+    const botP = Object.values(profiles).find(
+      (p) => p.id !== userId && p.isBot,
+    );
     if (botP) setBotId(botP.id);
   }, [roomId, userId, profiles, botId]);
 
@@ -1003,54 +1493,94 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     }
     let cancelled = false;
     void socket
-      .request('botGet', { botId })
+      .request("botGet", { botId })
       .then((doc) => {
         if (cancelled) return;
-        const d = doc as { buttons?: { label: string; prompt: string }[]; model?: string } | null;
+        const d = doc as {
+          buttons?: { label: string; prompt: string }[];
+          model?: string;
+        } | null;
         setBotButtons((d?.buttons ?? []).filter((b) => b.label && b.prompt));
         const defaultModel = d?.model ?? null;
         // Per-conversation override (set via the ⋯ → Model picker) wins over the
         // bot's default; falls back to the default when none is set.
         void socket
-          .getDoc('conversation', roomId)
+          .getDoc("conversation", roomId)
           .then((cdoc) => {
             if (cancelled) return;
-            interface Cfg { model?: string; mode?: string; imageModel?: string; imageSize?: string }
-            const bots = (cdoc as { bots?: Record<string, Cfg> } | null)?.bots ?? {};
+            interface Cfg {
+              model?: string;
+              mode?: string;
+              imageModel?: string;
+              imageSize?: string;
+            }
+            const bots =
+              (cdoc as { bots?: Record<string, Cfg> } | null)?.bots ?? {};
             const cfg: Cfg = (botId ? bots[botId] : undefined) ?? {};
             setBotModel(cfg.model ?? defaultModel);
-            setBotMode(cfg.mode ?? 'chat');
-            setBotImageModel(cfg.imageModel ?? 'flux_1_dev');
-            setBotImageSize(cfg.imageSize ?? 'square');
+            setBotMode(cfg.mode ?? "chat");
+            setBotImageModel(cfg.imageModel ?? "flux_1_dev");
+            setBotImageSize(cfg.imageSize ?? "square");
           })
-          .catch(() => { if (!cancelled) setBotModel(defaultModel); });
+          .catch(() => {
+            if (!cancelled) setBotModel(defaultModel);
+          });
       })
       .catch(() => undefined);
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [socket, botId, roomId]);
 
   // Set the bot's per-conversation config (⋯ menu). Optimistic; persists via
   // conversationSetBotModel (which patches any provided field).
-  const setBotConfig = (patch: { model?: string; mode?: string; imageModel?: string; imageSize?: string }): void => {
+  const setBotConfig = (patch: {
+    model?: string;
+    mode?: string;
+    imageModel?: string;
+    imageSize?: string;
+  }): void => {
     if (!botId) return;
     void socket
-      .request('conversationSetBotModel', { conversationId: roomId, botId, ...patch })
+      .request("conversationSetBotModel", {
+        conversationId: roomId,
+        botId,
+        ...patch,
+      })
       .catch(() => undefined);
   };
-  const pickBotModel = (model: string): void => { setBotModel(model); setMenuOpen(false); setBotConfig({ model }); };
-  const pickBotMode = (mode: string): void => { setBotMode(mode); setMenuOpen(false); setBotConfig({ mode }); };
-  const pickImageModel = (imageModel: string): void => { setBotImageModel(imageModel); setBotConfig({ imageModel }); };
-  const pickImageSize = (imageSize: string): void => { setBotImageSize(imageSize); setBotConfig({ imageSize }); };
+  const pickBotModel = (model: string): void => {
+    setBotModel(model);
+    setMenuOpen(false);
+    setBotConfig({ model });
+  };
+  const pickBotMode = (mode: string): void => {
+    setBotMode(mode);
+    setMenuOpen(false);
+    setBotConfig({ mode });
+  };
+  const pickImageModel = (imageModel: string): void => {
+    setBotImageModel(imageModel);
+    setBotConfig({ imageModel });
+  };
+  const pickImageSize = (imageSize: string): void => {
+    setBotImageSize(imageSize);
+    setBotConfig({ imageSize });
+  };
   // Modes available for this bot: the built-in Ugly Bot gets the personas
   // (Honest/Lie); every bot gets Chat + Image.
   const isUglyBot = botId === UGLY_BOT_ID;
-  const availableModes = BOT_MODES.filter((m) => isUglyBot || !m.persona || m.id === 'chat');
+  const availableModes = BOT_MODES.filter(
+    (m) => isUglyBot || !m.persona || m.id === "chat",
+  );
 
   // Drop staged (unsent) attachments when switching conversations.
   useEffect(() => {
     return () => {
       setPending((p) => {
-        p.forEach((x) => { URL.revokeObjectURL(x.preview); });
+        p.forEach((x) => {
+          URL.revokeObjectURL(x.preview);
+        });
         return [];
       });
     };
@@ -1060,8 +1590,8 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     (id: string): ChatUser =>
       profiles[id] ?? {
         id,
-        name: id.startsWith('bot-') ? 'Bot' : id.slice(0, 8),
-        isBot: id.startsWith('bot-'),
+        name: id.startsWith("bot-") ? "Bot" : id.slice(0, 8),
+        isBot: id.startsWith("bot-"),
       },
     [profiles, userId],
   );
@@ -1073,13 +1603,19 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       // Flag that we're waiting so the thread can say so.
       if (botId) setAwaitingBot(true);
       void socket
-        .request('conversationMessageCreate', {
+        .request("conversationMessageCreate", {
           conversationId: roomId,
-          message: { markdown: text, text, ...(parentMessageId ? { parentMessageId } : {}) },
+          message: {
+            markdown: text,
+            text,
+            ...(parentMessageId ? { parentMessageId } : {}),
+          },
         })
-        .then(() => { pingConversationActivity(); })
+        .then(() => {
+          pingConversationActivity();
+        })
         .catch((err: unknown) => {
-          console.error('[ChatPage] send failed', err);
+          console.error("[ChatPage] send failed", err);
           setAwaitingBot(false);
         });
     },
@@ -1103,19 +1639,39 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       }
       const preview = URL.createObjectURL(file);
       const id = `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`;
-      setPending((p) => [...p, { id, key: '', preview, name: file.name, type: file.type, uploading: true }]);
+      setPending((p) => [
+        ...p,
+        {
+          id,
+          key: "",
+          preview,
+          name: file.name,
+          type: file.type,
+          uploading: true,
+        },
+      ]);
       void (async () => {
         try {
-          const processed = file.type.startsWith('image/') ? await downscaleImage(file, 1600) : file;
+          const processed = file.type.startsWith("image/")
+            ? await downscaleImage(file, 1600)
+            : file;
           const { key } = await uploadBlob(processed, { name: file.name });
-          setPending((p) => p.map((x) => (x.id === id ? { ...x, key, uploading: false } : x)));
+          setPending((p) =>
+            p.map((x) => (x.id === id ? { ...x, key, uploading: false } : x)),
+          );
         } catch (err) {
           // Keep the chip, flagged as failed, and say so. Silently dropping it and
           // sending the message text-only is exactly the "told you it sent when it
           // didn't" sin this product's own landing page disavows.
-          console.error('[ChatPage] upload failed', err);
-          setPending((p) => p.map((x) => (x.id === id ? { ...x, uploading: false, failed: true } : x)));
-          setAttachError(`"${file.name}" failed to upload. Remove it, or try again.`);
+          console.error("[ChatPage] upload failed", err);
+          setPending((p) =>
+            p.map((x) =>
+              x.id === id ? { ...x, uploading: false, failed: true } : x,
+            ),
+          );
+          setAttachError(
+            `"${file.name}" failed to upload. Remove it, or try again.`,
+          );
         }
       })();
     }
@@ -1123,18 +1679,25 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
 
   useEffect(() => {
     if (!browserShare) return;
-    setBrowserDraft({ id: browserShare.id, text: browserShareMarkdown(browserShare) });
+    setBrowserDraft({
+      id: browserShare.id,
+      text: browserShareMarkdown(browserShare),
+    });
     setBrowserSources(browserDraftSources(browserShare));
     if (browserShare.screenshot) {
       try {
-        const encoded = browserShare.screenshot.dataUrl.split(',')[1] ?? '';
+        const encoded = browserShare.screenshot.dataUrl.split(",")[1] ?? "";
         const binary = atob(encoded);
         const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
         onFiles([
-          new File([bytes], browserShare.screenshot.name, { type: 'image/jpeg' }),
+          new File([bytes], browserShare.screenshot.name, {
+            type: "image/jpeg",
+          }),
         ]);
       } catch {
-        setAttachError('The shared page screenshot could not be staged. The link draft is still available.');
+        setAttachError(
+          "The shared page screenshot could not be staged. The link draft is still available.",
+        );
       }
     }
     clearBrowserShare();
@@ -1155,11 +1718,13 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       // Never send while an attachment is unresolved. Sending text-only and
       // dropping the file is the app telling you the message sent when it didn't.
       if (pending.some((p) => p.uploading)) {
-        setAttachError('Still uploading — give it a moment, then send.');
+        setAttachError("Still uploading — give it a moment, then send.");
         return;
       }
       if (pending.some((p) => p.failed)) {
-        setAttachError("An attachment failed to upload, so nothing was sent. Remove it or try again.");
+        setAttachError(
+          "An attachment failed to upload, so nothing was sent. Remove it or try again.",
+        );
         return;
       }
       const ready = pending.filter((p) => p.key);
@@ -1176,9 +1741,13 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         for (const att of ready) {
           try {
             const url = await promoteBlob(socket, att.key);
-            parts.push(att.type.startsWith('image/') ? `![${att.name}](${url})` : `[${att.name}](${url})`);
+            parts.push(
+              att.type.startsWith("image/")
+                ? `![${att.name}](${url})`
+                : `[${att.name}](${url})`,
+            );
           } catch (err) {
-            console.error('[ChatPage] promote failed', err);
+            console.error("[ChatPage] promote failed", err);
             dropped.push(att.name);
           } finally {
             URL.revokeObjectURL(att.preview);
@@ -1186,9 +1755,11 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         }
         // Own up to anything that didn't make it rather than quietly omitting it.
         if (dropped.length > 0) {
-          setAttachError(`Couldn't attach ${dropped.join(', ')} — left out of the message.`);
+          setAttachError(
+            `Couldn't attach ${dropped.join(", ")} — left out of the message.`,
+          );
         }
-        const markdown = parts.join('\n\n');
+        const markdown = parts.join("\n\n");
         if (markdown.trim()) {
           setBrowserSources([]);
           handleSend(markdown);
@@ -1201,8 +1772,13 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const handleDelete = useCallback(
     (messageId: string) => {
       void socket
-        .request('conversationMessageDelete', { conversationId: roomId, messageId: splitId(messageId) })
-        .catch((err: unknown) => { console.error('[ChatPage] delete failed', err); });
+        .request("conversationMessageDelete", {
+          conversationId: roomId,
+          messageId: splitId(messageId),
+        })
+        .catch((err: unknown) => {
+          console.error("[ChatPage] delete failed", err);
+        });
     },
     [socket, roomId],
   );
@@ -1210,8 +1786,14 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const handleReact = useCallback(
     (messageId: string, reaction: string) => {
       void socket
-        .request('conversationMessageReact', { conversationId: roomId, messageId: splitId(messageId), reaction })
-        .catch((err: unknown) => { console.error('[ChatPage] react failed', err); });
+        .request("conversationMessageReact", {
+          conversationId: roomId,
+          messageId: splitId(messageId),
+          reaction,
+        })
+        .catch((err: unknown) => {
+          console.error("[ChatPage] react failed", err);
+        });
     },
     [socket, roomId],
   );
@@ -1219,13 +1801,13 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const handleEdit = useCallback(
     async (messageId: string, markdown: string): Promise<void> => {
       await socket
-        .request('conversationMessageEdit', {
+        .request("conversationMessageEdit", {
           conversationId: roomId,
           messageId: splitId(messageId),
           markdown,
         })
         .catch((err: unknown) => {
-          console.error('[ChatPage] edit failed', err);
+          console.error("[ChatPage] edit failed", err);
           throw err;
         });
     },
@@ -1241,7 +1823,7 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     }
     let cancelled = false;
     void socket
-      .getDoc('message', pinnedMessageId)
+      .getDoc("message", pinnedMessageId)
       .then((d) => {
         if (!cancelled) setPinnedMessage((d as MessageDoc | null) ?? null);
       })
@@ -1257,8 +1839,13 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     (messageId: string) => {
       const next = pinnedMessageId === messageId ? null : messageId;
       void socket
-        .request('conversationPinMessage', { conversationId: roomId, messageId: next })
-        .catch((err: unknown) => { console.error('[ChatPage] pin failed', err); });
+        .request("conversationPinMessage", {
+          conversationId: roomId,
+          messageId: next,
+        })
+        .catch((err: unknown) => {
+          console.error("[ChatPage] pin failed", err);
+        });
     },
     [socket, roomId, pinnedMessageId],
   );
@@ -1272,14 +1859,20 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     if (now - lastTypingSent.current > 3000) {
       lastTypingSent.current = now;
       void socket
-        .request('conversationSetTyping', { conversationId: roomId, start: now })
+        .request("conversationSetTyping", {
+          conversationId: roomId,
+          start: now,
+        })
         .catch(() => undefined);
     }
     if (typingStopTimer.current) clearTimeout(typingStopTimer.current);
     typingStopTimer.current = setTimeout(() => {
       lastTypingSent.current = 0;
       void socket
-        .request('conversationSetTyping', { conversationId: roomId, start: null })
+        .request("conversationSetTyping", {
+          conversationId: roomId,
+          start: null,
+        })
         .catch(() => undefined);
     }, 4000);
   }, [socket, roomId]);
@@ -1297,8 +1890,12 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const someoneElseTyping = typing.some((e) => e.userId !== userId);
   useEffect(() => {
     if (!someoneElseTyping) return;
-    const t = setInterval(() => { forceTick((x) => x + 1); }, 2000);
-    return () => { clearInterval(t); };
+    const t = setInterval(() => {
+      forceTick((x) => x + 1);
+    }, 2000);
+    return () => {
+      clearInterval(t);
+    };
   }, [someoneElseTyping]);
 
   // Computed inline (not memoized) so the 2s forceTick re-render re-evaluates
@@ -1320,8 +1917,8 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   // Read the "Response-time stats" toggle persisted by ChatSettingsPage (Plan 03).
   // Default ON unless the value is exactly '0'.
   const statsOn = useMemo(() => {
-    if (typeof localStorage === 'undefined') return true;
-    return localStorage.getItem(`uc-conv-${roomId}-responseStats`) !== '0';
+    if (typeof localStorage === "undefined") return true;
+    return localStorage.getItem(`uc-conv-${roomId}-responseStats`) !== "0";
   }, [roomId]);
 
   // Build a sorted StatMsg array (non-bot, non-deleted) for the reducers.
@@ -1331,7 +1928,11 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         // System events ("X joined") are not conversation — counting them as
         // the other side's messages meant YOUR SHARE read 33% when you were the
         // only person who had actually said anything. Drop bots and system rows.
-        .filter((m) => !(m as { isBot?: boolean }).isBot && !(m as { systemType?: string }).systemType)
+        .filter(
+          (m) =>
+            !(m as { isBot?: boolean }).isBot &&
+            !(m as { systemType?: string }).systemType,
+        )
         .map((m) => ({ userId: m.userId, created: m.created }))
         .sort((a, b) => a.created - b.created),
     [messages],
@@ -1368,7 +1969,10 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       const ql = q.toLowerCase();
       return Promise.resolve(
         Object.values(profiles)
-          .filter((p) => p.name && p.id !== userId && p.name.toLowerCase().includes(ql))
+          .filter(
+            (p) =>
+              p.name && p.id !== userId && p.name.toLowerCase().includes(ql),
+          )
           .slice(0, 8)
           .map((p) => ({ id: p.id, name: p.name })),
       );
@@ -1380,49 +1984,80 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     (msg: ChatMessage): React.ReactNode => {
       const sysType = (msg as { systemType?: string }).systemType;
       if (sysType) {
-        const param = (msg as { systemParam?: string }).systemParam ?? '';
+        const param = (msg as { systemParam?: string }).systemParam ?? "";
         const name = profiles[param]?.name ?? param.slice(0, 8);
         const text =
-          sysType === 'memberAdd'
+          sysType === "memberAdd"
             ? `${name} joined`
-            : sysType === 'memberLeave'
+            : sysType === "memberLeave"
               ? `${name} left`
-              : sysType === 'memberRemove'
+              : sysType === "memberRemove"
                 ? `${name} was removed`
-                : '';
+                : "";
         if (!text) return null;
         return (
-          <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--app-foreground)', opacity: 0.55, padding: '6px 14px' }}>
+          <div
+            style={{
+              textAlign: "center",
+              fontSize: 12,
+              color: "var(--app-foreground)",
+              opacity: 0.55,
+              padding: "6px 14px",
+            }}
+          >
             {text}
           </div>
         );
       }
       const idx = messages.findIndex((m) => m.id === msg.id);
       const prev = idx > 0 ? messages[idx - 1] : undefined;
-      const next = idx >= 0 && idx < messages.length - 1 ? messages[idx + 1] : undefined;
+      const next =
+        idx >= 0 && idx < messages.length - 1 ? messages[idx + 1] : undefined;
       const sameDay = (a: number, b: number): boolean => {
-        const da = new Date(a), db = new Date(b);
-        return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
+        const da = new Date(a),
+          db = new Date(b);
+        return (
+          da.getFullYear() === db.getFullYear() &&
+          da.getMonth() === db.getMonth() &&
+          da.getDate() === db.getDate()
+        );
       };
       // Day separator at the top of the thread and on each calendar-day boundary.
       const daySep =
         !prev || !sameDay(prev.created, msg.created)
           ? sameDay(msg.created, Date.now())
-            ? `today · ${new Date(msg.created).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
-            : new Date(msg.created).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+            ? `today · ${new Date(msg.created).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+            : new Date(msg.created).toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })
           : null;
       // A run = consecutive same-sender messages (no day break between them).
-      const samePrev = !!prev && prev.userId === msg.userId && sameDay(prev.created, msg.created) && !(prev as { systemType?: string }).systemType;
-      const sameNext = !!next && next.userId === msg.userId && sameDay(next.created, msg.created) && !(next as { systemType?: string }).systemType;
+      const samePrev =
+        !!prev &&
+        prev.userId === msg.userId &&
+        sameDay(prev.created, msg.created) &&
+        !(prev as { systemType?: string }).systemType;
+      const sameNext =
+        !!next &&
+        next.userId === msg.userId &&
+        sameDay(next.created, msg.created) &&
+        !(next as { systemType?: string }).systemType;
       const firstOfRun = !samePrev || daySep != null;
       const stacked = samePrev || sameNext;
       // For human DM receipts: find this message's position in the StatMsg array
       // (which is filtered to non-bot messages, same ordering as messages).
-      const humanIdx = !hasBot && statsOn
-        ? statMsgs.findIndex((s) => s.created === msg.created && s.userId === msg.userId)
-        : -1;
+      const humanIdx =
+        !hasBot && statsOn
+          ? statMsgs.findIndex(
+              (s) => s.created === msg.created && s.userId === msg.userId,
+            )
+          : -1;
       // "seen" = at least one other reader has a viewed timestamp >= this message's created.
-      const humanSeen = readers.some((r) => r.userId !== userId && r.viewed >= msg.created);
+      const humanSeen = readers.some(
+        (r) => r.userId !== userId && r.viewed >= msg.created,
+      );
       return (
         <MessageBody
           msg={msg}
@@ -1436,18 +2071,43 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           onEdit={handleEdit}
           onPin={handlePin}
           pinned={pinnedMessageId === msg.id}
-          onButton={(prompt) => { handleSend(prompt); }}
+          onButton={(prompt) => {
+            handleSend(prompt);
+          }}
           onOpenImage={openImage}
           isSelected={selectedMessageId === msg.id}
           onSelect={selectMessage}
           {...(humanIdx >= 0 ? { humanIdx } : {})}
-          {...(!hasBot && statsOn ? { humanSorted: statMsgs, humanMeId: userId, humanStatsOn: true as const } : {})}
+          {...(!hasBot && statsOn
+            ? {
+                humanSorted: statMsgs,
+                humanMeId: userId,
+                humanStatsOn: true as const,
+              }
+            : {})}
           {...(humanSeen ? { humanSeen: true as const } : {})}
         />
       );
     },
-    [messages, userId, handleReact, handleDelete, handleEdit, handlePin, pinnedMessageId, handleSend, profiles,
-      hasBot, statsOn, statMsgs, readers, getUser, openImage, selectedMessageId, selectMessage],
+    [
+      messages,
+      userId,
+      handleReact,
+      handleDelete,
+      handleEdit,
+      handlePin,
+      pinnedMessageId,
+      handleSend,
+      profiles,
+      hasBot,
+      statsOn,
+      statMsgs,
+      readers,
+      getUser,
+      openImage,
+      selectedMessageId,
+      selectMessage,
+    ],
   );
 
   // Header subtitle model: the bot's configured model, else the model named on
@@ -1455,32 +2115,79 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const headerModel = useMemo(() => {
     // In Image mode the work is done by the IMAGE model — showing the text model
     // next to a spend figure was simply the wrong name for what just ran.
-    if (botMode === 'image') {
-      return IMAGE_MODELS.find((m) => m.id === botImageModel)?.label ?? botImageModel;
+    if (botMode === "image") {
+      return (
+        IMAGE_MODELS.find((m) => m.id === botImageModel)?.label ?? botImageModel
+      );
     }
     if (botModel) return modelLabel(botModel);
     for (let i = messages.length - 1; i >= 0; i--) {
       const t = (messages[i] as { telemetry?: MsgTelemetry }).telemetry;
       if (t?.model) return modelLabel(t.model);
     }
-    return '';
+    return "";
   }, [botModel, botMode, botImageModel, messages]);
 
   // ⋯-menu picker row (label + check). Reused for mode / model / image rows.
-  const menuLabelStyle: React.CSSProperties = { padding: '8px 14px 4px', fontSize: 11, fontWeight: 700, color: 'var(--app-foreground-muted)', textTransform: 'uppercase', letterSpacing: 0.5 };
-  const pickRow = (key: string, label: string, selected: boolean, onClick: () => void, desc?: string): React.ReactNode => (
+  const menuLabelStyle: React.CSSProperties = {
+    padding: "8px 14px 4px",
+    fontSize: 11,
+    fontWeight: 700,
+    color: "var(--app-foreground-muted)",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  };
+  const pickRow = (
+    key: string,
+    label: string,
+    selected: boolean,
+    onClick: () => void,
+    desc?: string,
+  ): React.ReactNode => (
     <button
       key={key}
       type="button"
       className="uc-menuitem"
       onClick={onClick}
-      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 9, width: '100%', padding: '9px 14px', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', fontSize: 13, fontWeight: 600, textAlign: 'left' }} data-id="button-7"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 9,
+        width: "100%",
+        padding: "9px 14px",
+        border: "none",
+        background: "transparent",
+        color: "var(--app-foreground)",
+        cursor: "pointer",
+        fontSize: 13,
+        fontWeight: 600,
+        textAlign: "left",
+      }}
+      data-id="button-7"
     >
       <span style={{ minWidth: 0 }}>
         {label}
-        {desc ? <span style={{ display: 'block', fontSize: 11, fontWeight: 500, color: 'var(--app-foreground-muted)', marginTop: 1 }}>{desc}</span> : null}
+        {desc ? (
+          <span
+            style={{
+              display: "block",
+              fontSize: 11,
+              fontWeight: 500,
+              color: "var(--app-foreground-muted)",
+              marginTop: 1,
+            }}
+          >
+            {desc}
+          </span>
+        ) : null}
       </span>
-      {selected ? <Check size={15} style={{ color: 'var(--app-primary)', flexShrink: 0 }} /> : null}
+      {selected ? (
+        <Check
+          size={15}
+          style={{ color: "var(--app-primary)", flexShrink: 0 }}
+        />
+      ) : null}
     </button>
   );
 
@@ -1494,40 +2201,91 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
     // needs to not stretch away from the chip's own 28px height.
     <div
       style={{
-        position: 'relative',
+        position: "relative",
         flexShrink: 0,
-        display: 'flex',
-        alignItems: 'center',
+        display: "flex",
+        alignItems: "center",
       }}
     >
       <button
         type="button"
-        onClick={() => { setMenuOpen((o) => !o); }}
+        onClick={() => {
+          setMenuOpen((o) => !o);
+        }}
         className="uc-composer-mode"
         aria-label="Bot mode and model"
         title="Mode & model"
         data-id="composer-mode"
       >
-        <span>{BOT_MODES.find((m) => m.id === botMode)?.label ?? 'Chat'}</span>
+        <span>{BOT_MODES.find((m) => m.id === botMode)?.label ?? "Chat"}</span>
         <ChevronDown size={13} style={{ flexShrink: 0, opacity: 0.8 }} />
       </button>
       {menuOpen ? (
         <>
-          <div onClick={() => { setMenuOpen(false); }} style={{ position: 'fixed', inset: 0, zIndex: 20 }} data-id="mode-scrim" />
-          <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, zIndex: 21, background: 'var(--app-main)', border: '1px solid var(--app-border)', borderRadius: 10, boxShadow: 'var(--app-shadow-button-default)', minWidth: 210, overflow: 'hidden', maxHeight: 'min(60vh, 460px)', overflowY: 'auto' }} data-id="mode-popover">
+          <div
+            onClick={() => {
+              setMenuOpen(false);
+            }}
+            style={{ position: "fixed", inset: 0, zIndex: 20 }}
+            data-id="mode-scrim"
+          />
+          <div
+            style={{
+              position: "absolute",
+              bottom: "calc(100% + 8px)",
+              left: 0,
+              zIndex: 21,
+              background: "var(--app-main)",
+              border: "1px solid var(--app-border)",
+              borderRadius: 10,
+              boxShadow: "var(--app-shadow-button-default)",
+              minWidth: 210,
+              overflow: "hidden",
+              maxHeight: "min(60vh, 460px)",
+              overflowY: "auto",
+            }}
+            data-id="mode-popover"
+          >
             <div style={menuLabelStyle}>Mode</div>
-            {availableModes.map((m) => pickRow(`mode-${m.id}`, m.label, botMode === m.id, () => { pickBotMode(m.id); }, m.desc))}
-            {botMode === 'image' ? (
+            {availableModes.map((m) =>
+              pickRow(
+                `mode-${m.id}`,
+                m.label,
+                botMode === m.id,
+                () => {
+                  pickBotMode(m.id);
+                },
+                m.desc,
+              ),
+            )}
+            {botMode === "image" ? (
               <>
                 <div style={menuLabelStyle}>Image model</div>
-                {IMAGE_MODELS.map((m) => pickRow(`im-${m.id}`, m.label, botImageModel === m.id, () => { pickImageModel(m.id); }))}
+                {IMAGE_MODELS.map((m) =>
+                  pickRow(`im-${m.id}`, m.label, botImageModel === m.id, () => {
+                    pickImageModel(m.id);
+                  }),
+                )}
                 <div style={menuLabelStyle}>Image size</div>
-                {IMAGE_SIZES.map((m) => pickRow(`is-${m.id}`, m.label, botImageSize === m.id, () => { pickImageSize(m.id); }))}
+                {IMAGE_SIZES.map((m) =>
+                  pickRow(`is-${m.id}`, m.label, botImageSize === m.id, () => {
+                    pickImageSize(m.id);
+                  }),
+                )}
               </>
             ) : (
               <>
                 <div style={menuLabelStyle}>Model</div>
-                {BOT_MODELS.map((m) => pickRow(`tm-${m.id}`, (m.label.split('—')[0] ?? m.id).trim(), (botModel ?? BOT_MODELS[0]?.id) === m.id, () => { pickBotModel(m.id); }))}
+                {BOT_MODELS.map((m) =>
+                  pickRow(
+                    `tm-${m.id}`,
+                    (m.label.split("—")[0] ?? m.id).trim(),
+                    (botModel ?? BOT_MODELS[0]?.id) === m.id,
+                    () => {
+                      pickBotModel(m.id);
+                    },
+                  ),
+                )}
               </>
             )}
           </div>
@@ -1539,34 +2297,77 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
   const body = (
     <div
       style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        background: 'var(--app-main)',
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        background: "var(--app-main)",
       }}
     >
       {/* Conversation header */}
-      <div className="uc-conversation-header" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderBottom: '1px solid var(--app-border)', flexShrink: 0, background: 'transparent' }}>
+      <div
+        className="uc-conversation-header"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "8px 14px",
+          borderBottom: "1px solid var(--app-border)",
+          flexShrink: 0,
+          background: "transparent",
+        }}
+      >
         {narrow && !embed.embedded ? (
           <button
             type="button"
-            onClick={() => { router.push('', {}); }}
+            onClick={() => {
+              router.push("", {});
+            }}
             aria-label="Back"
-            style={{ border: 'none', background: 'transparent', fontSize: 22, lineHeight: 1, cursor: 'pointer', color: 'var(--app-foreground)', padding: '0 4px 0 0' }} data-id="back"
+            style={{
+              border: "none",
+              background: "transparent",
+              fontSize: 22,
+              lineHeight: 1,
+              cursor: "pointer",
+              color: "var(--app-foreground)",
+              padding: "0 4px 0 0",
+            }}
+            data-id="back"
           >
             ‹
           </button>
         ) : null}
         <Avatar image={convImage} seed={roomId} label={title} size={30} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--app-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
+          <div
+            style={{
+              fontWeight: 700,
+              fontSize: 15,
+              color: "var(--app-foreground)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {title}
+          </div>
           {/* Subtitle row — ALWAYS rendered with a reserved height so the async
               bot-id / model resolution never grows or shrinks the header (which
               caused a visible layout shift). Bots show their model once resolved;
               humans show nothing (no fabricated "online" presence). */}
-          <div className="uc-receipt" style={{ marginTop: 1, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
-            {botMode && botMode !== 'chat' ? (
-              <span className={`uc-mode-badge${botMode === 'lie' ? ' warn' : ''}`}>
+          <div
+            className="uc-receipt"
+            style={{
+              marginTop: 1,
+              height: 14,
+              lineHeight: "14px",
+              overflow: "hidden",
+            }}
+          >
+            {botMode && botMode !== "chat" ? (
+              <span
+                className={`uc-mode-badge${botMode === "lie" ? " warn" : ""}`}
+              >
                 {BOT_MODES.find((m) => m.id === botMode)?.label ?? botMode}
               </span>
             ) : null}
@@ -1577,10 +2378,25 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         {narrow && !embed.embedded ? (
           <button
             type="button"
-            onClick={() => { openThemeMenu(router); }}
+            onClick={() => {
+              openThemeMenu(router);
+            }}
             aria-label="Theme"
             title="Theme"
-            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', flexShrink: 0 }} data-id="theme"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 34,
+              height: 34,
+              borderRadius: "50%",
+              border: "none",
+              background: "transparent",
+              color: "var(--app-foreground)",
+              cursor: "pointer",
+              flexShrink: 0,
+            }}
+            data-id="theme"
           >
             <Palette size={18} />
           </button>
@@ -1594,26 +2410,83 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           // lobby modal stacked over the call stage that intercepted pointer
           // events and blocked End call, so you could feel unable to hang up.
           disabled={callActive}
-          onClick={() => { if (!callActive) videoRef.current?.start(); }}
+          onClick={() => {
+            if (!callActive) videoRef.current?.start();
+          }}
           // "Voice call" was a lie the button told about itself: it wears a
           // video icon and opens a dialog headed "Start video call" with a
           // camera preview. Hovering to check contradicted the click.
-          aria-label={callActive ? 'Call in progress' : botId ? `Start a video call with ${title}` : 'Start video call'}
-          title={callActive ? 'Call in progress' : botId ? `Video call ${title}` : 'Start video call'}
-          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: callActive ? 'default' : 'pointer', opacity: callActive ? 0.35 : 1, flexShrink: 0 }} data-id="start-video-call"
+          aria-label={
+            callActive
+              ? "Call in progress"
+              : botId
+                ? `Start a video call with ${title}`
+                : "Start video call"
+          }
+          title={
+            callActive
+              ? "Call in progress"
+              : botId
+                ? `Video call ${title}`
+                : "Start video call"
+          }
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 34,
+            height: 34,
+            borderRadius: "50%",
+            border: "none",
+            background: "transparent",
+            color: "var(--app-foreground)",
+            cursor: callActive ? "default" : "pointer",
+            opacity: callActive ? 0.35 : 1,
+            flexShrink: 0,
+          }}
+          data-id="start-video-call"
         >
           <Video size={19} />
         </button>
         {/* Info / settings — the single admin home for EVERY real conversation
             (bot, group, human DM). Broadened from group-only now that the ⋯
             menu is gone: members, clear, and delete all live in here. */}
-        {roomId !== 'demo-room' ? (
+        {roomId !== "demo-room" ? (
           <button
             type="button"
-            onClick={() => { router.push('settings/:conversationId', { conversationId: roomId }); }}
-            aria-label={hasBot ? 'Bot info' : isDirectRoom(roomId) ? 'Chat info' : 'Group info'}
-            title={hasBot ? 'Bot info' : isDirectRoom(roomId) ? 'Chat info' : 'Group info'}
-            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer', flexShrink: 0 }} data-id="group-info"
+            onClick={() => {
+              router.push("settings/:conversationId", {
+                conversationId: roomId,
+              });
+            }}
+            aria-label={
+              hasBot
+                ? "Bot info"
+                : isDirectRoom(roomId)
+                  ? "Chat info"
+                  : "Group info"
+            }
+            title={
+              hasBot
+                ? "Bot info"
+                : isDirectRoom(roomId)
+                  ? "Chat info"
+                  : "Group info"
+            }
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 34,
+              height: 34,
+              borderRadius: "50%",
+              border: "none",
+              background: "transparent",
+              color: "var(--app-foreground)",
+              cursor: "pointer",
+              flexShrink: 0,
+            }}
+            data-id="group-info"
           >
             <Settings size={18} />
           </button>
@@ -1626,11 +2499,48 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
 
       {/* Pinned message banner */}
       {pinnedMessage ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 14px', borderBottom: '1px solid var(--app-border)', background: 'rgba(var(--app-primary-rgb), 0.07)', flexShrink: 0 }}>
-          <Pin size={14} style={{ color: 'var(--app-primary)', flexShrink: 0 }} fill="currentColor" />
-          <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--app-primary)' }}>Pinned</span>
-            <span style={{ fontSize: 13, color: 'var(--app-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 9,
+            padding: "7px 14px",
+            borderBottom: "1px solid var(--app-border)",
+            background: "rgba(var(--app-primary-rgb), 0.07)",
+            flexShrink: 0,
+          }}
+        >
+          <Pin
+            size={14}
+            style={{ color: "var(--app-primary)", flexShrink: 0 }}
+            fill="currentColor"
+          />
+          <span
+            style={{
+              flex: 1,
+              minWidth: 0,
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: "var(--app-primary)",
+              }}
+            >
+              Pinned
+            </span>
+            <span
+              style={{
+                fontSize: 13,
+                color: "var(--app-foreground)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
               {pinnedPreview(pinnedMessage)}
             </span>
           </span>
@@ -1638,8 +2548,24 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
             type="button"
             title="Unpin"
             aria-label="Unpin"
-            onClick={() => { handlePin(pinnedMessage._id); }}
-            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, flexShrink: 0, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--app-foreground)', opacity: 0.6, cursor: 'pointer' }} data-id="unpin"
+            onClick={() => {
+              handlePin(pinnedMessage._id);
+            }}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 28,
+              height: 28,
+              flexShrink: 0,
+              borderRadius: 8,
+              border: "none",
+              background: "transparent",
+              color: "var(--app-foreground)",
+              opacity: 0.6,
+              cursor: "pointer",
+            }}
+            data-id="unpin"
           >
             <X size={15} />
           </button>
@@ -1650,18 +2576,24 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
       {/* Both stat strips are about the THREAD, so they're hidden during a call
           — they were stealing vertical space from the stage and reading as call
           chrome ("2 in call · $0.004" next to each other is a puzzle). */}
-      {botId && !callActive ? (() => {
-        const tel = messages
-          .filter((m) => !!(m as { telemetry?: MsgTelemetry }).telemetry)
-          .map((m) => (m as { telemetry?: MsgTelemetry }).telemetry!);
-        return tel.length > 0 ? (
-          <TelemetryStrip telemetry={tel} openedAt={openedAtRef.current} />
-        ) : null;
-      })() : null}
+      {botId && !callActive
+        ? (() => {
+            const tel = messages
+              .filter((m) => !!(m as { telemetry?: MsgTelemetry }).telemetry)
+              .map((m) => (m as { telemetry?: MsgTelemetry }).telemetry!);
+            return tel.length > 0 ? (
+              <TelemetryStrip telemetry={tel} openedAt={openedAtRef.current} />
+            ) : null;
+          })()
+        : null}
 
       {/* Response-time totals strip — human DMs only, gated by settings toggle */}
       {!hasBot && !callActive && statsOn && statMsgs.length > 1 ? (
-        <HumanTelemetryStrip msgs={statMsgs} meId={userId} leftOnRead={leftOnReadCount} />
+        <HumanTelemetryStrip
+          msgs={statMsgs}
+          meId={userId}
+          leftOnRead={leftOnReadCount}
+        />
       ) : null}
 
       <CallLayout
@@ -1684,9 +2616,9 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
         style={{
           flex: 1,
           minHeight: 0,
-          width: '100%',
-          display: callActive ? 'none' : 'flex',
-          flexDirection: 'column',
+          width: "100%",
+          display: callActive ? "none" : "flex",
+          flexDirection: "column",
         }}
       >
         {/* Typing overlay — pinned at the TOP of the chat area so it never
@@ -1694,18 +2626,23 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
             suppressed via typingEntries={[]}). */}
         {typingEntries.length > 0 ? (
           <div className="uc-typing-overlay">
-            {typingEntries.map((e) => getUser(e.userId).name).join(', ')} typing…
+            {typingEntries.map((e) => getUser(e.userId).name).join(", ")}{" "}
+            typing…
           </div>
         ) : awaitingBot ? (
           // Bots never set the typing flag, so a 10s web search or image render
           // showed nothing at all. Name the work being done.
           <div className="uc-typing-overlay" data-id="bot-thinking">
-            <span className="uc-dots" aria-hidden><i /><i /><i /></span>
-            {botMode === 'search'
-              ? 'Searching the web…'
-              : botMode === 'image'
-                ? 'Generating an image…'
-                : 'Thinking…'}
+            <span className="uc-dots" aria-hidden>
+              <i />
+              <i />
+              <i />
+            </span>
+            {botMode === "search"
+              ? "Searching the web…"
+              : botMode === "image"
+                ? "Generating an image…"
+                : "Thinking…"}
           </div>
         ) : null}
         <VirtualMessageList
@@ -1714,113 +2651,278 @@ export default function ChatPage({ conversationId }: { conversationId?: string }
           currentUserId={userId}
           renderItem={renderMessage}
           hasMore={hasMoreMessages}
-          onLoadMore={() => { setMsgLimit((l) => l + LOAD_MORE_STEP); }}
-          onUserScroll={() => { setSelectedMessageId(null); }}
-          onBackgroundClick={() => { setSelectedMessageId(null); }}
+          onLoadMore={() => {
+            setMsgLimit((l) => l + LOAD_MORE_STEP);
+          }}
+          onUserScroll={() => {
+            setSelectedMessageId(null);
+          }}
+          onBackgroundClick={() => {
+            setSelectedMessageId(null);
+          }}
           bottom={
-          <div
-            className="uc-composer"
-            style={{
-              paddingLeft: 16,
-              paddingRight: 16,
-              paddingBottom: composerBottomInset,
-              // Ride up smoothly with the keyboard (matches the iOS curve).
-              transition: 'padding-bottom 0.25s cubic-bezier(0.38, 0.7, 0.125, 1)',
-            }}
-          >
-            {botButtons.length > 0 ? (
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                {botButtons.map((b, i) => (
-                  <button
-                    key={`${b.label}-${i}`}
-                    type="button"
-                    className="uc-msgbtn"
-                    onClick={() => { handleSend(b.prompt); }}
-                    style={{ fontFamily: 'var(--app-font-mono)', fontSize: 11.5, fontWeight: 600, letterSpacing: '0.04em', padding: '7px 13px', borderRadius: 0, border: '1.5px solid var(--app-primary)', background: 'transparent', color: 'var(--app-primary)', cursor: 'pointer' }} data-id="label"
-                  >
-                    {b.label}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-            {attachError ? (
-              <div className="uc-attach-error" role="status" data-id="attach-error">
-                <AlertTriangle size={13} style={{ flexShrink: 0 }} />
-                <span style={{ flex: 1, minWidth: 0 }}>{attachError}</span>
-                <button type="button" onClick={() => { setAttachError(null); }} aria-label="Dismiss" data-id="attach-error-dismiss">
-                  <X size={12} />
-                </button>
-              </div>
-            ) : null}
-            {pending.length > 0 ? (
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                {pending.map((p) => (
-                  <div key={p.id} style={{ position: 'relative', width: 60, height: 60 }} title={p.failed ? `${p.name} — upload failed` : p.name}>
-                    {p.type.startsWith('image/') ? (
-                      <img {...crossOriginProps(p.preview)} src={p.preview} alt={p.name} style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 10, opacity: p.uploading ? 0.45 : 1, border: p.failed ? '1.5px solid var(--app-error)' : '1px solid var(--app-border)' }} />
-                    ) : (
-                      <div style={{ width: 60, height: 60, borderRadius: 10, border: p.failed ? '1.5px solid var(--app-error)' : '1px solid var(--app-border)', background: 'var(--app-tertiary)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, fontSize: 9, padding: 4, textAlign: 'center', color: 'var(--app-foreground)', opacity: p.uploading ? 0.45 : 1, overflow: 'hidden' }}>
-                        <FileText size={20} style={{ opacity: 0.7, flexShrink: 0 }} />
-                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{p.name}</span>
-                      </div>
-                    )}
-                    {p.uploading ? (
-                      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div className="uc-spin" style={{ width: 18, height: 18, border: '2px solid rgba(255,255,255,0.5)', borderTopColor: '#fff', borderRadius: '50%' }} />
-                      </div>
-                    ) : null}
-                    <button type="button" onClick={() => { removePending(p.id); }} aria-label="Remove" style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', border: 'none', background: 'var(--app-foreground)', color: 'var(--app-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} data-id="remove">
-                      <X size={12} />
+            <div
+              className="uc-composer"
+              style={{
+                paddingLeft: 16,
+                paddingRight: 16,
+                paddingBottom: composerBottomInset,
+                // Ride up smoothly with the keyboard (matches the iOS curve).
+                transition:
+                  "padding-bottom 0.25s cubic-bezier(0.38, 0.7, 0.125, 1)",
+              }}
+            >
+              {botButtons.length > 0 ? (
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    flexWrap: "wrap",
+                    marginBottom: 8,
+                  }}
+                >
+                  {botButtons.map((b, i) => (
+                    <button
+                      key={`${b.label}-${i}`}
+                      type="button"
+                      className="uc-msgbtn"
+                      onClick={() => {
+                        handleSend(b.prompt);
+                      }}
+                      style={{
+                        fontFamily: "var(--app-font-mono)",
+                        fontSize: 11.5,
+                        fontWeight: 600,
+                        letterSpacing: "0.04em",
+                        padding: "7px 13px",
+                        borderRadius: 0,
+                        border: "1.5px solid var(--app-primary)",
+                        background: "transparent",
+                        color: "var(--app-primary)",
+                        cursor: "pointer",
+                      }}
+                      data-id="label"
+                    >
+                      {b.label}
                     </button>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                onFiles(e.target.files);
-                e.target.value = '';
-              }} data-id="input"
-            />
-            <div style={{ border: '1px solid var(--app-primary)', borderRadius: 0, background: 'var(--app-main)' }}>
-              <BrowserDraftSources sources={browserSources} />
-              <ConversationInput
-                draftRequest={browserDraft}
-                placeholder={
-                  !botId ? 'Message · ↩ send · ⇧↩ new line'
-                    : botMode === 'image' ? 'Describe an image to generate · ↩ send'
-                    : botMode === 'search' ? 'Search the web · ↩ send'
-                    : 'Ask anything · ↩ send · ⇧↩ new line'
-                }
-                autoFocus
-                onSend={handleSendWithAttachments}
-                onType={signalTyping}
-                allowEmpty={pending.some((p) => p.key)}
-                mentionSearch={mentionSearch}
-                {...(modeControl ? { leftActions: modeControl } : {})}
-                rightActions={
+                  ))}
+                </div>
+              ) : null}
+              {attachError ? (
+                <div
+                  className="uc-attach-error"
+                  role="status"
+                  data-id="attach-error"
+                >
+                  <AlertTriangle size={13} style={{ flexShrink: 0 }} />
+                  <span style={{ flex: 1, minWidth: 0 }}>{attachError}</span>
                   <button
                     type="button"
-                    title="Attach image"
-                    onClick={() => fileInputRef.current?.click()}
-                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, flexShrink: 0, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--app-foreground)', cursor: 'pointer' }} data-id="button-8"
+                    onClick={() => {
+                      setAttachError(null);
+                    }}
+                    aria-label="Dismiss"
+                    data-id="attach-error-dismiss"
                   >
-                    <Paperclip size={18} />
+                    <X size={12} />
                   </button>
-                }
+                </div>
+              ) : null}
+              {pending.length > 0 ? (
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    flexWrap: "wrap",
+                    marginBottom: 8,
+                  }}
+                >
+                  {pending.map((p) => (
+                    <div
+                      key={p.id}
+                      style={{ position: "relative", width: 60, height: 60 }}
+                      title={p.failed ? `${p.name} — upload failed` : p.name}
+                    >
+                      {p.type.startsWith("image/") ? (
+                        <img
+                          {...crossOriginProps(p.preview)}
+                          src={p.preview}
+                          alt={p.name}
+                          style={{
+                            width: 60,
+                            height: 60,
+                            objectFit: "cover",
+                            borderRadius: 10,
+                            opacity: p.uploading ? 0.45 : 1,
+                            border: p.failed
+                              ? "1.5px solid var(--app-error)"
+                              : "1px solid var(--app-border)",
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: 60,
+                            height: 60,
+                            borderRadius: 10,
+                            border: p.failed
+                              ? "1.5px solid var(--app-error)"
+                              : "1px solid var(--app-border)",
+                            background: "var(--app-tertiary)",
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 3,
+                            fontSize: 9,
+                            padding: 4,
+                            textAlign: "center",
+                            color: "var(--app-foreground)",
+                            opacity: p.uploading ? 0.45 : 1,
+                            overflow: "hidden",
+                          }}
+                        >
+                          <FileText
+                            size={20}
+                            style={{ opacity: 0.7, flexShrink: 0 }}
+                          />
+                          <span
+                            style={{
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              maxWidth: "100%",
+                            }}
+                          >
+                            {p.name}
+                          </span>
+                        </div>
+                      )}
+                      {p.uploading ? (
+                        <div
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <div
+                            className="uc-spin"
+                            style={{
+                              width: 18,
+                              height: 18,
+                              border: "2px solid rgba(255,255,255,0.5)",
+                              borderTopColor: "#fff",
+                              borderRadius: "50%",
+                            }}
+                          />
+                        </div>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          removePending(p.id);
+                        }}
+                        aria-label="Remove"
+                        style={{
+                          position: "absolute",
+                          top: -6,
+                          right: -6,
+                          width: 20,
+                          height: 20,
+                          borderRadius: "50%",
+                          border: "none",
+                          background: "var(--app-foreground)",
+                          color: "var(--app-main)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                        }}
+                        data-id="remove"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  onFiles(e.target.files);
+                  e.target.value = "";
+                }}
+                data-id="input"
               />
+              <div
+                style={{
+                  border: "1px solid var(--app-primary)",
+                  borderRadius: 0,
+                  background: "var(--app-main)",
+                }}
+              >
+                <BrowserDraftSources sources={browserSources} />
+                <ConversationInput
+                  draftRequest={browserDraft}
+                  placeholder={
+                    !botId
+                      ? "Message · ↩ send · ⇧↩ new line"
+                      : botMode === "image"
+                        ? "Describe an image to generate · ↩ send"
+                        : botMode === "search"
+                          ? "Search the web · ↩ send"
+                          : "Ask anything · ↩ send · ⇧↩ new line"
+                  }
+                  autoFocus
+                  onSend={handleSendWithAttachments}
+                  onType={signalTyping}
+                  allowEmpty={pending.some((p) => p.key)}
+                  mentionSearch={mentionSearch}
+                  {...(modeControl ? { leftActions: modeControl } : {})}
+                  rightActions={
+                    <button
+                      type="button"
+                      title="Attach image"
+                      onClick={() => fileInputRef.current?.click()}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: 32,
+                        height: 32,
+                        flexShrink: 0,
+                        borderRadius: "50%",
+                        border: "none",
+                        background: "transparent",
+                        color: "var(--app-foreground)",
+                        cursor: "pointer",
+                      }}
+                      data-id="button-8"
+                    >
+                      <Paperclip size={18} />
+                    </button>
+                  }
+                />
+              </div>
             </div>
-          </div>
           }
         />
       </div>
-      {zoomImg && typeof document !== 'undefined'
+      {zoomImg && typeof document !== "undefined"
         ? createPortal(
-            <ImageZoomViewer src={zoomImg.src} alt={zoomImg.alt} onClose={() => { setZoomImg(null); }} />,
+            <ImageZoomViewer
+              src={zoomImg.src}
+              alt={zoomImg.alt}
+              onClose={() => {
+                setZoomImg(null);
+              }}
+            />,
             document.body,
           )
         : null}

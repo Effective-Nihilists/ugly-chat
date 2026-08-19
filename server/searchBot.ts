@@ -5,17 +5,17 @@
 // is persisted once (commit) with its sources in `custom.sources`, and shows up
 // live for everyone watching the conversation.
 
-import { nanoid } from 'nanoid';
-import { conversationMessageCreate } from 'ugly-app/conversation/engine';
+import { nanoid } from "nanoid";
+import { conversationMessageCreate } from "ugly-app/conversation/engine";
 import {
   AnswerEngine,
   WebRetriever,
   runSearchReply,
   type ModelCaller,
-} from 'ugly-app/search/server';
-import type { MsgTelemetry } from 'ugly-app/conversation/shared';
+} from "ugly-app/search/server";
+import type { MsgTelemetry } from "ugly-app/conversation/shared";
 
-export const SEARCH_BOT_ID = 'bot-search';
+export const SEARCH_BOT_ID = "bot-search";
 
 /**
  * Show only the sources the answer actually CITES, renumbering `[n]` to match.
@@ -32,11 +32,14 @@ export function trimToCitedSources<T>(
   sources: T[] | undefined,
 ): { text: string; sources: T[] | undefined } {
   if (!sources || sources.length === 0) return { text, sources };
-  const cited = [...new Set([...text.matchAll(/\[(\d+)\]/g)].map((x) => Number(x[1])))]
+  const cited = [
+    ...new Set([...text.matchAll(/\[(\d+)\]/g)].map((x) => Number(x[1]))),
+  ]
     .filter((n) => n >= 1 && n <= sources.length)
     .sort((a, b) => a - b);
   // Nothing cited, or everything read was cited → leave it (numbers already line up).
-  if (cited.length === 0 || cited.length === sources.length) return { text, sources };
+  if (cited.length === 0 || cited.length === sources.length)
+    return { text, sources };
   const remap = new Map(cited.map((old, i) => [old, i + 1]));
   const newText = text.replace(/\[(\d+)\]/g, (m, d: string) => {
     const n = remap.get(Number(d));
@@ -45,7 +48,10 @@ export function trimToCitedSources<T>(
   return { text: newText, sources: cited.map((n) => sources[n - 1]!) };
 }
 
-interface ChatTurn { role: 'system' | 'user' | 'assistant'; content: string }
+interface ChatTurn {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
 type TextGen = (
   model: string,
   messages: ChatTurn[],
@@ -59,7 +65,7 @@ export interface RunBotSearchOptions {
   history: ChatTurn[];
   model: string;
   textGen: TextGen;
-  mode?: 'quick' | 'deep';
+  mode?: "quick" | "deep";
   /**
    * The chatting user's session JWT + id. Web retrieval runs through the same
    * ugly.bot proxy as textGen and must be billed to the user; without these the
@@ -71,7 +77,7 @@ export interface RunBotSearchOptions {
 }
 
 export async function runBotSearch(opts: RunBotSearchOptions): Promise<void> {
-  const query = opts.history[opts.history.length - 1]?.content ?? '';
+  const query = opts.history[opts.history.length - 1]?.content ?? "";
   if (!query) return;
 
   const messageId = nanoid();
@@ -83,7 +89,11 @@ export async function runBotSearch(opts: RunBotSearchOptions): Promise<void> {
     complete: async ({ model: m, messages, maxTokens }) => {
       // Floor the answer budget at 2048 — cited answers over several sources were
       // being cut off mid-sentence (dangling "**") at the old 1024 default.
-      const out = await opts.textGen(m, messages, Math.max(maxTokens ?? 0, 2048));
+      const out = await opts.textGen(
+        m,
+        messages,
+        Math.max(maxTokens ?? 0, 2048),
+      );
       return { text: out.text, telemetry: out.usage };
     },
   };
@@ -100,10 +110,15 @@ export async function runBotSearch(opts: RunBotSearchOptions): Promise<void> {
   });
 
   await runSearchReply(
-    { conversationId: opts.conversationId, msgId, authorId: opts.botId, kind: 'bot' },
+    {
+      conversationId: opts.conversationId,
+      msgId,
+      authorId: opts.botId,
+      kind: "bot",
+    },
     {
       engine,
-      hubOptions: { collection: 'message', keyField: 'conversationId' },
+      hubOptions: { collection: "message", keyField: "conversationId" },
       persist: {
         commit: async (m) => {
           // Trim the shown sources to the ones the answer cites, renumbering [n].
@@ -128,7 +143,7 @@ export async function runBotSearch(opts: RunBotSearchOptions): Promise<void> {
       query,
       history: opts.history.slice(0, -1),
       model: opts.model,
-      mode: opts.mode ?? 'quick',
+      mode: opts.mode ?? "quick",
     },
   );
 }

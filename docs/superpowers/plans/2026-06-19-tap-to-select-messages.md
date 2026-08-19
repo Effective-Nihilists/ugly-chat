@@ -22,9 +22,11 @@
 ### Task 1: Composer breathing room
 
 **Files:**
+
 - Modify: `client/styles.css` (the `[data-testid='message-list-inner']` rules — one at ~line 611 `padding-bottom: 10px`, and the more specific `.uc-chat-scroll [data-testid='message-list-inner']` at ~line 646 `padding-bottom: 12px`).
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces: nothing (CSS only).
 
@@ -33,7 +35,7 @@
 In `client/styles.css`, find the first rule:
 
 ```css
-[data-testid='message-list-inner'] {
+[data-testid="message-list-inner"] {
   width: 100%;
   max-width: 820px;
   margin-left: auto;
@@ -53,7 +55,7 @@ Change `padding-bottom: 10px;` to `padding-bottom: 24px;`.
 Find the second rule:
 
 ```css
-.uc-chat-scroll [data-testid='message-list-inner'] {
+.uc-chat-scroll [data-testid="message-list-inner"] {
   width: 100%;
   max-width: 820px;
   margin-left: auto;
@@ -86,10 +88,12 @@ git commit -m "feat(chat): more breathing room between last message and composer
 ### Task 2: Selection-state helper (pure, TDD)
 
 **Files:**
+
 - Create: `client/lib/messageSelection.ts`
 - Test: `tests/unit/messageSelection.test.ts`
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces: `nextSelectedId(current: string | null, tappedId: string): string | null` — returns `null` when `tappedId === current` (toggle off), otherwise returns `tappedId` (select or move). This is the single source of truth for the toggle/move/clear rule used by `ChatPage` in Task 3.
 
@@ -98,18 +102,18 @@ git commit -m "feat(chat): more breathing room between last message and composer
 Create `tests/unit/messageSelection.test.ts`:
 
 ```ts
-import { describe, it, expect } from 'vitest';
-import { nextSelectedId } from '../../client/lib/messageSelection';
+import { describe, it, expect } from "vitest";
+import { nextSelectedId } from "../../client/lib/messageSelection";
 
-describe('nextSelectedId', () => {
-  it('selects a message when nothing is selected', () => {
-    expect(nextSelectedId(null, 'm1')).toBe('m1');
+describe("nextSelectedId", () => {
+  it("selects a message when nothing is selected", () => {
+    expect(nextSelectedId(null, "m1")).toBe("m1");
   });
-  it('moves selection to a different message', () => {
-    expect(nextSelectedId('m1', 'm2')).toBe('m2');
+  it("moves selection to a different message", () => {
+    expect(nextSelectedId("m1", "m2")).toBe("m2");
   });
-  it('toggles off when the selected message is tapped again', () => {
-    expect(nextSelectedId('m1', 'm1')).toBeNull();
+  it("toggles off when the selected message is tapped again", () => {
+    expect(nextSelectedId("m1", "m1")).toBeNull();
   });
 });
 ```
@@ -128,7 +132,10 @@ Create `client/lib/messageSelection.ts`:
  * Single-select toggle rule for the chat thread. Tapping the already-selected
  * message clears it; tapping any other message selects (or moves to) it.
  */
-export function nextSelectedId(current: string | null, tappedId: string): string | null {
+export function nextSelectedId(
+  current: string | null,
+  tappedId: string,
+): string | null {
   return current === tappedId ? null : tappedId;
 }
 ```
@@ -150,10 +157,12 @@ git commit -m "feat(chat): add single-select toggle helper for messages"
 ### Task 3: Selection state in ChatPage + gate metadata/menu in MessageBody
 
 **Files:**
+
 - Modify: `client/pages/ChatPage.tsx` — add `selectedMessageId` state; thread `isSelected` + `onSelect` into `MessageBody`; replace `hover` with `isSelected`; gate the timestamp / own-footer / telemetry / read-status blocks on `isSelected`; add a click handler with a text-selection guard.
 - Modify: `client/styles.css` — add a `.uc-bubble.selected` tint rule.
 
 **Interfaces:**
+
 - Consumes: `nextSelectedId` from `client/lib/messageSelection` (Task 2).
 - Produces: `MessageBody` now accepts `isSelected: boolean` and `onSelect: (id: string) => void` props (consumed by Task 4's scroll-clear wiring and Task 5's image props, which read `isSelected`).
 
@@ -162,7 +171,7 @@ git commit -m "feat(chat): add single-select toggle helper for messages"
 In `client/pages/ChatPage.tsx`, add the import near the other relative imports (e.g. by the `ChatMedia` import on line 8):
 
 ```ts
-import { nextSelectedId } from '../lib/messageSelection';
+import { nextSelectedId } from "../lib/messageSelection";
 ```
 
 Inside the `ChatPage` component body, next to the existing UI state (near `const [menuOpen, setMenuOpen] = useState(false);` ~line 603), add:
@@ -189,8 +198,28 @@ In the `MessageBody` props object type (starts line 143), add two fields after `
 And add them to the destructure on line 164-165:
 
 ```ts
-  const { msg, isOwn, sender, firstOfRun, stacked, daySep, onReact, onDelete, onEdit, onPin, pinned, onButton,
-    onOpenImage, isSelected, onSelect, humanIdx, humanSorted, humanMeId, humanStatsOn, humanSeen } = props;
+const {
+  msg,
+  isOwn,
+  sender,
+  firstOfRun,
+  stacked,
+  daySep,
+  onReact,
+  onDelete,
+  onEdit,
+  onPin,
+  pinned,
+  onButton,
+  onOpenImage,
+  isSelected,
+  onSelect,
+  humanIdx,
+  humanSorted,
+  humanMeId,
+  humanStatsOn,
+  humanSeen,
+} = props;
 ```
 
 - [ ] **Step 3: Remove the hover mechanism, add tap-to-select on the column**
@@ -198,9 +227,14 @@ And add them to the destructure on line 164-165:
 Delete the hover state and timer in `MessageBody` (lines ~167-172):
 
 ```ts
-  const [hover, setHover] = useState(false);
-  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => { if (hideTimer.current) clearTimeout(hideTimer.current); }, []);
+const [hover, setHover] = useState(false);
+const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+useEffect(
+  () => () => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+  },
+  [],
+);
 ```
 
 Replace the `.uc-msgcol` opening tag (lines ~229-234) — drop `onMouseEnter`/`onMouseLeave`, add an `onClick` that selects. `stopPropagation` so the thread-background clear handler (Task 4) doesn't immediately re-clear this same click:
@@ -220,23 +254,31 @@ Replace the `.uc-msgcol` opening tag (lines ~229-234) — drop `onMouseEnter`/`o
 Find the peer metarow (lines ~236-241):
 
 ```tsx
-          {!isOwn && firstOfRun ? (
-            <div className="uc-metarow">
-              <span className={`sender${sender.isBot ? ' bot' : ''}`}>{sender.name}</span>
-              <span className="t">{clock(msg.created)}</span>
-            </div>
-          ) : null}
+{
+  !isOwn && firstOfRun ? (
+    <div className="uc-metarow">
+      <span className={`sender${sender.isBot ? " bot" : ""}`}>
+        {sender.name}
+      </span>
+      <span className="t">{clock(msg.created)}</span>
+    </div>
+  ) : null;
+}
 ```
 
 Gate only the time span (keep the name always visible):
 
 ```tsx
-          {!isOwn && firstOfRun ? (
-            <div className="uc-metarow">
-              <span className={`sender${sender.isBot ? ' bot' : ''}`}>{sender.name}</span>
-              {isSelected ? <span className="t">{clock(msg.created)}</span> : null}
-            </div>
-          ) : null}
+{
+  !isOwn && firstOfRun ? (
+    <div className="uc-metarow">
+      <span className={`sender${sender.isBot ? " bot" : ""}`}>
+        {sender.name}
+      </span>
+      {isSelected ? <span className="t">{clock(msg.created)}</span> : null}
+    </div>
+  ) : null;
+}
 ```
 
 - [ ] **Step 5: Gate telemetry, own footer, human-DM receipt, and the action menu on selection**
@@ -351,6 +393,7 @@ Expected: no errors. (If an unused-import error appears for a symbol whose last 
 
 Run: `npm run dev`, open a bot conversation and a human DM.
 Expected:
+
 - By default no timestamps, no telemetry receipt, no `delivered`/`seen` footer, no action menu — but sender names still show.
 - Tapping a message reveals its timestamp + telemetry/read-status footer + action menu, and tints the bubble.
 - Tapping the same message again clears it; tapping another moves the reveal; only one message is ever selected.
@@ -368,10 +411,12 @@ git commit -m "feat(chat): tap-to-select reveals message metadata + actions"
 ### Task 4: Clear selection on user scroll and tap-outside
 
 **Files:**
+
 - Modify: `client/components/VirtualMessageList.tsx` — add optional `onUserScroll` + `onBackgroundClick` props; call `onUserScroll` from `handleScroll` on real (non-programmatic) scrolls; attach `onBackgroundClick` to the scroll container's `onClick`.
 - Modify: `client/pages/ChatPage.tsx` — pass both handlers (each clears `selectedMessageId`) to `VirtualMessageList`.
 
 **Interfaces:**
+
 - Consumes: `setSelectedMessageId` from Task 3 (and the column-level `stopPropagation` added in Task 3 step 3, which keeps message taps from reaching `onBackgroundClick`).
 - Produces: `VirtualMessageListProps.onUserScroll?: () => void` and `onBackgroundClick?: () => void`.
 
@@ -408,19 +453,23 @@ export function VirtualMessageList({
 In `handleScroll` (line ~138), the early-return already filters programmatic scrolls (`if (!el || programmaticRef.current) return;`). After that guard, add the callback as the first line of the real-scroll body:
 
 ```ts
-  const handleScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el || programmaticRef.current) return;
-    onUserScroll?.();
-    const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
-    atBottomRef.current = dist <= BOTTOM_THRESHOLD;
-    setShowButton(dist > SCROLL_BUTTON_THRESHOLD);
-    if (el.scrollTop < LOAD_MORE_THRESHOLD && hasMore && !isLoadingMoreRef.current) {
-      isLoadingMoreRef.current = true;
-      prevScrollHeightRef.current = el.scrollHeight;
-      onLoadMore();
-    }
-  }, [hasMore, onLoadMore, onUserScroll]);
+const handleScroll = useCallback(() => {
+  const el = scrollRef.current;
+  if (!el || programmaticRef.current) return;
+  onUserScroll?.();
+  const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
+  atBottomRef.current = dist <= BOTTOM_THRESHOLD;
+  setShowButton(dist > SCROLL_BUTTON_THRESHOLD);
+  if (
+    el.scrollTop < LOAD_MORE_THRESHOLD &&
+    hasMore &&
+    !isLoadingMoreRef.current
+  ) {
+    isLoadingMoreRef.current = true;
+    prevScrollHeightRef.current = el.scrollHeight;
+    onLoadMore();
+  }
+}, [hasMore, onLoadMore, onUserScroll]);
 ```
 
 (Add `onUserScroll` to the dependency array as shown.)
@@ -457,6 +506,7 @@ Expected: no errors.
 
 Run: `npm run dev`, open a conversation with enough history to scroll.
 Expected:
+
 - Select a message (menu/metadata appear), then scroll the thread — selection clears.
 - Select a message, then tap an empty gap in the thread — selection clears.
 - Tapping a menu button (react/copy/pin) keeps the message selected (does not clear).
@@ -474,10 +524,12 @@ git commit -m "feat(chat): clear message selection on user scroll and tap-outsid
 ### Task 5: Image gestures — long-press to open, Open button when selected
 
 **Files:**
+
 - Modify: `client/components/ChatMedia.tsx` — `ChatImage` gains `isSelected` prop; remove tap-opens-viewer; add long-press-to-open with click suppression; add the Open button overlay when selected.
 - Modify: `client/pages/ChatPage.tsx` — pass `isSelected` to each `<ChatImage>` in `MessageBody` (both the edge-to-edge and centered map calls).
 
 **Interfaces:**
+
 - Consumes: `MessageBody`'s `isSelected` (Task 3); `onOpen: (src, alt) => void` (existing `onOpenImage`).
 - Produces: `ChatImage` prop signature gains `isSelected: boolean`. Plain tap on an image no longer opens the viewer — it propagates to the message's `onClick` (Task 3) and selects the message.
 
@@ -486,7 +538,7 @@ git commit -m "feat(chat): clear message selection on user scroll and tap-outsid
 In `client/components/ChatMedia.tsx`, extend the import on line 20:
 
 ```ts
-import { X, Maximize2 } from 'lucide-react';
+import { X, Maximize2 } from "lucide-react";
 ```
 
 Change the `ChatImage` signature (lines ~46-56) to add `isSelected`:
@@ -512,15 +564,19 @@ export function ChatImage({
 Inside `ChatImage`, after the `const [ar, setAr] = useState<number | null>(null);` line (~57), add:
 
 ```tsx
-  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const longFiredRef = useRef(false);
-  const startRef = useRef<{ x: number; y: number } | null>(null);
+const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+const longFiredRef = useRef(false);
+const startRef = useRef<{ x: number; y: number } | null>(null);
 
-  const cancelPress = useCallback(() => {
-    if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; }
-  }, []);
+const cancelPress = useCallback(() => {
+  if (pressTimer.current) {
+    clearTimeout(pressTimer.current);
+    pressTimer.current = null;
+  }
+}, []);
 
-  const onPointerDown = useCallback((e: React.PointerEvent) => {
+const onPointerDown = useCallback(
+  (e: React.PointerEvent) => {
     longFiredRef.current = false;
     startRef.current = { x: e.clientX, y: e.clientY };
     cancelPress();
@@ -528,22 +584,27 @@ Inside `ChatImage`, after the `const [ar, setAr] = useState<number | null>(null)
       longFiredRef.current = true;
       onOpen(src, alt);
     }, 450);
-  }, [cancelPress, onOpen, src, alt]);
+  },
+  [cancelPress, onOpen, src, alt],
+);
 
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
+const onPointerMove = useCallback(
+  (e: React.PointerEvent) => {
     const s = startRef.current;
     if (s && Math.hypot(e.clientX - s.x, e.clientY - s.y) > 10) cancelPress();
-  }, [cancelPress]);
+  },
+  [cancelPress],
+);
 
-  const onClickCapture = useCallback((e: React.MouseEvent) => {
-    // If a long-press already opened the viewer, swallow the trailing click so
-    // it doesn't also select the message.
-    if (longFiredRef.current) {
-      e.preventDefault();
-      e.stopPropagation();
-      longFiredRef.current = false;
-    }
-  }, []);
+const onClickCapture = useCallback((e: React.MouseEvent) => {
+  // If a long-press already opened the viewer, swallow the trailing click so
+  // it doesn't also select the message.
+  if (longFiredRef.current) {
+    e.preventDefault();
+    e.stopPropagation();
+    longFiredRef.current = false;
+  }
+}, []);
 ```
 
 (Ensure `useRef` and `useCallback` are in the React import at the top of the file — they already are: line 19 imports `useCallback, useEffect, useRef, useState`.)
@@ -553,61 +614,64 @@ Inside `ChatImage`, after the `const [ar, setAr] = useState<number | null>(null)
 Replace the returned JSX (lines ~73-95) with:
 
 ```tsx
-  return (
-    <div style={{ ...wrap, position: 'relative' }}>
-      <img
-        src={src}
-        alt={alt}
-        loading="lazy"
-        draggable={false}
-        onLoad={(e) => {
-          const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
-          if (w > 0 && h > 0) setAr(w / h);
+return (
+  <div style={{ ...wrap, position: "relative" }}>
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      draggable={false}
+      onLoad={(e) => {
+        const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
+        if (w > 0 && h > 0) setAr(w / h);
+      }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={cancelPress}
+      onPointerCancel={cancelPress}
+      onClickCapture={onClickCapture}
+      style={{
+        display: "block",
+        width: "100%",
+        height: "auto",
+        maxHeight: TALL_MAX_H,
+        objectFit: "contain",
+        cursor: "pointer",
+        borderRadius: edgeToEdge ? 0 : 8,
+        touchAction: "manipulation",
+      }}
+    />
+    {isSelected ? (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpen(src, alt);
         }}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={cancelPress}
-        onPointerCancel={cancelPress}
-        onClickCapture={onClickCapture}
         style={{
-          display: 'block',
-          width: '100%',
-          height: 'auto',
-          maxHeight: TALL_MAX_H,
-          objectFit: 'contain',
-          cursor: 'pointer',
-          borderRadius: edgeToEdge ? 0 : 8,
-          touchAction: 'manipulation',
+          position: "absolute",
+          top: 8,
+          right: 8,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 5,
+          fontFamily: "var(--app-font-mono)",
+          fontSize: 11,
+          fontWeight: 600,
+          padding: "5px 9px",
+          border: "1px solid var(--app-border)",
+          borderRadius: 6,
+          background: "var(--app-main)",
+          color: "var(--app-foreground)",
+          cursor: "pointer",
+          boxShadow: "var(--app-shadow-button-default)",
         }}
-      />
-      {isSelected ? (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onOpen(src, alt); }}
-          style={{
-            position: 'absolute',
-            top: 8,
-            right: 8,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 5,
-            fontFamily: 'var(--app-font-mono)',
-            fontSize: 11,
-            fontWeight: 600,
-            padding: '5px 9px',
-            border: '1px solid var(--app-border)',
-            borderRadius: 6,
-            background: 'var(--app-main)',
-            color: 'var(--app-foreground)',
-            cursor: 'pointer',
-            boxShadow: 'var(--app-shadow-button-default)',
-          }}
-        >
-          <Maximize2 size={13} /> Open
-        </button>
-      ) : null}
-    </div>
-  );
+      >
+        <Maximize2 size={13} /> Open
+      </button>
+    ) : null}
+  </div>
+);
 ```
 
 - [ ] **Step 4: Pass `isSelected` from `MessageBody`'s `ChatImage` calls**
@@ -615,13 +679,27 @@ Replace the returned JSX (lines ~73-95) with:
 In `client/pages/ChatPage.tsx`, both `<ChatImage>` usages (lines ~301 and ~316) get `isSelected={isSelected}`:
 
 ```tsx
-                  <ChatImage key={`${im.url}-${i}`} src={im.url} alt={im.alt} edgeToEdge onOpen={onOpenImage} isSelected={isSelected} />
+<ChatImage
+  key={`${im.url}-${i}`}
+  src={im.url}
+  alt={im.alt}
+  edgeToEdge
+  onOpen={onOpenImage}
+  isSelected={isSelected}
+/>
 ```
 
 and
 
 ```tsx
-                  <ChatImage key={`${im.url}-${i}`} src={im.url} alt={im.alt} edgeToEdge={false} onOpen={onOpenImage} isSelected={isSelected} />
+<ChatImage
+  key={`${im.url}-${i}`}
+  src={im.url}
+  alt={im.alt}
+  edgeToEdge={false}
+  onOpen={onOpenImage}
+  isSelected={isSelected}
+/>
 ```
 
 - [ ] **Step 5: Verify TypeScript compiles**
@@ -633,6 +711,7 @@ Expected: no errors.
 
 Run: `npm run dev`, open a conversation containing an image message (or send one).
 Expected:
+
 - A short tap on an image selects its message (metadata + menu appear) and does NOT open the viewer.
 - A long press (~0.5s) on the image opens the fullscreen `ImageZoomViewer` and does NOT also select the message.
 - When the image's message is selected, an "Open" button shows in the image's top-right; tapping it opens the viewer.

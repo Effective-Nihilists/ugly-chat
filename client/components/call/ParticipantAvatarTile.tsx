@@ -1,4 +1,4 @@
-import { crossOriginProps } from 'ugly-app/client';
+import { crossOriginProps } from "ugly-app/client";
 /**
  * ParticipantAvatarTile — what a call participant shows when their CAMERA IS OFF
  * (per the call rule): their 3D avatar (GLB) over their avatar background; or,
@@ -13,11 +13,11 @@ import { crossOriginProps } from 'ugly-app/client';
  * Generalises BotAvatarTile (same lazy three.js chunk + WebGL/timeout fallback)
  * to any participant + an arbitrary GLB.
  */
-import React, { Suspense, useEffect, useState } from 'react';
-import type { TalkingAvatarProps } from 'ugly-app/three/client';
+import React, { Suspense, useEffect, useState } from "react";
+import type { TalkingAvatarProps } from "ugly-app/three/client";
 
 const TalkingAvatar = React.lazy(() =>
-  import('ugly-app/three/client').then((m) => ({
+  import("ugly-app/three/client").then((m) => ({
     default: m.TalkingAvatar as React.ComponentType<TalkingAvatarProps>,
   })),
 );
@@ -25,10 +25,10 @@ const TalkingAvatar = React.lazy(() =>
 const READY_TIMEOUT_MS = 8000;
 
 function webglAvailable(): boolean {
-  if (typeof document === 'undefined') return false;
+  if (typeof document === "undefined") return false;
   try {
-    const c = document.createElement('canvas');
-    return !!(c.getContext('webgl2') ?? c.getContext('webgl'));
+    const c = document.createElement("canvas");
+    return !!(c.getContext("webgl2") ?? c.getContext("webgl"));
   } catch {
     return false;
   }
@@ -36,16 +36,20 @@ function webglAvailable(): boolean {
 
 function initials(name: string): string {
   const p = name.trim().split(/\s+/).filter(Boolean);
-  if (p.length === 0) return '?';
-  if (p.length === 1) return (p[0] ?? '?').slice(0, 2).toUpperCase();
-  return ((p[0]?.[0] ?? '') + (p[1]?.[0] ?? '')).toUpperCase();
+  if (p.length === 0) return "?";
+  if (p.length === 1) return (p[0] ?? "?").slice(0, 2).toUpperCase();
+  return ((p[0]?.[0] ?? "") + (p[1]?.[0] ?? "")).toUpperCase();
 }
 
 class AvatarErrorBoundary extends React.Component<
   { fallback: React.ReactNode; onError: () => void; children: React.ReactNode },
   { failed: boolean }
 > {
-  constructor(props: { fallback: React.ReactNode; onError: () => void; children: React.ReactNode }) {
+  constructor(props: {
+    fallback: React.ReactNode;
+    onError: () => void;
+    children: React.ReactNode;
+  }) {
     super(props);
     this.state = { failed: false };
   }
@@ -89,24 +93,35 @@ export function ParticipantAvatarTile({
   // Fall back to the circular image if the GLB never reports ready.
   useEffect(() => {
     if (!use3d || ready) return undefined;
-    const t = setTimeout(() => { setFailed(true); }, READY_TIMEOUT_MS);
-    return () => { clearTimeout(t); };
+    const t = setTimeout(() => {
+      setFailed(true);
+    }, READY_TIMEOUT_MS);
+    return () => {
+      clearTimeout(t);
+    };
   }, [use3d, ready]);
 
   const bg: React.CSSProperties = backgroundUrl
-    ? { backgroundImage: `url(${backgroundUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-    : { background: 'radial-gradient(circle at 50% 43%, rgba(255,85,0,0.18), transparent 55%), #07080B' };
+    ? {
+        backgroundImage: `url(${backgroundUrl})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }
+    : {
+        background:
+          "radial-gradient(circle at 50% 43%, rgba(255,85,0,0.18), transparent 55%), #07080B",
+      };
 
   const circle = (
-    <div style={{ position: 'relative', width: 132, height: 132 }}>
+    <div style={{ position: "relative", width: 132, height: 132 }}>
       {speaking && !use3d ? (
         <div
           style={{
-            position: 'absolute',
+            position: "absolute",
             inset: -8,
-            borderRadius: '50%',
-            border: '2px solid rgba(255,85,0,0.6)',
-            animation: 'uc-ring-pulse 1.2s ease-out infinite',
+            borderRadius: "50%",
+            border: "2px solid rgba(255,85,0,0.6)",
+            animation: "uc-ring-pulse 1.2s ease-out infinite",
           }}
         />
       ) : null}
@@ -114,20 +129,25 @@ export function ParticipantAvatarTile({
         style={{
           width: 132,
           height: 132,
-          borderRadius: '50%',
-          overflow: 'hidden',
-          display: 'grid',
-          placeItems: 'center',
-          background: 'rgba(255,255,255,0.08)',
-          border: '1px solid rgba(255,255,255,0.15)',
-          fontFamily: 'var(--app-font-heading, sans-serif)',
+          borderRadius: "50%",
+          overflow: "hidden",
+          display: "grid",
+          placeItems: "center",
+          background: "rgba(255,255,255,0.08)",
+          border: "1px solid rgba(255,255,255,0.15)",
+          fontFamily: "var(--app-font-heading, sans-serif)",
           fontWeight: 800,
           fontSize: 44,
-          color: '#fff',
+          color: "#fff",
         }}
       >
         {imageUrl ? (
-          <img {...crossOriginProps(imageUrl)} src={imageUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img
+            {...crossOriginProps(imageUrl)}
+            src={imageUrl}
+            alt={name}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
         ) : (
           initials(name)
         )}
@@ -136,10 +156,24 @@ export function ParticipantAvatarTile({
   );
 
   return (
-    <div data-id="participant-avatar-tile" style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', ...bg }}>
+    <div
+      data-id="participant-avatar-tile"
+      style={{
+        position: "absolute",
+        inset: 0,
+        display: "grid",
+        placeItems: "center",
+        ...bg,
+      }}
+    >
       <style>{`@keyframes uc-ring-pulse {0%{transform:scale(1);opacity:.9}70%{transform:scale(1.25);opacity:0}100%{opacity:0}}`}</style>
       {use3d ? (
-        <AvatarErrorBoundary fallback={circle} onError={() => { setFailed(true); }}>
+        <AvatarErrorBoundary
+          fallback={circle}
+          onError={() => {
+            setFailed(true);
+          }}
+        >
           <Suspense fallback={circle}>
             <TalkingAvatar
               src={glbUrl}
@@ -147,8 +181,10 @@ export function ParticipantAvatarTile({
               speaking={speaking}
               framing="head"
               background="transparent"
-              style={{ width: '100%', height: '100%' }}
-              onReady={() => { setReady(true); }}
+              style={{ width: "100%", height: "100%" }}
+              onReady={() => {
+                setReady(true);
+              }}
             />
           </Suspense>
         </AvatarErrorBoundary>

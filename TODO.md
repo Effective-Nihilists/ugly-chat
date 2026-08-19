@@ -9,8 +9,10 @@ functionality (text chat, group/1:1 video, JS built-in bots). Python bots and us
 custom-code bots are intentionally dropped.
 
 ## Current status (2026-06-14)
+
 **LIVE on https://ugly.chat (Cloudflare Workers).** Text chat is effectively at parity; the large
 remaining work is voice/video. Key facts:
+
 - **App shell:** sidebar (wordmark, search, create, live `conversationListMine`), chat-home
   directory (Featured cards), thread view (themed bubbles, markdown, reactions, full-width date
   separator, scroll-to-bottom).
@@ -19,8 +21,8 @@ remaining work is voice/video. Key facts:
 - **Engine reality:** the full conversation+bot engine ships in `ugly-app/conversation/server`
   (`engine.js`) — already exports `conversationMessageEdit`, `conversationMessageSearch`,
   `conversationSearch`, `conversationSetTyping`, `conversationUserAdd/Remove/UpdateRole`,
-  `conversationDelete/DeleteAll`, etc. So most remaining **text** work is *wiring existing engine
-  fns into `shared/api.ts` + `server/handlers.ts` + client UI*, not re-porting logic.
+  `conversationDelete/DeleteAll`, etc. So most remaining **text** work is _wiring existing engine
+  fns into `shared/api.ts` + `server/handlers.ts` + client UI_, not re-porting logic.
 
 **Voice (TTS/STT) already exists** — ugly.bot (the live repo is `../ugly-bot`, NOT the dead
 `../app`) serves TTS (`server/tts.ts`, InWorld) + STT (`server/stt.ts`, Whisper) over the app
@@ -30,6 +32,7 @@ just consuming it in the chat UI. (Per-call audio billing was added in `../ugly-
 **Biggest remaining chunk = group/1:1 VIDEO** (Cloudflare Realtime signaling DO, Phase 5).
 
 ## Architecture (locked)
+
 - **Hosting:** Cloudflare Workers. **Video:** Cloudflare Realtime (no Mediasoup).
 - **Auth:** federated from ugly.bot (`userId`/name/avatar come from ugly.bot; `userPublic` cache).
 - **Media plane (STT/TTS/VAD + PSTN):** ugly.bot is the **metered proxy**; ugly.chat consumes it
@@ -43,6 +46,7 @@ just consuming it in the chat UI. (Per-call audio billing was added in `../ugly-
 ## Status legend: [ ] todo · [~] in progress · [x] done · [!] blocked
 
 ### Phase 0–2 — Scaffold · Auth federation · Collections + history — DONE
+
 - [x] Scaffold (projectId `11tm1kplpe`), GitHub repo, local + prod boot
 - [x] Federated auth (`UGLY_APP_AUTH_MODE=uglybot`); login UX; `userPublic` profile cache
       (`resolveProfiles` → ugly.bot `userPublicBatch`, 24h TTL)
@@ -52,6 +56,7 @@ just consuming it in the chat UI. (Per-call audio billing was added in `../ugly-
 - [ ] **conversationFile collection** + file-blob strategy (needed for attachments metadata/thumbs)
 
 ### Phase 3 — Chat layer — MOSTLY DONE
+
 - [x] `ConversationDeps` wired into `enableConversations`; engine ops live
 - [x] Core RPC: conversationCreate / Load / MessageCreate / MessageReact / MessageDelete
 - [x] `ChatPage` (real conversation routing, list, live `trackDocs`, reactions, real profiles)
@@ -72,9 +77,10 @@ just consuming it in the chat UI. (Per-call audio billing was added in `../ugly-
       message/messageReaction/conversationUser/userConversation); ⋯ → Members popup, two-step
       confirm. Distinct from message-wipe `conversationClear`.
 - [!] **node-canvas image pipeline** — `canvas@^3.2.1` (thumbnails/compositing) is native, no
-      Workers support. Needs Cloudflare Images / client-side canvas / offloaded resize.
+  Workers support. Needs Cloudflare Images / client-side canvas / offloaded resize.
 
 ### Phase 4 — JS built-in + config bots — DONE
+
 - [x] Built-in bots (`bot-ugly`, `bot-sage`), config-only custom bots (`bot` collection)
 - [x] Canonical Ugly Bot (`jY0…`) — pinned profile (name/avatar/background), replies, ⋯ menu,
       auto-DM for every user
@@ -82,6 +88,7 @@ just consuming it in the chat UI. (Per-call audio billing was added in `../ugly-
 - [ ] Port remaining personas if wanted (character/moderator/uglyTranslator/linguaPractice)
 
 ### Phase 5 — Video on Cloudflare Realtime — DONE ✅ (verified 2-browser e2e, 8/8)
+
 - [x] Call lifecycle + roster on `conversation.call` (`server/video.ts`); dot-path writes (no
       read-modify-write clobber race between concurrent joiners)
 - [x] **Credentials automation** — `realtime.*`/`calls.*` OAuth scopes (framework
@@ -103,9 +110,11 @@ just consuming it in the chat UI. (Per-call audio billing was added in `../ugly-
       adapted `SafeAreaTestPage`. Other child apps using those hooks need the same one-liner.
 
 ### Phase 6 — Voice in the chat UI (TTS/STT already exist over the WS) — IN PROGRESS
+
 > CORRECTION: the planned `/v1/audio` REST proxy + `MediaBridgeDO` were NOT needed for basic
 > voice. ugly.bot already streams TTS/STT over the app WebSocket; `useApp().uglyBotSocket` +
 > framework `useTTS`/`useSTT` consume it. `AudioTestPage` proves it works end-to-end.
+
 - [x] **TTS playback** — speaker button on bot/other messages → `useTTS(uglyBotSocket).play(text)`
       via a shared `VoiceProvider` (one TTS instance for all bubbles)
 - [x] **STT dictation** — mic button in `ConversationInput` (`DictationButton` → `useSTT`),
@@ -114,18 +123,22 @@ just consuming it in the chat UI. (Per-call audio billing was added in `../ugly-
       VIDEO-call concern — defer with Phase 5; not needed for 1:1 TTS/STT.
 
 ### ugly.bot audio billing — DONE (in `../ugly-bot`, uncommitted/not deployed)
+
 - [x] Per-call gate (`canUserSpend`) + credit draw-down wired into `tts.ts`/`stt.ts` (2026-06-14).
       NB: AI still doesn't meter spend (billing-phase3 ledger pending) — owner will reconcile.
 
 ### Phase 7 — Deploy — DONE (text); revisit for media secrets
+
 - [x] Studio/CLI publish → `ugly.chat` (Neon, R2, Workers-Paid, domain binding, `/_init`)
 - [ ] Add Realtime API + audio/telephony proxy secrets when Phases 5–6 land
 
 ### Phase 8 — E2E parity harness (north-star) — NOT STARTED
+
 - [ ] Playwright dual-target: same federated user, identical flows vs both `BASE_URL`s
 - [ ] Compare normalized app state (messages, membership, search, bot replies, video roster)
 
 ## Smaller text-chat gaps (low priority)
+
 - [x] **Conversation pinning** — `conversationSetPinned` (userConversation visibility
       `pinned`↔`visible`); sidebar `ConversationRow` hover pin toggle; list already sorts pinned-first.
       (TODO: also surface the toggle in ChatHomePage's `HomeRow`.)
@@ -141,5 +154,6 @@ just consuming it in the chat UI. (Per-call audio billing was added in `../ugly-
       push-on-new-message wired to chat events, ChatHomePage pin toggle
 
 ## Open decisions
+
 - File-blob strategy (reference ugly.bot CDN for historical vs. copy to ugly.chat R2).
 - Which secondary bots to carry (newsBot/podcastHost/uglyHoroscope depend on scrapers).

@@ -1,4 +1,4 @@
-import type { query as pgQuery } from 'ugly-app/server';
+import type { query as pgQuery } from "ugly-app/server";
 
 // Perf: conversationListMine filters userConversation by `data->>'userPrivateId'`,
 // but the only indexes were the _id pkey and a GIN-on-data (which does NOT serve

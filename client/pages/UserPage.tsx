@@ -1,5 +1,5 @@
-import React from 'react';
-import { Card, PageLayout, Text } from 'ugly-app/client';
+import React from "react";
+import { Card, PageLayout, Text } from "ugly-app/client";
 
 export default function UserPage({
   userId,
@@ -10,7 +10,9 @@ export default function UserPage({
     <PageLayout
       header={
         <div>
-          <a href="/" data-id="home">← Home</a>
+          <a href="/" data-id="home">
+            ← Home
+          </a>
         </div>
       }
     >

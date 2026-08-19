@@ -1,14 +1,14 @@
-import { bootstrapApp, initClientLogger } from 'ugly-app/client';
-import { requests } from '../shared/api';
-import en from '../shared/lang/en';
-import { stringsDef } from '../shared/strings';
-import { AppShell } from './components/AppShell';
-import { RouterProvider, RouterView } from './router';
-import './styles.css';
-import { loadTheme, applyTheme } from './lib/theme';
-import { loadTextSize, applyTextSize } from './lib/textSize';
-import { installBrowserShareBridge } from './lib/browserShare';
-import { installBrowserEmbedBridge } from './lib/browserEmbed';
+import { bootstrapApp, initClientLogger } from "ugly-app/client";
+import { requests } from "../shared/api";
+import en from "../shared/lang/en";
+import { stringsDef } from "../shared/strings";
+import { AppShell } from "./components/AppShell";
+import { RouterProvider, RouterView } from "./router";
+import "./styles.css";
+import { loadTheme, applyTheme } from "./lib/theme";
+import { loadTextSize, applyTextSize } from "./lib/textSize";
+import { installBrowserShareBridge } from "./lib/browserShare";
+import { installBrowserEmbedBridge } from "./lib/browserEmbed";
 
 // Initialize the client logger so console.error/warn + uncaught errors are
 // forwarded to our Postgres errorLog. Importing+calling this is required to keep
@@ -44,7 +44,9 @@ bootstrapApp({
     langs: stringsDef.langs,
     defaultTable: en as unknown as Record<string, string>,
     loadTable: async (lang) => {
-      const mod = await import(`../shared/lang/${lang}.ts`) as { default: Record<string, string> };
+      const mod = (await import(`../shared/lang/${lang}.ts`)) as {
+        default: Record<string, string>;
+      };
       return mod.default;
     },
   },

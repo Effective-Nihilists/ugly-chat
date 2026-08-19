@@ -14,15 +14,19 @@
  * does NOT accept a `conversationId` option (the plan assumed one). The
  * conversationId is only used here for the caption relay + message create.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useSTT } from 'ugly-app/client';
-import type { UglyBotSocket } from 'ugly-app/client';
-import { useApp } from 'ugly-app/client';
-import type { DBObject } from 'ugly-app/shared';
-import { isSilenceHallucination, upsertTurn, type Turn } from '../../shared/transcript';
-import type { CallCaption } from '../../server/video';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useSTT } from "ugly-app/client";
+import type { UglyBotSocket } from "ugly-app/client";
+import { useApp } from "ugly-app/client";
+import type { DBObject } from "ugly-app/shared";
+import {
+  isSilenceHallucination,
+  upsertTurn,
+  type Turn,
+} from "../../shared/transcript";
+import type { CallCaption } from "../../server/video";
 
-type AppSocketT = ReturnType<typeof useApp>['socket'];
+type AppSocketT = ReturnType<typeof useApp>["socket"];
 
 interface CallTranscript {
   turns: Turn[];
@@ -52,7 +56,7 @@ export function useCallTranscript(
   // useSTT is a hook → must be called unconditionally. When there's no ugly.bot
   // socket we still call it (with a never-started instance) and simply never
   // invoke start(); the realtime stream stays dormant.
-  const stt = useSTT(uglyBotSocket!, { mode: 'realtime' });
+  const stt = useSTT(uglyBotSocket!, { mode: "realtime" });
 
   // Start/stop the mic stream with the call.
   const startRef = useRef(stt.start);
@@ -70,7 +74,7 @@ export function useCallTranscript(
   }, [active, uglyBotSocket]);
 
   // Local transcript → local turns + relay to peers.
-  const lastRelayed = useRef<string>('');
+  const lastRelayed = useRef<string>("");
   useEffect(() => {
     const text = stt.transcript;
     if (!text) return;
@@ -81,14 +85,25 @@ export function useCallTranscript(
       lastRelayed.current = `${text}|true`;
       return;
     }
-    setTurns((t) => upsertTurn(t, { speaker: meId, text, final: stt.isFinal, at: Date.now() }));
+    setTurns((t) =>
+      upsertTurn(t, {
+        speaker: meId,
+        text,
+        final: stt.isFinal,
+        at: Date.now(),
+      }),
+    );
     // Avoid re-relaying an identical partial (the hook can re-render without a
     // text change); always relay finals so peers freeze the row.
     const key = `${text}|${stt.isFinal}`;
     if (key === lastRelayed.current) return;
     lastRelayed.current = key;
     void socket
-      .request('conversationCaption', { conversationId, text, final: stt.isFinal })
+      .request("conversationCaption", {
+        conversationId,
+        text,
+        final: stt.isFinal,
+      })
       .catch(() => undefined);
   }, [stt.transcript, stt.isFinal, meId, conversationId, socket]);
 
@@ -96,20 +111,29 @@ export function useCallTranscript(
   const seen = useRef<Record<string, number>>({});
   useEffect(() => {
     if (!active) return undefined;
-    const unsub = socket.trackDoc<ConversationCallDoc>('conversation', conversationId, (doc) => {
-      const captions = doc?.call?.captions;
-      if (!captions) return;
-      for (const cap of Object.values(captions)) {
-        if (cap.userId === meId) continue; // our own turns are handled locally
-        // Skip captions we've already merged (the doc re-emits on every field
-        // change, e.g. roster updates).
-        if (seen.current[cap.userId] === cap.at) continue;
-        seen.current[cap.userId] = cap.at;
-        setTurns((t) =>
-          upsertTurn(t, { speaker: cap.userId, text: cap.text, final: cap.final, at: cap.at }),
-        );
-      }
-    });
+    const unsub = socket.trackDoc<ConversationCallDoc>(
+      "conversation",
+      conversationId,
+      (doc) => {
+        const captions = doc?.call?.captions;
+        if (!captions) return;
+        for (const cap of Object.values(captions)) {
+          if (cap.userId === meId) continue; // our own turns are handled locally
+          // Skip captions we've already merged (the doc re-emits on every field
+          // change, e.g. roster updates).
+          if (seen.current[cap.userId] === cap.at) continue;
+          seen.current[cap.userId] = cap.at;
+          setTurns((t) =>
+            upsertTurn(t, {
+              speaker: cap.userId,
+              text: cap.text,
+              final: cap.final,
+              at: cap.at,
+            }),
+          );
+        }
+      },
+    );
     return () => {
       unsub();
     };
@@ -120,7 +144,7 @@ export function useCallTranscript(
     if (!active) {
       setTurns([]);
       seen.current = {};
-      lastRelayed.current = '';
+      lastRelayed.current = "";
     }
   }, [active]);
 
@@ -129,22 +153,33 @@ export function useCallTranscript(
       const t = text.trim();
       if (!t) return;
       setTurns((cur) =>
-        upsertTurn(cur, { speaker: meId, text: t, final: true, typed: true, at: Date.now() }),
+        upsertTurn(cur, {
+          speaker: meId,
+          text: t,
+          final: true,
+          typed: true,
+          at: Date.now(),
+        }),
       );
       // Relay to peers IN-CALL so it shows in their transcript AND their client
       // speaks it via TTS (typed=true; STT captions are typed=false so they're
       // not double-spoken — peers already hear live mic audio over the SFU).
       void socket
-        .request('conversationCaption', { conversationId, text: t, final: true, typed: true })
+        .request("conversationCaption", {
+          conversationId,
+          text: t,
+          final: true,
+          typed: true,
+        })
         .catch(() => undefined);
       // Also persist as a real message (history + bot replies in bot rooms).
       void socket
-        .request('conversationMessageCreate', {
+        .request("conversationMessageCreate", {
           conversationId,
           message: { markdown: t, text: t },
         })
         .catch((err: unknown) => {
-          console.error('[useCallTranscript] send failed', err);
+          console.error("[useCallTranscript] send failed", err);
         });
     },
     [socket, conversationId, meId],

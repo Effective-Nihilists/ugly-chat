@@ -15,6 +15,7 @@
 ### Task 1: Duration formatter (TDD)
 
 **Files:**
+
 - Create: `shared/duration.ts`
 - Test: `tests/unit/duration.test.ts`
 
@@ -22,13 +23,21 @@
 
 ```ts
 // tests/unit/duration.test.ts
-import { describe, it, expect } from 'vitest';
-import { formatDuration } from '../../shared/duration';
-describe('formatDuration', () => {
-  it('formats sub-minute as seconds', () => { expect(formatDuration(8000)).toBe('8s'); });
-  it('formats minutes+seconds', () => { expect(formatDuration(134000)).toBe('2m 14s'); });
-  it('formats hours+minutes', () => { expect(formatDuration(11520000)).toBe('3h 12m'); });
-  it('clamps negatives to 0s', () => { expect(formatDuration(-5)).toBe('0s'); });
+import { describe, it, expect } from "vitest";
+import { formatDuration } from "../../shared/duration";
+describe("formatDuration", () => {
+  it("formats sub-minute as seconds", () => {
+    expect(formatDuration(8000)).toBe("8s");
+  });
+  it("formats minutes+seconds", () => {
+    expect(formatDuration(134000)).toBe("2m 14s");
+  });
+  it("formats hours+minutes", () => {
+    expect(formatDuration(11520000)).toBe("3h 12m");
+  });
+  it("clamps negatives to 0s", () => {
+    expect(formatDuration(-5)).toBe("0s");
+  });
 });
 ```
 
@@ -56,6 +65,7 @@ export function formatDuration(ms: number): string {
 ### Task 2: Conversation stats reducer (TDD)
 
 **Files:**
+
 - Create: `shared/humanStats.ts`
 - Test: `tests/unit/humanStats.test.ts`
 
@@ -63,30 +73,30 @@ export function formatDuration(ms: number): string {
 
 ```ts
 // tests/unit/humanStats.test.ts
-import { describe, it, expect } from 'vitest';
-import { computeHumanStats, type StatMsg } from '../../shared/humanStats';
+import { describe, it, expect } from "vitest";
+import { computeHumanStats, type StatMsg } from "../../shared/humanStats";
 
 // me = 'u_me', them = 'u_dana'. timestamps in ms.
 const msgs: StatMsg[] = [
-  { userId: 'u_me',   created: 0 },
-  { userId: 'u_me',   created: 1000 },     // double-text (no reply between)
-  { userId: 'u_dana', created: 8000 },     // dana replies 7s after my last
-  { userId: 'u_me',   created: 20000 },
-  { userId: 'u_dana', created: 20000 + 134000 }, // dana replies 2m14s later
+  { userId: "u_me", created: 0 },
+  { userId: "u_me", created: 1000 }, // double-text (no reply between)
+  { userId: "u_dana", created: 8000 }, // dana replies 7s after my last
+  { userId: "u_me", created: 20000 },
+  { userId: "u_dana", created: 20000 + 134000 }, // dana replies 2m14s later
 ];
 
-describe('computeHumanStats', () => {
-  const s = computeHumanStats(msgs, 'u_me');
-  it('counts messages per side and your share', () => {
+describe("computeHumanStats", () => {
+  const s = computeHumanStats(msgs, "u_me");
+  it("counts messages per side and your share", () => {
     expect(s.myCount).toBe(3);
     expect(s.theirCount).toBe(2);
     expect(s.yourSharePct).toBe(60); // 3/5
   });
-  it('computes their avg + fastest reply to me', () => {
+  it("computes their avg + fastest reply to me", () => {
     expect(s.theirFastestMs).toBe(7000);
     expect(s.theirAvgReplyMs).toBe((7000 + 134000) / 2);
   });
-  it('counts my double-texts (consecutive mine with no reply)', () => {
+  it("counts my double-texts (consecutive mine with no reply)", () => {
     expect(s.myDoubleTexts).toBe(1);
   });
 });
@@ -98,18 +108,27 @@ describe('computeHumanStats', () => {
 
 ```ts
 // shared/humanStats.ts
-export interface StatMsg { userId: string; created: number }
+export interface StatMsg {
+  userId: string;
+  created: number;
+}
 
 export interface HumanStats {
-  myCount: number; theirCount: number; yourSharePct: number;
-  theirAvgReplyMs: number; theirFastestMs: number; myDoubleTexts: number;
+  myCount: number;
+  theirCount: number;
+  yourSharePct: number;
+  theirAvgReplyMs: number;
+  theirFastestMs: number;
+  myDoubleTexts: number;
 }
 
 // A "reply" = a message from the other side whose immediately-preceding message
 // was from me. Reply latency = their.created - myLast.created.
 export function computeHumanStats(msgs: StatMsg[], meId: string): HumanStats {
   const sorted = [...msgs].sort((a, b) => a.created - b.created);
-  let myCount = 0, theirCount = 0, myDoubleTexts = 0;
+  let myCount = 0,
+    theirCount = 0,
+    myDoubleTexts = 0;
   const replyGaps: number[] = [];
   let prevMineAt: number | null = null;
   let lastSenderMine = false;
@@ -122,26 +141,36 @@ export function computeHumanStats(msgs: StatMsg[], meId: string): HumanStats {
       lastSenderMine = true;
     } else {
       theirCount++;
-      if (lastSenderMine && prevMineAt != null) replyGaps.push(m.created - prevMineAt);
+      if (lastSenderMine && prevMineAt != null)
+        replyGaps.push(m.created - prevMineAt);
       lastSenderMine = false;
     }
   }
   const total = myCount + theirCount;
-  const theirAvgReplyMs = replyGaps.length ? Math.round(replyGaps.reduce((a, b) => a + b, 0) / replyGaps.length) : 0;
+  const theirAvgReplyMs = replyGaps.length
+    ? Math.round(replyGaps.reduce((a, b) => a + b, 0) / replyGaps.length)
+    : 0;
   const theirFastestMs = replyGaps.length ? Math.min(...replyGaps) : 0;
   return {
-    myCount, theirCount,
+    myCount,
+    theirCount,
     yourSharePct: total ? Math.round((myCount / total) * 100) : 0,
-    theirAvgReplyMs, theirFastestMs, myDoubleTexts,
+    theirAvgReplyMs,
+    theirFastestMs,
+    myDoubleTexts,
   };
 }
 
 // Per-message: latency of THIS message if it's a reply to the other side.
-export function replyLatencyMs(sorted: StatMsg[], index: number, meId: string): number | null {
+export function replyLatencyMs(
+  sorted: StatMsg[],
+  index: number,
+  meId: string,
+): number | null {
   const m = sorted[index];
   if (!m || index === 0) return null;
   const prev = sorted[index - 1];
-  if (prev.userId === m.userId) return null;        // not a reply (same sender)
+  if (prev.userId === m.userId) return null; // not a reply (same sender)
   return m.created - prev.created;
 }
 ```
@@ -154,6 +183,7 @@ export function replyLatencyMs(sorted: StatMsg[], index: number, meId: string): 
 ### Task 3: Human totals strip
 
 **Files:**
+
 - Create: `client/components/HumanTelemetryStrip.tsx`
 - Modify: `client/pages/ChatPage.tsx` (render for human DMs when the toggle is on)
 
@@ -161,21 +191,38 @@ export function replyLatencyMs(sorted: StatMsg[], index: number, meId: string): 
 
 ```tsx
 // client/components/HumanTelemetryStrip.tsx
-import React from 'react';
-import { computeHumanStats, type StatMsg } from '../../shared/humanStats';
-import { formatDuration } from '../../shared/duration';
+import React from "react";
+import { computeHumanStats, type StatMsg } from "../../shared/humanStats";
+import { formatDuration } from "../../shared/duration";
 
-export function HumanTelemetryStrip({ msgs, meId, leftOnRead }: { msgs: StatMsg[]; meId: string; leftOnRead: number }): React.ReactElement {
+export function HumanTelemetryStrip({
+  msgs,
+  meId,
+  leftOnRead,
+}: {
+  msgs: StatMsg[];
+  meId: string;
+  leftOnRead: number;
+}): React.ReactElement {
   const s = computeHumanStats(msgs, meId);
   const cell = (k: string, v: React.ReactNode, accent = false) => (
-    <div className="uc-tel-cell"><span className="k">{k}</span><span className={`v${accent ? ' cost' : ''}`}>{v}</span></div>
+    <div className="uc-tel-cell">
+      <span className="k">{k}</span>
+      <span className={`v${accent ? " cost" : ""}`}>{v}</span>
+    </div>
   );
   return (
     <div className="uc-telemetry">
-      {cell('avg reply', s.theirAvgReplyMs ? formatDuration(s.theirAvgReplyMs) : '—')}
-      {cell('fastest', s.theirFastestMs ? formatDuration(s.theirFastestMs) : '—')}
-      {cell('left on read', `${leftOnRead}×`, true)}
-      {cell('your share', `${s.yourSharePct}%`, true)}
+      {cell(
+        "avg reply",
+        s.theirAvgReplyMs ? formatDuration(s.theirAvgReplyMs) : "—",
+      )}
+      {cell(
+        "fastest",
+        s.theirFastestMs ? formatDuration(s.theirFastestMs) : "—",
+      )}
+      {cell("left on read", `${leftOnRead}×`, true)}
+      {cell("your share", `${s.yourSharePct}%`, true)}
       <span className="uc-tel-note">the data doesn't lie</span>
     </div>
   );
@@ -192,6 +239,7 @@ export function HumanTelemetryStrip({ msgs, meId, leftOnRead }: { msgs: StatMsg[
 ### Task 4: Per-message human receipt
 
 **Files:**
+
 - Modify: `client/pages/ChatPage.tsx` (MessageBody — human DM footer)
 
 - [ ] **Step 1:** When in a human DM (no `msg.telemetry`, conversation has no bot) and stats are enabled, render a footer per message:
@@ -201,19 +249,31 @@ export function HumanTelemetryStrip({ msgs, meId, leftOnRead }: { msgs: StatMsg[
 Compute with `replyLatencyMs(sorted, index, userId)`; derive `sorted` once (memoized) from `messages`.
 
 ```tsx
-{!hasBot && statsOn ? (
-  <div className="uc-receipt" style={{ padding: '0 4px', color: 'var(--app-foreground-muted)' }}>
-    {(() => {
-      const lat = replyLatencyMs(sorted, idx, userId);
-      if (!isOwn && lat != null) {
-        return lat > 3600_000
-          ? <span className="cost">left you on read · {formatDuration(lat)}</span>
-          : <span>replied in {formatDuration(lat)}{lat < 30000 ? ' · personal best' : ''}</span>;
-      }
-      return <span>{seen ? 'seen' : 'delivered'}</span>;
-    })()}
-  </div>
-) : null}
+{
+  !hasBot && statsOn ? (
+    <div
+      className="uc-receipt"
+      style={{ padding: "0 4px", color: "var(--app-foreground-muted)" }}
+    >
+      {(() => {
+        const lat = replyLatencyMs(sorted, idx, userId);
+        if (!isOwn && lat != null) {
+          return lat > 3600_000 ? (
+            <span className="cost">
+              left you on read · {formatDuration(lat)}
+            </span>
+          ) : (
+            <span>
+              replied in {formatDuration(lat)}
+              {lat < 30000 ? " · personal best" : ""}
+            </span>
+          );
+        }
+        return <span>{seen ? "seen" : "delivered"}</span>;
+      })()}
+    </div>
+  ) : null;
+}
 ```
 
 (`idx`/`sorted`/`hasBot`/`statsOn`/`seen` are threaded from the map in the parent — add them to `MessageBody` props.)

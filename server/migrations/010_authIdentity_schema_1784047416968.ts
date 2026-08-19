@@ -1,4 +1,4 @@
-import type { query as pgQuery } from 'ugly-app/server';
+import type { query as pgQuery } from "ugly-app/server";
 
 // Schema migration: create collection "authIdentity"
 
@@ -10,7 +10,13 @@ export async function up(query: typeof pgQuery): Promise<void> {
     updated  TIMESTAMPTZ NOT NULL DEFAULT now(),
     version  INTEGER NOT NULL DEFAULT 1
   )`);
-  await query(`CREATE INDEX IF NOT EXISTS "idx_authIdentity_data" ON "authIdentity" USING GIN (data)`);
-  await query(`CREATE INDEX IF NOT EXISTS "idx_authIdentity_providerKey" ON "authIdentity" ((data->>'providerKey'))`);
-  await query(`CREATE INDEX IF NOT EXISTS "idx_authIdentity_userId" ON "authIdentity" ((data->>'userId'))`);
+  await query(
+    `CREATE INDEX IF NOT EXISTS "idx_authIdentity_data" ON "authIdentity" USING GIN (data)`,
+  );
+  await query(
+    `CREATE INDEX IF NOT EXISTS "idx_authIdentity_providerKey" ON "authIdentity" ((data->>'providerKey'))`,
+  );
+  await query(
+    `CREATE INDEX IF NOT EXISTS "idx_authIdentity_userId" ON "authIdentity" ((data->>'userId'))`,
+  );
 }

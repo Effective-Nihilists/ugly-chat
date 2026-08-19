@@ -7,7 +7,9 @@ ugly-app handles auth via HttpOnly cookie + server-side JWT injection. No localS
 1. User logs in via ugly.bot OAuth popup → `POST /auth/verify` → server sets `auth_token` HttpOnly cookie
 2. On every page load, the server reads the cookie, issues a **fresh 30-day token**, and injects it into the HTML:
    ```html
-   <script>window.__AUTH_TOKEN__ = "eyJ..."</script>
+   <script>
+     window.__AUTH_TOKEN__ = "eyJ...";
+   </script>
    ```
 3. Client reads `window.__AUTH_TOKEN__` synchronously — no extra HTTP round-trip
 4. Token is passed to `socket.connect(token)` for WebSocket authentication
@@ -23,11 +25,11 @@ ugly-app handles auth via HttpOnly cookie + server-side JWT injection. No localS
 
 ```tsx
 // Read token injected by server (set once, valid for whole session)
-const token = (window as any).__AUTH_TOKEN__
+const token = (window as any).__AUTH_TOKEN__;
 
 // Logout
-await fetch('/auth/logout', { method: 'POST' })
-window.location.reload()
+await fetch("/auth/logout", { method: "POST" });
+window.location.reload();
 ```
 
 ## Server handlers

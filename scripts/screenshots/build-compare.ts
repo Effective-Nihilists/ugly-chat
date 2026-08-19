@@ -6,25 +6,29 @@
  *
  * Run after capture-mocks.ts + capture.ts: npx tsx scripts/screenshots/build-compare.ts
  */
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const SHOTS = path.join(REPO, 'screenshots');
-const OUT = path.join(SHOTS, 'compare.html');
+const REPO = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+);
+const SHOTS = path.join(REPO, "screenshots");
+const OUT = path.join(SHOTS, "compare.html");
 
 // Ordered keys -> human label.
 const KEYS: Array<{ key: string; label: string }> = [
-  { key: 'list', label: 'Conversation list' },
-  { key: 'chat-bot', label: 'Chat — bot DM' },
-  { key: 'chat-human', label: 'Chat — human DM' },
-  { key: 'new-chat', label: 'New chat' },
-  { key: 'new-group', label: 'New group' },
-  { key: 'settings-group', label: 'Group settings' },
-  { key: 'settings', label: 'Settings' },
-  { key: 'call-bot', label: 'Call — bot (best effort)' },
-  { key: 'call-2p', label: 'Call — 2-person (best effort)' },
+  { key: "list", label: "Conversation list" },
+  { key: "chat-bot", label: "Chat — bot DM" },
+  { key: "chat-human", label: "Chat — human DM" },
+  { key: "new-chat", label: "New chat" },
+  { key: "new-group", label: "New group" },
+  { key: "settings-group", label: "Group settings" },
+  { key: "settings", label: "Settings" },
+  { key: "call-bot", label: "Call — bot (best effort)" },
+  { key: "call-2p", label: "Call — 2-person (best effort)" },
 ];
 
 interface Result {
@@ -46,24 +50,29 @@ function imgCell(rel: string, alt: string): string {
 
 function main(): void {
   let results: Result[] = [];
-  const rp = path.join(SHOTS, 'actual', 'results.json');
+  const rp = path.join(SHOTS, "actual", "results.json");
   if (fs.existsSync(rp)) {
-    results = JSON.parse(fs.readFileSync(rp, 'utf8')) as Result[];
+    results = JSON.parse(fs.readFileSync(rp, "utf8")) as Result[];
   }
-  const statusFor = (key: string): { pass: number; fail: number; errs: string[] } => {
+  const statusFor = (
+    key: string,
+  ): { pass: number; fail: number; errs: string[] } => {
     const rows = results.filter((r) => r.key === key);
     return {
       pass: rows.filter((r) => r.ok).length,
       fail: rows.filter((r) => !r.ok).length,
-      errs: rows.filter((r) => !r.ok && r.error).map((r) => `${r.device}: ${r.error}`),
+      errs: rows
+        .filter((r) => !r.ok && r.error)
+        .map((r) => `${r.device}: ${r.error}`),
     };
   };
 
   const headerRows = KEYS.map(({ key, label }) => {
     const s = statusFor(key);
-    const badge = s.fail === 0 && s.pass > 0 ? 'ok' : s.pass > 0 ? 'partial' : 'fail';
-    return `<tr><td>${label}</td><td class="b ${badge}">${s.pass} pass / ${s.fail} fail</td><td class="errs">${s.errs.join('<br>') || '—'}</td></tr>`;
-  }).join('\n');
+    const badge =
+      s.fail === 0 && s.pass > 0 ? "ok" : s.pass > 0 ? "partial" : "fail";
+    return `<tr><td>${label}</td><td class="b ${badge}">${s.pass} pass / ${s.fail} fail</td><td class="errs">${s.errs.join("<br>") || "—"}</td></tr>`;
+  }).join("\n");
 
   const sections = KEYS.map(({ key, label }) => {
     return `
@@ -86,7 +95,7 @@ function main(): void {
       </div>
     </div>
   </section>`;
-  }).join('\n');
+  }).join("\n");
 
   const html = `<!doctype html>
 <html lang="en">
@@ -132,7 +141,7 @@ function main(): void {
 </html>`;
 
   fs.writeFileSync(OUT, html);
-  console.log('[compare] wrote', OUT);
+  console.log("[compare] wrote", OUT);
 }
 
 main();

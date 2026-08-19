@@ -1,4 +1,4 @@
-import type { query as pgQuery } from 'ugly-app/server';
+import type { query as pgQuery } from "ugly-app/server";
 
 // Message full-text search is now DECLARATIVE: the `message` collection declares
 // `meta.search: { fields: ['text', 'markdown'] }`, so the framework maintains a

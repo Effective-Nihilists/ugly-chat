@@ -81,9 +81,9 @@ pnpm exec playwright screenshot --wait-for-selector "[data-id]" --browser chromi
 ```
 
 ```js
-await page.goto(url, { waitUntil: 'load', timeout: 15000 });
-await page.waitForSelector('[data-id]', { timeout: 15000 });
-await page.screenshot({ path: '/tmp/page.png', fullPage: true });
+await page.goto(url, { waitUntil: "load", timeout: 15000 });
+await page.waitForSelector("[data-id]", { timeout: 15000 });
+await page.screenshot({ path: "/tmp/page.png", fullPage: true });
 ```
 
 If the `[data-id]` wait times out, the page genuinely failed to render — surface it as an error. Never fall back to a no-wait capture to "get something."
@@ -106,9 +106,9 @@ If the `[data-id]` wait times out, the page genuinely failed to render — surfa
 
 5. Choose 5–13 critic perspectives that will react usefully and non-overlappingly to what gets built. "Critic" is unbounded — anything that produces a coherent reaction qualifies. Invent the roster from this canvas, not from a stock list.
 
-   **Anti-pattern roster.** The following names have appeared across enough prior cycles that they no longer add signal and indicate menu-picking rather than invention: *curator, ghost, child, insomniac, formalist, poet, saboteur, vandal, conceptualist, archivist, mystic, glitch, translator*. If a draft persona's name or one-line description matches anything on that list, replace it with something specific to *this* canvas — not a near-synonym.
+   **Anti-pattern roster.** The following names have appeared across enough prior cycles that they no longer add signal and indicate menu-picking rather than invention: _curator, ghost, child, insomniac, formalist, poet, saboteur, vandal, conceptualist, archivist, mystic, glitch, translator_. If a draft persona's name or one-line description matches anything on that list, replace it with something specific to _this_ canvas — not a near-synonym.
 
-   Variety of *perspective* matters more than coverage of user demographics. Two critics from overlapping conceptual worlds (both institution-adjacent, both atmosphere-focused, both anti-establishment) is one wasted slot. Before committing, read your draft roster as a flat list and ask: would another instance given only this skill and this canvas arrive at the same set? If yes, perturb it deliberately until the answer is no.
+   Variety of _perspective_ matters more than coverage of user demographics. Two critics from overlapping conceptual worlds (both institution-adjacent, both atmosphere-focused, both anti-establishment) is one wasted slot. Before committing, read your draft roster as a flat list and ask: would another instance given only this skill and this canvas arrive at the same set? If yes, perturb it deliberately until the answer is no.
 
 6. For each persona (the persona file can describe any kind of perspective — there is no requirement that it represent a hypothetical user):
    - Run: `npx ugly-app auth:create-bot --slug {slug} --name "{Name}"`
@@ -271,8 +271,8 @@ Dispatch ALL active personas as **parallel subagents** (`delegate_parallel`). If
    ```json
    [
      { "type": "feature", "message": "..." },
-     { "type": "design",  "message": "..." },
-     { "type": "bug",     "message": "..." }
+     { "type": "design", "message": "..." },
+     { "type": "bug", "message": "..." }
    ]
    ```
 
@@ -351,7 +351,7 @@ Record which bots succeeded and which failed/timed out.
 
 4. **Verify in Step 5.** After the restart loop reports healthy, re-run the same interactions list with `inspect_ux` / `inspect:ux` and compare `droppedFrames` / `popups[].mountMs` / `cls.total` before vs after. The maintain bot's claim that the fix worked must be backed by a measured improvement, not a fresh screenshot.
 
-**Why this is its own step, not per-persona work**: personas describe what they *feel*; the motion probe produces what is *measured*. Putting the probe under the manager makes it a single decisive pass per cycle instead of N redundant probes, and it lets the manager target the maintain bot's actual diff (popups added today, scroll-linked animation built today) instead of the generic-static set baked into run-bot.mjs.
+**Why this is its own step, not per-persona work**: personas describe what they _feel_; the motion probe produces what is _measured_. Putting the probe under the manager makes it a single decisive pass per cycle instead of N redundant probes, and it lets the manager target the maintain bot's actual diff (popups added today, scroll-linked animation built today) instead of the generic-static set baked into run-bot.mjs.
 
 ---
 

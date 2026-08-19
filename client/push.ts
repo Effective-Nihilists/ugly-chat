@@ -15,7 +15,9 @@
  *   if (!registered) await requestPushPermission();
  */
 
-const _UGLY_BOT = (window as unknown as Record<string, string>).__UGLY_BOT_URL__ ?? 'https://ugly.bot';
+const _UGLY_BOT =
+  (window as unknown as Record<string, string>).__UGLY_BOT_URL__ ??
+  "https://ugly.bot";
 const PUSH_FRAME_URL = `${_UGLY_BOT}/push-frame`;
 const PUSH_FRAME_ORIGIN = _UGLY_BOT;
 
@@ -27,7 +29,9 @@ let pendingResolvers: {
 }[] = [];
 
 function getToken(): string {
-  return (window as unknown as { __AUTH_TOKEN__?: string }).__AUTH_TOKEN__ ?? '';
+  return (
+    (window as unknown as { __AUTH_TOKEN__?: string }).__AUTH_TOKEN__ ?? ""
+  );
 }
 
 function ensureIframe(): Promise<void> {
@@ -36,23 +40,23 @@ function ensureIframe(): Promise<void> {
     if (iframe) {
       const prev = iframe.onload;
       iframe.onload = (e) => {
-        if (typeof prev === 'function') prev.call(iframe!, e);
+        if (typeof prev === "function") prev.call(iframe!, e);
         iframeReady = true;
         resolve();
       };
       return;
     }
 
-    iframe = document.createElement('iframe');
+    iframe = document.createElement("iframe");
     iframe.src = PUSH_FRAME_URL;
-    iframe.style.display = 'none';
+    iframe.style.display = "none";
     iframe.onload = () => {
       iframeReady = true;
       resolve();
     };
     document.body.appendChild(iframe);
 
-    window.addEventListener('message', (event) => {
+    window.addEventListener("message", (event) => {
       if (event.origin !== PUSH_FRAME_ORIGIN) return;
       const data = event.data as Record<string, unknown>;
       const func = data.func as string;
@@ -98,8 +102,8 @@ export async function initPush(): Promise<{ registered: boolean }> {
 
   await ensureIframe();
   const result = await postAndWait(
-    { func: 'pushInit', authToken: token },
-    'pushStatus',
+    { func: "pushInit", authToken: token },
+    "pushStatus",
   );
   return { registered: result.registered as boolean };
 }
@@ -114,22 +118,24 @@ export async function requestPushPermission(): Promise<{
   error?: string;
 }> {
   const token = getToken();
-  if (!token) return { success: false, error: 'no_token' };
+  if (!token) return { success: false, error: "no_token" };
 
   await ensureIframe();
 
   const successPromise = new Promise<{ success: boolean; error?: string }>(
     (resolve) => {
       pendingResolvers.push({
-        func: 'pushRegistered',
-        resolve: () => { resolve({ success: true }); },
+        func: "pushRegistered",
+        resolve: () => {
+          resolve({ success: true });
+        },
       });
     },
   );
   const errorPromise = new Promise<{ success: boolean; error?: string }>(
     (resolve) => {
       pendingResolvers.push({
-        func: 'pushError',
+        func: "pushError",
         resolve: (data) => {
           resolve({ success: false, error: data.error as string });
         },
@@ -138,13 +144,13 @@ export async function requestPushPermission(): Promise<{
   );
 
   iframe!.contentWindow!.postMessage(
-    { func: 'pushRequestPermission', authToken: token },
+    { func: "pushRequestPermission", authToken: token },
     PUSH_FRAME_ORIGIN,
   );
 
   const result = await Promise.race([successPromise, errorPromise]);
   pendingResolvers = pendingResolvers.filter(
-    (r) => r.func !== 'pushRegistered' && r.func !== 'pushError',
+    (r) => r.func !== "pushRegistered" && r.func !== "pushError",
   );
   return result;
 }

@@ -19,12 +19,13 @@ export const collections = defineCollections({
     type: {} as Post,
     meta: { cache: true, trackable: true, public: false, cascadeFrom: null },
     indexes: [
-      { fields: { authorId: 1, created: -1 } },  // regular index
+      { fields: { authorId: 1, created: -1 } }, // regular index
     ],
   },
 });
 ```
 
 After adding or modifying indexes:
+
 1. Run `npm run db:schema-gen` to generate a migration file
 2. Run `npm run db:migrate` to apply the migration

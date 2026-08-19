@@ -1,6 +1,6 @@
-import { lazyPage } from 'ugly-app/client';
-import type { PageMap } from 'ugly-app/shared';
-import type { AppPages } from '../shared/pages';
+import { lazyPage } from "ugly-app/client";
+import type { PageMap } from "ugly-app/shared";
+import type { AppPages } from "../shared/pages";
 
 // ─── Page Map ─────────────────────────────────────────────────────────────────
 // Maps every route key defined in shared/pages.ts to a lazy-loaded component.
@@ -14,10 +14,12 @@ import type { AppPages } from '../shared/pages';
 //
 // When you add a route in shared/pages.ts, add the matching entry here.
 export const allPages = {
-  ['']: lazyPage(() => import('./pages/RootPage')),
-  ['search']: lazyPage(() => import('./pages/SearchPage')),
-  ['bot/:botId']: lazyPage(() => import('./pages/BotEditPage')),
-  ['user/:userId']: lazyPage(() => import('./pages/UserPage')),
-  ['settings/:conversationId']: lazyPage(() => import('./pages/ChatSettingsPage')),
-  [':conversationId']: lazyPage(() => import('./pages/ChatPage')),
+  [""]: lazyPage(() => import("./pages/RootPage")),
+  ["search"]: lazyPage(() => import("./pages/SearchPage")),
+  ["bot/:botId"]: lazyPage(() => import("./pages/BotEditPage")),
+  ["user/:userId"]: lazyPage(() => import("./pages/UserPage")),
+  ["settings/:conversationId"]: lazyPage(
+    () => import("./pages/ChatSettingsPage"),
+  ),
+  [":conversationId"]: lazyPage(() => import("./pages/ChatPage")),
 } satisfies PageMap<AppPages>;
