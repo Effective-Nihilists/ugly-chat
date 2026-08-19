@@ -14,9 +14,9 @@
  * Lives in its own module so both `handlers.ts` and `bots.ts` can import it
  * without a circular dependency.
  */
-import { collections } from '../shared/collections';
-import type { CollectionDef, GetDocsOptions } from 'ugly-app/shared';
-import { UGLY_BOT_ID } from '../shared/bots';
+import { collections } from "../shared/collections";
+import type { CollectionDef, GetDocsOptions } from "ugly-app/shared";
+import { UGLY_BOT_ID } from "../shared/bots";
 
 interface DbLike {
   getDoc<T>(collection: CollectionDef<T>, id: string): Promise<T | null>;
@@ -25,25 +25,33 @@ interface DbLike {
     filter?: Record<string, unknown>,
     options?: GetDocsOptions,
   ): Promise<T[]>;
-  setDoc<T>(collection: CollectionDef<T>, doc: T, options?: { skipIfExists?: boolean }): Promise<boolean>;
+  setDoc<T>(
+    collection: CollectionDef<T>,
+    doc: T,
+    options?: { skipIfExists?: boolean },
+  ): Promise<boolean>;
 }
 
-const isBotId = (id: string): boolean => id.startsWith('bot-') || id === UGLY_BOT_ID;
+const isBotId = (id: string): boolean =>
+  id.startsWith("bot-") || id === UGLY_BOT_ID;
 
 function preview(text: string): string {
   const t = text
     // Image markdown (incl. huge base64 data: URLs) → its alt text, or "Image".
     // Without this the sidebar showed a raw `![alt](data:image/…base64,…)` blob.
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, (_m, alt: string) => (alt.trim() || 'Image'))
+    .replace(
+      /!\[([^\]]*)\]\([^)]*\)/g,
+      (_m, alt: string) => alt.trim() || "Image",
+    )
     // Link markdown → the link text.
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/[#*_`>~]/g, '')
-    .replace(/\s+/g, ' ')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/[#*_`>~]/g, "")
+    .replace(/\s+/g, " ")
     .trim();
   return t.length > 100 ? `${t.slice(0, 100)}…` : t;
 }
 
-const num = (v: unknown): number => (typeof v === 'number' ? v : 0);
+const num = (v: unknown): number => (typeof v === "number" ? v : 0);
 
 /** After a message: update every human member's preview + unread + recency. */
 export async function bumpListForMessage(
@@ -52,14 +60,17 @@ export async function bumpListForMessage(
   text: string,
   senderId: string,
 ): Promise<void> {
-  const rows = await db.getDocs(collections.userConversation, { conversationId });
+  const rows = await db.getDocs(collections.userConversation, {
+    conversationId,
+  });
   const p = preview(text);
   await Promise.all(
     rows.map(async (uc) => {
-      const memberId = uc.userPrivateId ?? '';
+      const memberId = uc.userPrivateId ?? "";
       if (!memberId || isBotId(memberId)) return;
       const isSender = memberId === senderId;
-      const visibility = (uc.visibility!) === 'hidden' ? 'visible' : uc.visibility;
+      const visibility =
+        uc.visibility === "hidden" ? "visible" : uc.visibility;
       await db.setDoc(collections.userConversation, {
         ...uc,
         notificationText: p,
@@ -78,15 +89,18 @@ export async function markRead(
   conversationId: string,
   userId: string,
 ): Promise<void> {
-  const uc = await db.getDoc(collections.userConversation, `${userId}:${conversationId}`);
+  const uc = await db.getDoc(
+    collections.userConversation,
+    `${userId}:${conversationId}`,
+  );
   if (!uc) return;
-  const hidden = (uc.visibility!) === 'hidden';
+  const hidden = uc.visibility === "hidden";
   if (num(uc.notificationCount) === 0 && !hidden) return; // nothing to do
   await db.setDoc(collections.userConversation, {
     ...uc,
     notificationCount: 0,
     viewed: Date.now(),
-    visibility: hidden ? 'visible' : uc.visibility,
+    visibility: hidden ? "visible" : uc.visibility,
     updated: new Date(),
   });
 }
