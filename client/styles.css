@@ -1166,6 +1166,12 @@ a.uc-src:hover {
 .uc-chat-scroll [data-message-id] {
   display: block !important;
   padding: 2px 18px !important;
+  /* ⚠️ WITH `width: 100%` FROM THE VIRTUALIZER, THIS IS WHAT KEEPS THE ROW
+     INSIDE THE VIEWPORT. Without it the padding is added OUTSIDE the 100%, so
+     every row is 36px wider than the pane it lives in — invisible at desktop
+     width, obvious in the browser's narrow Chat panel, where the thread
+     overflowed its 380px and ran under the edge. */
+  box-sizing: border-box !important;
 }
 
 /* One thread row, fully owned by us. */

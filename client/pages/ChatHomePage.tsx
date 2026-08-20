@@ -120,7 +120,14 @@ export default function ChatHomePage(): React.ReactElement {
   );
 
   // ── Mobile: full-page conversation list (the sidebar is hidden here) ──────
-  if (narrow)
+  //
+  // NOT when embedded, however narrow the pane is. In the browser the Chats
+  // section of the sidebar IS the list, and drawing a second one inside the
+  // companion put two pickers on screen at once and made the panel a place you
+  // could get lost in — "the panel should never show a list of conversations".
+  // Embedded, this pane only ever shows the thread the browser asked for, or
+  // the empty state below while it has not asked for one.
+  if (narrow && !embed.embedded)
     return (
       <MobileHome
         conversations={conversations}

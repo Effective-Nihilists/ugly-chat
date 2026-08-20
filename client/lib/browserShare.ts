@@ -33,7 +33,12 @@ declare global {
       onSelectConversation?(
         callback: (conversationId: string) => void,
       ): () => void;
+      /** Sidebar requests the browser cannot perform itself — pin, remove, new
+       *  chat. Optional: an older shell simply does not expose it. */
+      onAction?(callback: (action: unknown) => void): () => void;
       publishConversations?(metadata: unknown): void;
+      /** What the New chat page just started, or "" if it was dismissed. */
+      publishCreatedConversation?(conversationId: string): void;
     };
   }
 }

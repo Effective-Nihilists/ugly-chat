@@ -4,8 +4,13 @@ import { useRouter } from "../router";
 import { Sidebar } from "./Sidebar";
 import { clearBrowserShare, useBrowserShare } from "../lib/browserShare";
 import { MessageSquare, X } from "lucide-react";
-import { useConversations } from "../lib/conversations";
 import {
+  deleteOrLeaveConversation,
+  resolveImageUrl,
+  useConversations,
+} from "../lib/conversations";
+import {
+  onBrowserAction,
   onBrowserConversationSelection,
   publishBrowserConversations,
   useBrowserEmbed,
@@ -129,8 +134,14 @@ export function AppShell({
 
 function BrowserConversationBridge(): React.ReactElement | null {
   const router = useRouter();
+  // Mounted only when authed (see its render), so the context is there — but
+  // read optionally anyway, because this component's whole job is to be safe to
+  // mount early.
+  const app = useAppOptional();
+  const socket = app?.socket;
+  const userId = app?.userId ?? "";
   const embed = useBrowserEmbed();
-  const { conversations } = useConversations();
+  const { conversations, loading } = useConversations();
   const activeConversationId =
     router.current.routeName === ":conversationId"
       ? router.current.params.conversationId
@@ -139,14 +150,30 @@ function BrowserConversationBridge(): React.ReactElement | null {
   useEffect(() => {
     if (!embed.embedded) return;
     publishBrowserConversations(
-      conversations.map((row) => ({
-        id: row.conversationId,
-        title: row.title,
-        unread: row.unread,
-      })),
+      conversations.map((row) => {
+        // The same two fields the sidebar row beside it draws from: the
+        // denormalized last-message preview, and the avatar/group image already
+        // resolved to a URL (the browser holds no Chat credentials, so it
+        // cannot resolve one itself). Both omitted rather than sent undefined —
+        // a row with no artwork must fall back to its letter plate, not to a
+        // broken <img>.
+        const image = resolveImageUrl(row.image);
+        return {
+          id: row.conversationId,
+          title: row.title,
+          unread: row.unread,
+          ...(row.pinned ? { pinned: true } : {}),
+          ...(row.preview ? { lastMessage: row.preview } : {}),
+          ...(image ? { image } : {}),
+        };
+      }),
       activeConversationId,
+      // NOT `conversations.length > 0` — an account with no chats has genuinely
+      // loaded an empty list, and conflating the two is what left the browser
+      // waiting on a list that had already arrived.
+      !loading,
     );
-  }, [activeConversationId, conversations, embed.embedded]);
+  }, [activeConversationId, conversations, loading, embed.embedded]);
 
   useEffect(
     () =>
@@ -154,6 +181,42 @@ function BrowserConversationBridge(): React.ReactElement | null {
         router.push(":conversationId", { conversationId });
       }),
     [router],
+  );
+
+  // ── What the browser's sidebar asked for ──
+  //
+  // It draws the conversation list but holds no Chat credentials, so pin,
+  // remove and "new chat" arrive here as requests. Each one is the SAME call
+  // this app's own sidebar makes, deliberately: a second implementation of
+  // "delete, or leave if you do not own it" is a second set of rules about
+  // somebody's conversations.
+  //
+  // The list refreshes itself either way — `useConversations` is subscribed to
+  // `conversationUser` — so nothing here republishes by hand.
+  useEffect(
+    () =>
+      onBrowserAction((action) => {
+        if (!socket) return;
+        const conversationId = action.conversationId;
+        if (!conversationId) return;
+        if (action.type === "remove") {
+          void deleteOrLeaveConversation(socket, conversationId, userId).catch(
+            (err: unknown) => {
+              console.error("[browser-action] remove failed", err);
+            },
+          );
+          return;
+        }
+        void socket
+          .request("conversationSetPinned", {
+            conversationId,
+            pinned: action.type === "pin",
+          })
+          .catch((err: unknown) => {
+            console.error("[browser-action] pin failed", err);
+          });
+      }),
+    [router, socket, userId],
   );
 
   return null;

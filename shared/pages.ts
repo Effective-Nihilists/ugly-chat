@@ -20,6 +20,9 @@ export const pages = definePages({
   "settings/:conversationId": definePage<{ conversationId: string }>({
     auth: true,
   }),
+  // Starting a chat as a ROUTE, so the embedding browser can open it in a
+  // dialog of its own — see client/pages/NewChatPage.tsx.
+  "new-chat": definePage<{}>({ auth: true }),
   ":conversationId": definePage<{ conversationId: string }>({ auth: true }),
 });
 

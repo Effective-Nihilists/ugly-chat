@@ -21,5 +21,6 @@ export const allPages = {
   ["settings/:conversationId"]: lazyPage(
     () => import("./pages/ChatSettingsPage"),
   ),
+  ["new-chat"]: lazyPage(() => import("./pages/NewChatPage")),
   [":conversationId"]: lazyPage(() => import("./pages/ChatPage")),
 } satisfies PageMap<AppPages>;
