@@ -86,13 +86,38 @@ export async function deleteOrLeaveConversation(
 ): Promise<void> {
   try {
     await socket.request("conversationDelete", { conversationId });
-  } catch {
-    // Non-owner → leave instead. If this also fails, let it propagate to the caller.
-    await socket.request("conversationMemberRemove", {
-      conversationId,
-      userId,
-    });
+  } catch (err) {
+    // Already gone — the caller's goal is met, so there is nothing to leave.
+    if (isAlreadyGone(err)) return;
+    // Non-owner → leave instead.
+    try {
+      await socket.request("conversationMemberRemove", {
+        conversationId,
+        userId,
+      });
+    } catch (leaveErr) {
+      // `conversationDelete` reads the caller's `conversationUser` row to check
+      // ownership, so a conversation that is ALREADY gone fails the ownership
+      // check and lands here, where the framework answers `errorDoesNotExist`.
+      // Prod reported that to the user as "Ugly Chat could not complete that."
+      // (`[browser-action] remove failed errorDoesNotExist`, 2026-08-20 and
+      // 2026-08-22). Removing an already-removed chat is a success — deleting
+      // from two tabs, or retrying after a dropped socket, must not error.
+      if (isAlreadyGone(leaveErr)) return;
+      throw leaveErr;
+    }
   }
+}
+
+/** The framework's `APIError('errorDoesNotExist')`, however it reaches us —
+ *  a real Error, a bare string, or a plain `{ message }` off the wire. Only a
+ *  string `message` is read: stringifying an arbitrary object yields
+ *  "[object Object]", which can never match and would hide the real shape. */
+function isAlreadyGone(err: unknown): boolean {
+  if (err instanceof Error) return err.message.includes("errorDoesNotExist");
+  if (typeof err === "string") return err.includes("errorDoesNotExist");
+  const message = (err as { message?: unknown } | null | undefined)?.message;
+  return typeof message === "string" && message.includes("errorDoesNotExist");
 }
 
 export function resolveImageUrl(image: unknown): string | null {
@@ -121,6 +146,14 @@ function initial(s: string): string {
  * initial derived from the label/seed. (We used to fall back to a single
  * hardcoded blob.ugly.bot image, which showed a random stranger's face for
  * every avatar-less user — e.g. the DM couple chat header and sidebar.)
+ *
+ * A URL that is PRESENT but dead falls back to the same initial plate. One
+ * user's avatar blob went missing and every render of it logged
+ * `[ugly.ux] image: failed to load "https://blob.ugly.bot/user/…" for "img"`
+ * — six days of them across 2026-08-20..26 — while the reader saw a broken
+ * image icon. Handling only a MISSING url covered half the ways artwork can be
+ * absent; a dangling reference is the other half, and neither should ever
+ * render a broken <img>.
  */
 export function Avatar(props: {
   image?: unknown;
@@ -129,8 +162,12 @@ export function Avatar(props: {
   size?: number;
 }): React.ReactElement {
   const size = props.size ?? 42;
+  const [failed, setFailed] = React.useState(false);
   const url = resolveImageUrl(props.image);
-  if (url) {
+  React.useEffect(() => {
+    setFailed(false);
+  }, [url]);
+  if (url && !failed) {
     return (
       <img
         {...crossOriginProps(url)}
@@ -138,6 +175,9 @@ export function Avatar(props: {
         width={size}
         height={size}
         alt=""
+        onError={() => {
+          setFailed(true);
+        }}
         style={{
           width: size,
           height: size,
