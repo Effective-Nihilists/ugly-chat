@@ -76,12 +76,30 @@ export const BOT_MODES: {
 ];
 
 // Image-gen models ugly.bot serves (via /v1/ai/user-billed/image).
-export const IMAGE_MODELS: { id: string; label: string }[] = [
+//
+// `refs: true` marks the models whose provider path actually CONSUMES the
+// reference images attached to a prompt. The others accept the field and
+// silently ignore it, so the server substitutes a ref-capable model (and says
+// so) rather than returning a picture that ignored your photos — see
+// REF_CAPABLE_IMAGE_MODELS in server/bots.ts, which this mirrors.
+export const IMAGE_MODELS: { id: string; label: string; refs?: boolean }[] = [
   { id: "flux_1_dev", label: "Flux Dev" },
   { id: "flux_1_pro", label: "Flux Pro" },
   { id: "nano_banana", label: "Nano" },
   { id: "nano_banana_pro", label: "Nano Pro" },
+  { id: "seedream", label: "Seedream 4.5", refs: true },
 ];
+
+/** Max reference images per image-mode prompt (mirrors MAX_REF_IMAGES). */
+export const MAX_REF_IMAGES = 4;
+
+/** Does this image model consume attached reference images? */
+export function imageModelTakesRefs(id: string): boolean {
+  return IMAGE_MODELS.find((m) => m.id === id)?.refs === true;
+}
+
+/** The model the server substitutes when refs are attached to a text-only model. */
+export const REF_FALLBACK_IMAGE_MODEL = "seedream";
 
 // Image aspect ratios (maps to the proxy's `options.aspectRatio`).
 export const IMAGE_SIZES: { id: string; label: string }[] = [

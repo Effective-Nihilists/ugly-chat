@@ -76,6 +76,9 @@ import {
   BOT_MODELS,
   BOT_MODES,
   IMAGE_MODELS,
+  MAX_REF_IMAGES,
+  REF_FALLBACK_IMAGE_MODEL,
+  imageModelTakesRefs,
   IMAGE_SIZES,
 } from "../lib/bots";
 import { UGLY_BOT_ID } from "../../shared/bots";
@@ -1139,6 +1142,15 @@ export default function ChatPage({
   // Track when the user opened this conversation (for the session-duration cell).
   const openedAtRef = useRef(Date.now());
   const [pending, setPending] = useState<PendingAttachment[]>([]);
+  // Mirrors of `pending` and image-mode, read (never subscribed to) by onFiles so
+  // it can enforce the reference-image cap without changing identity — the
+  // browser-share effect depends on onFiles and re-staging its screenshot on
+  // every mode flip would double-attach it.
+  const pendingRef = useRef<PendingAttachment[]>([]);
+  const imageModeRef = useRef(false);
+  useEffect(() => {
+    pendingRef.current = pending;
+  }, [pending]);
   // User-facing attachment problem (too large / upload failed). Previously these
   // were console-only, so files vanished silently.
   const [attachError, setAttachError] = useState<string | null>(null);
@@ -1167,6 +1179,9 @@ export default function ChatPage({
   const [botMode, setBotMode] = useState<string>("chat");
   const [botImageModel, setBotImageModel] = useState<string>("flux_1_dev");
   const [botImageSize, setBotImageSize] = useState<string>("square");
+  useEffect(() => {
+    imageModeRef.current = botMode === "image";
+  }, [botMode]);
   const [typing, setTyping] = useState<ChatTypingEntry[]>([]);
   const [pinnedMessageId, setPinnedMessageId] = useState<string | null>(null);
   const [pinnedMessage, setPinnedMessage] = useState<MessageDoc | null>(null);
@@ -1628,7 +1643,23 @@ export default function ChatPage({
     if (!files) return;
     const MAX_BYTES = 25 * 1024 * 1024; // 25 MB — well under the 100 MB Worker limit
     setAttachError(null);
+    // In image mode the staged images are REFERENCE inputs and the provider
+    // takes a bounded number of them, so refuse the extras here with a reason
+    // instead of letting the server quietly truncate the list.
+    let imageCount = pendingRef.current.filter((p) =>
+      p.type.startsWith("image/"),
+    ).length;
     for (const file of Array.from(files)) {
+      if (
+        imageModeRef.current &&
+        file.type.startsWith("image/") &&
+        imageCount >= MAX_REF_IMAGES
+      ) {
+        setAttachError(
+          `Up to ${MAX_REF_IMAGES} reference images per prompt — "${file.name}" wasn't attached.`,
+        );
+        continue;
+      }
       // Over the cap: SAY so. This used to `continue` with only a console.warn —
       // the file just vanished and the user had no idea it wasn't attached.
       if (file.size > MAX_BYTES) {
@@ -1637,6 +1668,9 @@ export default function ChatPage({
         );
         continue;
       }
+      // Only count what actually got staged — an oversized file must not burn a
+      // reference slot.
+      if (file.type.startsWith("image/")) imageCount += 1;
       const preview = URL.createObjectURL(file);
       const id = `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`;
       setPending((p) => [
@@ -1702,6 +1736,13 @@ export default function ChatPage({
     }
     clearBrowserShare();
   }, [browserShare, onFiles]);
+
+  // Images staged for THIS prompt. In image mode these are the reference inputs
+  // the server extracts from the sent message (extractRefImages), so the count
+  // is user-facing.
+  const stagedRefCount = pending.filter((p) =>
+    p.type.startsWith("image/"),
+  ).length;
 
   const removePending = useCallback((id: string) => {
     setPending((p) => {
@@ -2728,6 +2769,42 @@ export default function ChatPage({
                   </button>
                 </div>
               ) : null}
+              {botMode === "image" && stagedRefCount > 0 ? (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginBottom: 6,
+                    fontFamily: "var(--app-font-mono)",
+                    fontSize: 11,
+                    letterSpacing: "0.04em",
+                    color: "var(--app-muted-foreground)",
+                  }}
+                  data-id="ref-images-header"
+                >
+                  <span>
+                    REFERENCE IMAGES {stagedRefCount}/{MAX_REF_IMAGES}
+                  </span>
+                  {/* The server substitutes a ref-capable model rather than
+                      returning a picture that ignored these — warn here so the
+                      swap isn't a surprise arriving with the result. */}
+                  {!imageModelTakesRefs(botImageModel) ? (
+                    <span
+                      style={{ color: "var(--app-primary)" }}
+                      data-id="ref-model-hint"
+                    >
+                      ·{" "}
+                      {IMAGE_MODELS.find((m) => m.id === botImageModel)
+                        ?.label ?? botImageModel}{" "}
+                      can&apos;t use them — will draw with{" "}
+                      {IMAGE_MODELS.find(
+                        (m) => m.id === REF_FALLBACK_IMAGE_MODEL,
+                      )?.label ?? REF_FALLBACK_IMAGE_MODEL}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
               {pending.length > 0 ? (
                 <div
                   style={{
@@ -2874,7 +2951,9 @@ export default function ChatPage({
                     !botId
                       ? "Message · ↩ send · ⇧↩ new line"
                       : botMode === "image"
-                        ? "Describe an image to generate · ↩ send"
+                        ? stagedRefCount > 0
+                          ? "Describe what to make from these images · ↩ send"
+                          : "Describe an image to generate · ↩ send"
                         : botMode === "search"
                           ? "Search the web · ↩ send"
                           : "Ask anything · ↩ send · ⇧↩ new line"

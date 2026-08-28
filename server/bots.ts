@@ -176,6 +176,93 @@ export function sanitizeHistoryContent(content: string): string {
   return out;
 }
 
+/**
+ * Reference-image support for image mode.
+ *
+ * `sanitizeHistoryContent` deliberately destroys image URLs before a message
+ * becomes text context (a text model can't use them and the base64 case is a
+ * cost bomb). Image mode needs the OPPOSITE: the URLs the user pasted ARE the
+ * input. So image mode reads the RAW message body through the two helpers below
+ * instead of reusing the sanitized history line.
+ *
+ * Attachments are already promoted to durable public https URLs on send
+ * (`promoteBlob` in ChatPage), so what we extract here is directly fetchable by
+ * the image provider — no re-upload, no signing.
+ */
+export const MAX_REF_IMAGES = 4;
+
+/** `![alt](https://…)` — the only shape ugly-chat ever writes for an attachment. */
+const IMAGE_MARKDOWN_RE = /!\[[^\]]*\]\((https?:\/\/[^)\s]+)\)/g;
+
+/**
+ * Reference image URLs from a RAW (pre-sanitize) message body, deduped and
+ * capped. http(s) only: a `data:` URI would be re-uploaded bytes we already
+ * have, and a relative path isn't fetchable by the provider. Exported for tests.
+ */
+export function extractRefImages(
+  markdown: string,
+  max = MAX_REF_IMAGES,
+): string[] {
+  const urls = [...markdown.matchAll(IMAGE_MARKDOWN_RE)]
+    .map((m) => m[1])
+    .filter((u): u is string => typeof u === "string" && u.length > 0);
+  return [...new Set(urls)].slice(0, max);
+}
+
+/**
+ * The prompt text of a raw message with its image markdown removed — in image
+ * mode the images are the reference inputs, not part of the instruction. Without
+ * this the prompt sent to the model was literally `[image] [image] make it
+ * snowier`. Exported for tests.
+ */
+export function stripImageMarkdown(markdown: string): string {
+  return markdown
+    .replace(IMAGE_MARKDOWN_RE, " ")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/**
+ * Image models whose provider path actually CONSUMES `options.images`.
+ *
+ * Every other image provider ugly.bot fronts (Kie, Google, Together, and
+ * Wavespeed's seedream) accepts the field and silently ignores it — you get a
+ * prompt-only picture with no hint that your three reference photos were
+ * dropped. Keep this list in sync with ugly.bot's `supportsRefs` offerings;
+ * mirrored client-side as `refs: true` in IMAGE_MODELS.
+ */
+export const REF_CAPABLE_IMAGE_MODELS = new Set(["seedream"]);
+
+/** The model we fall back to when refs are attached but the picked model can't use them. */
+export const REF_FALLBACK_IMAGE_MODEL = "seedream";
+
+/** Prompt used when someone attaches references and says nothing else. */
+export const REF_ONLY_PROMPT =
+  "Combine these reference images into a single coherent image.";
+
+/**
+ * Pick the model for an image turn. With references attached, a model that
+ * ignores them is the same silent-wrong-answer bug we removed elsewhere: the
+ * user gets an unrelated picture and is billed for it. Substitute a ref-capable
+ * model and say so in the reply rather than pretending it worked.
+ * Exported for tests.
+ */
+export function resolveImageModel(
+  picked: string,
+  refCount: number,
+): { model: string; notice: string } {
+  if (refCount === 0 || REF_CAPABLE_IMAGE_MODELS.has(picked))
+    return { model: picked, notice: "" };
+  return {
+    model: REF_FALLBACK_IMAGE_MODEL,
+    notice:
+      `_Used ${REF_FALLBACK_IMAGE_MODEL} for this one — ${picked} can't take ` +
+      `reference images. Pick it in the ⋯ menu to make it stick._`,
+  };
+}
+
 /** `data:image/jpeg;base64,…` → the bytes + mime, or null if it isn't one. */
 export function parseDataUrl(
   src: string,
@@ -264,6 +351,8 @@ async function uglyBotImageGen(
   model: string,
   prompt: string,
   size: string,
+  /** Reference image URLs for img2img / composition (see extractRefImages). */
+  images: string[] = [],
 ): Promise<{ url: string; usage: MsgTelemetry }> {
   const env =
     (globalThis as { process?: { env?: Record<string, string | undefined> } })
@@ -285,7 +374,14 @@ async function uglyBotImageGen(
       "Content-Type": "application/json",
       Authorization: `Bearer ${bearer}`,
     },
-    body: JSON.stringify({ model, prompt, options: { aspectRatio: size } }),
+    body: JSON.stringify({
+      model,
+      prompt,
+      options: {
+        aspectRatio: size,
+        ...(images.length ? { images } : {}),
+      },
+    }),
   });
   if (!res.ok) throw new Error(`imageGen HTTP ${res.status}`);
   const data = (await res.json()) as Record<string, unknown>;
@@ -570,14 +666,23 @@ export async function triggerBotReplies(
       { sort: { created: -1 }, limit: 20 },
     )
   ).reverse();
-  const history = recent
-    .filter((m) => m.deleted !== true)
+  const live = recent.filter((m) => m.deleted !== true);
+  const history = live
     .map((m) => ({
       role: botSet.has(m.userId) ? ("assistant" as const) : ("user" as const),
       // Collapse image markdown / base64 blobs — see sanitizeHistoryContent.
       content: sanitizeHistoryContent(m.text ?? m.markdown ?? ""),
     }))
     .filter((m) => m.content.length > 0);
+
+  // RAW body of the newest human message, kept unsanitized for image mode: the
+  // pasted image URLs are its reference inputs, and sanitizeHistoryContent
+  // deliberately destroys them (see extractRefImages).
+  const lastHumanRaw = [...live].reverse().find((m) => !botSet.has(m.userId));
+  const lastHumanBody =
+    (lastHumanRaw?.markdown as string | undefined) ??
+    (lastHumanRaw?.text as string | undefined) ??
+    "";
 
   interface BotCfg {
     model?: string;
@@ -669,17 +774,30 @@ export async function triggerBotReplies(
     let usage: MsgTelemetry | undefined;
 
     if (mode === "image") {
-      // Image mode: generate an image from the user's latest prompt.
-      const prompt = history[history.length - 1]?.content ?? "";
+      // Image mode: generate an image from the user's latest prompt, using any
+      // images attached to that message as reference inputs (img2img /
+      // composition). Read the RAW body, not the sanitized history line —
+      // sanitizeHistoryContent replaces every image URL with "[image]".
+      const refs = extractRefImages(lastHumanBody);
+      const typed = stripImageMarkdown(lastHumanBody);
+      // References with no words is a real request ("here are three photos"),
+      // so don't bounce it back with "tell me what to draw".
+      const prompt = typed || (refs.length ? REF_ONLY_PROMPT : "");
+      const picked = cfg.imageModel ?? "flux_1_dev";
+      const { model: imageModel, notice } = resolveImageModel(
+        picked,
+        refs.length,
+      );
       if (!prompt) {
         reply =
           "Tell me what to draw — send a description and I'll generate an image.";
       } else {
         try {
           const out = await uglyBotImageGen(
-            cfg.imageModel ?? "flux_1_dev",
+            imageModel,
             prompt,
             cfg.imageSize ?? "square",
+            refs,
           );
           if (out.url) {
             // Store the bytes in R2 and reference the URL. Embedding the raw
@@ -687,7 +805,12 @@ export async function triggerBotReplies(
             // Keyed by the person who asked for it, not the bot: it's their
             // image, their storage, and it makes per-user cleanup possible.
             const src = await persistGeneratedImage(out.url, senderUserId);
-            reply = `![${prompt.slice(0, 80).replace(/[\[\]]/g, "")}](${src})`;
+            const alt = prompt.slice(0, 80).replace(/[\[\]]/g, "");
+            // The substitution notice rides WITH the image — a model swap the
+            // user didn't ask for has to be visible where the result is.
+            reply = notice
+              ? `![${alt}](${src})\n\n${notice}`
+              : `![${alt}](${src})`;
             // Report the image turn on the meter (model + real cost), like text.
             usage = out.usage;
           }
