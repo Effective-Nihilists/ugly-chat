@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-31T06:51:04.773Z",
+  "generatedAt": "2026-09-14T00:31:59.486Z",
   "source": "shared/collections.ts",
   "collections": {
     "authMagicLink": {
@@ -57,6 +57,50 @@
         }
       }
     },
+    "authEmailCode": {
+      "name": "authEmailCode",
+      "schema": {
+        "fields": {
+          "attempts": {
+            "type": "number",
+            "required": true
+          },
+          "codeHash": {
+            "type": "string",
+            "required": true
+          },
+          "createdAt": {
+            "type": "number",
+            "required": true
+          },
+          "email": {
+            "type": "string",
+            "required": true
+          },
+          "expiresAt": {
+            "type": "number",
+            "required": true
+          }
+        },
+        "indexes": [
+          {
+            "fields": {
+              "expiresAt": 1
+            },
+            "ttl": 86400
+          }
+        ]
+      },
+      "meta": {
+        "cache": false,
+        "trackable": false,
+        "public": false,
+        "cascadeFrom": null,
+        "db": {
+          "kind": "d1"
+        }
+      }
+    },
     "authIdentity": {
       "name": "authIdentity",
       "schema": {
@@ -81,7 +125,11 @@
           },
           "provider": {
             "type": "enum",
-            "values": ["magic-link", "google", "uglybot"],
+            "values": [
+              "magic-link",
+              "google",
+              "uglybot"
+            ],
             "required": true
           },
           "providerKey": {
@@ -131,7 +179,11 @@
           },
           "reason": {
             "type": "enum",
-            "values": ["unsubscribed", "bounced", "complained"],
+            "values": [
+              "unsubscribed",
+              "bounced",
+              "complained"
+            ],
             "required": true
           }
         },
@@ -175,7 +227,13 @@
           },
           "level": {
             "type": "enum",
-            "values": ["log", "info", "warn", "error", "debug"],
+            "values": [
+              "log",
+              "info",
+              "warn",
+              "error",
+              "debug"
+            ],
             "required": true,
             "nullable": true,
             "default": null
@@ -192,7 +250,11 @@
           },
           "source": {
             "type": "enum",
-            "values": ["browser", "server", "both"],
+            "values": [
+              "browser",
+              "server",
+              "both"
+            ],
             "required": true,
             "default": "browser"
           },
@@ -230,7 +292,9 @@
         "trackable": true,
         "public": false,
         "cascadeFrom": null,
-        "trackKeys": ["userId"],
+        "trackKeys": [
+          "userId"
+        ],
         "db": {
           "kind": "d1"
         }
@@ -258,7 +322,9 @@
         "trackable": true,
         "public": false,
         "cascadeFrom": null,
-        "trackKeys": ["userId"],
+        "trackKeys": [
+          "userId"
+        ],
         "db": {
           "kind": "d1"
         }
@@ -294,7 +360,9 @@
         "trackable": true,
         "public": false,
         "cascadeFrom": null,
-        "trackKeys": ["userId"],
+        "trackKeys": [
+          "userId"
+        ],
         "db": {
           "kind": "d1"
         }
@@ -339,7 +407,11 @@
           },
           "mode": {
             "type": "enum",
-            "values": ["public", "private", "restricted"],
+            "values": [
+              "public",
+              "private",
+              "restricted"
+            ],
             "required": false
           },
           "pinnedMessageId": {
@@ -554,7 +626,11 @@
           },
           "visibility": {
             "type": "enum",
-            "values": ["normal", "silent", "hidden"],
+            "values": [
+              "normal",
+              "silent",
+              "hidden"
+            ],
             "required": false
           }
         },
@@ -579,7 +655,9 @@
         "trackable": true,
         "public": false,
         "cascadeFrom": "conversation",
-        "trackKeys": ["conversationId"],
+        "trackKeys": [
+          "conversationId"
+        ],
         "db": {
           "kind": "d1"
         }
@@ -619,7 +697,10 @@
         "trackable": true,
         "public": false,
         "cascadeFrom": "conversation",
-        "trackKeys": ["conversationId", "messageId"],
+        "trackKeys": [
+          "conversationId",
+          "messageId"
+        ],
         "db": {
           "kind": "d1"
         }
@@ -635,7 +716,8 @@
           },
           "isBot": {
             "type": "boolean",
-            "required": false
+            "required": false,
+            "nullable": true
           },
           "params": {
             "type": "record",
@@ -643,11 +725,13 @@
               "type": "unknown",
               "required": true
             },
-            "required": false
+            "required": false,
+            "nullable": true
           },
           "role": {
             "type": "string",
-            "required": false
+            "required": false,
+            "nullable": true
           },
           "userId": {
             "type": "string",
@@ -672,7 +756,10 @@
         "trackable": true,
         "public": false,
         "cascadeFrom": "conversation",
-        "trackKeys": ["conversationId", "userId"],
+        "trackKeys": [
+          "conversationId",
+          "userId"
+        ],
         "db": {
           "kind": "d1"
         }
@@ -752,7 +839,9 @@
         "trackable": true,
         "public": false,
         "cascadeFrom": "conversation",
-        "trackKeys": ["userId"],
+        "trackKeys": [
+          "userId"
+        ],
         "db": {
           "kind": "d1"
         }
@@ -942,7 +1031,15 @@
                 "width": 1024,
                 "height": 1024,
                 "description": "",
-                "sizes": [2048, 1024, 512, 256, 128, 64, 32]
+                "sizes": [
+                  2048,
+                  1024,
+                  512,
+                  256,
+                  128,
+                  64,
+                  32
+                ]
               },
               "background": {
                 "type": "public",
@@ -950,7 +1047,15 @@
                 "width": 1024,
                 "height": 1024,
                 "description": "",
-                "sizes": [2048, 1024, 512, 256, 128, 64, 32]
+                "sizes": [
+                  2048,
+                  1024,
+                  512,
+                  256,
+                  128,
+                  64,
+                  32
+                ]
               },
               "streamojiAvatarId": "ni0DL81nQ5vHbCXKpLIO"
             }
@@ -1029,7 +1134,9 @@
         "trackable": true,
         "public": true,
         "cascadeFrom": null,
-        "trackKeys": ["ownerId"],
+        "trackKeys": [
+          "ownerId"
+        ],
         "db": {
           "kind": "d1"
         }
