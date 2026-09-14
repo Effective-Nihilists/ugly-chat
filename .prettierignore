@@ -1,0 +1,30 @@
+build/
+dist/
+out/
+node_modules/
+.vscode/
+.wrangler/
+.vite/
+coverage/
+.ugly-studio/
+android/
+ios/
+
+# Lockfiles
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Auto-generated / managed
+.uglyapp
+**/Build.ts
+# Written by `ugly-app build:static` in the framework's own (single-quote)
+# style; formatting it here only makes the next build churn it back.
+shared/StaticAssets.ts
+
+# Not formatted by convention (docs, data, config, minified)
+*.min.js
+*.min.css
+*.json
+*.md
+*.html

@@ -100,6 +100,3 @@ export const repairIdOnlyFields: D1Migration = {
     );
   },
 };
-
-/** Every D1 migration this app ships, in run order. */
-export const d1Migrations: readonly D1Migration[] = [repairIdOnlyFields];

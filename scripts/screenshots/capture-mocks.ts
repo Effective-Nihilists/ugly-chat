@@ -22,7 +22,7 @@ const OUT_DIR = path.join(REPO, "screenshots", "mock");
 // mock html file (no ext) -> screenshot key
 const MAP: Record<string, string> = {
   "conversation-list": "list",
-  chat: "chat-bot",
+  "chat": "chat-bot",
   "chat-human": "chat-human",
   "new-chat": "new-chat",
   "new-group": "new-group",

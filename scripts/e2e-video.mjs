@@ -36,7 +36,7 @@ async function api(token, name, input) {
   const r = await fetch(`${BASE}/api/${name}`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${token}`,
+      "Authorization": `Bearer ${token}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ input }),

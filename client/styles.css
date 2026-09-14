@@ -1889,6 +1889,29 @@ a.uc-src:hover {
 }
 /* Browser companion handoff: an explicit conversation-targeting prompt. It is
    fixed so it does not resize either the conversation list or active thread. */
+/* ── Utility-page shell (search, bot editor, group settings, user, new chat) ──
+   The bottom safe-area inset belongs to the PAGE's surface, not to the shell
+   around it. AppShell used to reserve it as its own padding, so under the home
+   indicator sat a strip of the shell's `--app-main` while the page painted
+   something else (a brand-orange primary button at the end of a form, a tinted
+   profile card) right up to the boundary above it — a visible seam, and what
+   prod's `[ugly.ux] safe-area` check reports as
+   "bottom edge shows a background seam (rgb(21, 19, 24) vs rgb(255, 85, 0))".
+
+   Each utility page renders exactly one root element and that root is the
+   surface — it carries the background and, where the page scrolls, the
+   scrollport. Giving IT the inset means its background reaches the physical
+   edge and its content still clears the indicator. `border-box` keeps the
+   `height: 100%` those roots already use honest.
+
+   A root that sets an inline `padding` shorthand beats this rule (inline styles
+   outrank a stylesheet), so those fold the inset into their own padding instead
+   — `client/lib/modalStyles.ts` (group settings) and NewChatPage. */
+.uc-page-shell > * {
+  box-sizing: border-box;
+  padding-bottom: var(--safe-area-inset-bottom, 0px);
+}
+
 .uc-browser-share {
   position: fixed;
   z-index: 1000;

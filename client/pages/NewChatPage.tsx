@@ -2,7 +2,6 @@ import React, { useCallback } from "react";
 import { useApp } from "ugly-app/client";
 import { useRouter } from "../router";
 import { NewChatPopup } from "../components/NewChatPopup";
-import { useConversations } from "../lib/conversations";
 import {
   publishCreatedConversation,
   useBrowserEmbed,
@@ -25,7 +24,6 @@ export default function NewChatPage(): React.ReactElement {
   const { socket } = useApp();
   const router = useRouter();
   const embed = useBrowserEmbed();
-  const { conversations } = useConversations();
 
   const go = useCallback(
     (conversationId: string) => {
@@ -57,17 +55,17 @@ export default function NewChatPage(): React.ReactElement {
         alignItems: "stretch",
         justifyContent: "center",
         background: "var(--app-main)",
-        padding: embed.embedded ? 0 : 16,
+        // An inline padding shorthand wins over `.uc-page-shell > *`, so this
+        // surface folds the bottom safe-area inset in itself — otherwise the
+        // shell's background shows through under the home indicator.
+        padding: embed.embedded
+          ? "0 0 var(--safe-area-inset-bottom, 0px)"
+          : "16px 16px calc(16px + var(--safe-area-inset-bottom, 0px))",
         boxSizing: "border-box",
       }}
       data-id="new-chat-page"
     >
-      <NewChatPopup
-        onClose={close}
-        socket={socket}
-        recent={conversations.filter((c) => c.type !== "group").slice(0, 8)}
-        navigate={go}
-      />
+      <NewChatPopup onClose={close} socket={socket} navigate={go} />
     </div>
   );
 }

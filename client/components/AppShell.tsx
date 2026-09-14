@@ -11,6 +11,7 @@ import {
 } from "../lib/conversations";
 import {
   onBrowserAction,
+  publishBrowserActionResult,
   onBrowserConversationSelection,
   publishBrowserConversations,
   useBrowserEmbed,
@@ -64,15 +65,24 @@ export function AppShell({
     if (rn === "") return <>{children}</>;
     // Utility pages (search, bot editor, group settings, user) — inset on every
     // side so headers clear the notch and content clears the home indicator.
+    //
+    // The BOTTOM inset is not padding on this element: it is handed to the page
+    // inside it (`.uc-page-shell > *` in styles.css). Reserved here, it left a
+    // 34px strip of the SHELL's `--app-main` under the home indicator while the
+    // page painted its own surface — a brand-orange button, a tinted card — right
+    // up to the boundary above it. That is the seam prod reported
+    // ("bottom edge shows a background seam (rgb(21,19,24) vs rgb(255,85,0))"):
+    // the strip belonged to a different surface than the content it sat under.
+    // The page owns it now, so whatever the page paints reaches the real edge.
     return (
       <div
+        className="uc-page-shell"
         style={{
           height: "100dvh",
           boxSizing: "border-box",
           overflow: "hidden",
           background: "var(--app-main)",
           paddingTop: "var(--safe-area-inset-top, 0px)",
-          paddingBottom: "var(--safe-area-inset-bottom, 0px)",
           paddingLeft: "var(--safe-area-inset-left, 0px)",
           paddingRight: "var(--safe-area-inset-right, 0px)",
         }}
@@ -199,10 +209,36 @@ function BrowserConversationBridge(): React.ReactElement | null {
         if (!socket) return;
         const conversationId = action.conversationId;
         if (!conversationId) return;
+        // Every one of these reports back: the browser keeps its confirmation
+        // up until it hears, so a silent failure would leave the user watching
+        // a dialog that never finishes.
+        const report = (ok: boolean, err?: unknown): void => {
+          // The browser SHOWS this, so it has to be a sentence and not
+          // "[object Object]" — which is what an arbitrary thrown value
+          // stringifies to.
+          const reason =
+            err instanceof Error
+              ? err.message
+              : typeof err === "string"
+                ? err
+                : err
+                  ? "Ugly Chat could not complete that."
+                  : "";
+          publishBrowserActionResult({
+            type: action.type,
+            conversationId,
+            ok,
+            ...(reason ? { error: reason } : {}),
+          });
+        };
         if (action.type === "remove") {
-          void deleteOrLeaveConversation(socket, conversationId, userId).catch(
+          void deleteOrLeaveConversation(socket, conversationId, userId).then(
+            () => {
+              report(true);
+            },
             (err: unknown) => {
               console.error("[browser-action] remove failed", err);
+              report(false, err);
             },
           );
           return;
@@ -212,9 +248,15 @@ function BrowserConversationBridge(): React.ReactElement | null {
             conversationId,
             pinned: action.type === "pin",
           })
-          .catch((err: unknown) => {
-            console.error("[browser-action] pin failed", err);
-          });
+          .then(
+            () => {
+              report(true);
+            },
+            (err: unknown) => {
+              console.error("[browser-action] pin failed", err);
+              report(false, err);
+            },
+          );
       }),
     [router, socket, userId],
   );

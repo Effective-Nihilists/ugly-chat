@@ -4,10 +4,10 @@ import {
   runD1Migrations,
   type SqliteExec,
 } from "ugly-app/server";
-import {
-  d1Migrations,
-  repairIdOnlyFields,
-} from "../../../server/migrations-d1/001_repair_id_only_fields";
+import { repairIdOnlyFields } from "../../../server/migrations-d1/001_repair_id_only_fields";
+import { dropNullOptionalFields } from "../../../server/migrations-d1/002_drop_null_optional_fields";
+import { d1Migrations } from "../../../server/migrations-d1";
+import { ConversationUserSchema } from "../../../shared/collections";
 
 let exec: SqliteExec;
 
@@ -159,10 +159,133 @@ describe("001_repair_id_only_fields", () => {
   it("runs (once) through the framework runner and records itself", async () => {
     await insert("conversationUser", "c1:u1", { role: "owner" });
     const first = await runD1Migrations(exec, d1Migrations);
-    expect(first.applied).toEqual(["001_repair_id_only_fields"]);
+    expect(first.applied).toEqual([
+      "001_repair_id_only_fields",
+      "002_drop_null_optional_fields",
+    ]);
     const second = await runD1Migrations(exec, d1Migrations);
     expect(second.applied).toEqual([]);
-    expect(second.skipped).toEqual(["001_repair_id_only_fields"]);
+    expect(second.skipped).toEqual([
+      "001_repair_id_only_fields",
+      "002_drop_null_optional_fields",
+    ]);
     expect((await dataOf("conversationUser", "c1:u1")).userId).toBe("u1");
+  });
+});
+
+/**
+ * Production evidence (ugly-chat, every build): reading a `conversationUser`
+ * whose blob holds `isBot: null` throws
+ *
+ *   [schema-drift] db.read:conversationUser: isBot: Invalid input:
+ *     expected boolean, received null
+ *
+ * because zod's `.optional()` accepts `undefined`, not `null`. The rows are the
+ * monolith import's (the same blobs that carry `image: null`). A throw on that
+ * read takes the whole membership path with it, so the null has to go.
+ */
+describe("002_drop_null_optional_fields", () => {
+  it("removes a null isBot without touching the row's real values", async () => {
+    await insert("conversationUser", "c1:u1", {
+      conversationId: "c1",
+      userId: "u1",
+      isBot: null,
+      role: "owner",
+      image: null,
+    });
+    await dropNullOptionalFields.up(exec);
+    expect(await dataOf("conversationUser", "c1:u1")).toEqual({
+      conversationId: "c1",
+      userId: "u1",
+      role: "owner",
+      // Untouched: `image` is not in the schema's field list, and `.catchall`
+      // already accepts a null there.
+      image: null,
+    });
+  });
+
+  it("removes a null role and a null params too", async () => {
+    await insert("conversationUser", "c1:u2", {
+      conversationId: "c1",
+      userId: "u2",
+      role: null,
+      params: null,
+    });
+    await dropNullOptionalFields.up(exec);
+    expect(await dataOf("conversationUser", "c1:u2")).toEqual({
+      conversationId: "c1",
+      userId: "u2",
+    });
+  });
+
+  it("leaves a real false/empty value alone — false is not null", async () => {
+    await insert("conversationUser", "c1:u3", {
+      conversationId: "c1",
+      userId: "u3",
+      isBot: false,
+      role: "",
+      params: {},
+    });
+    await dropNullOptionalFields.up(exec);
+    expect(await dataOf("conversationUser", "c1:u3")).toEqual({
+      conversationId: "c1",
+      userId: "u3",
+      isBot: false,
+      role: "",
+      params: {},
+    });
+  });
+
+  it("is idempotent, and leaves created/updated where they were", async () => {
+    await insert(
+      "conversationUser",
+      "c1:u4",
+      { conversationId: "c1", userId: "u4", isBot: null },
+      1719632647756,
+    );
+    await dropNullOptionalFields.up(exec);
+    await dropNullOptionalFields.up(exec);
+    expect(await dataOf("conversationUser", "c1:u4")).toEqual({
+      conversationId: "c1",
+      userId: "u4",
+    });
+    const rows = await exec.all<{ created: number; updated: number }>(
+      'SELECT created, updated FROM "conversationUser" WHERE _id = ?',
+      ["c1:u4"],
+    );
+    expect(rows[0]).toEqual({ created: 1719632647756, updated: 1719632647756 });
+  });
+
+  it("leaves a row that a read already accepts exactly as it was", async () => {
+    await insert("conversationUser", "c1:u5", {
+      conversationId: "c1",
+      userId: "u5",
+      isBot: true,
+    });
+    await dropNullOptionalFields.up(exec);
+    expect(await dataOf("conversationUser", "c1:u5")).toEqual({
+      conversationId: "c1",
+      userId: "u5",
+      isBot: true,
+    });
+  });
+});
+
+/** The repaired shape must be what the schema actually accepts. */
+describe("ConversationUserSchema vs the rows in the table", () => {
+  it("accepts the repaired row, and no longer throws on a null", () => {
+    expect(
+      ConversationUserSchema.safeParse({ conversationId: "c1", userId: "u1" })
+        .success,
+    ).toBe(true);
+    // Tolerated rather than fatal: a null that re-appears must not take the
+    // request down again.
+    expect(
+      ConversationUserSchema.safeParse({
+        conversationId: "c1",
+        userId: "u1",
+        isBot: null,
+      }).success,
+    ).toBe(true);
   });
 });

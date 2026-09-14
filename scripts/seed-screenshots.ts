@@ -114,7 +114,7 @@ async function main(): Promise<void> {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        cookie: `auth_token=${tok}`,
+        "cookie": `auth_token=${tok}`,
       },
       body: JSON.stringify({ input }),
     });

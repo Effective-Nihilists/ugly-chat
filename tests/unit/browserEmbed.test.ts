@@ -3,7 +3,7 @@ import {
   installBrowserEmbedBridge,
   onBrowserAction,
   onBrowserConversationSelection,
-  onBrowserConversationSelection,
+  publishBrowserActionResult,
   publishBrowserConversations,
   resetBrowserEmbedForTests,
 } from "../../client/lib/browserEmbed";
@@ -529,5 +529,80 @@ describe("actions from the browser's sidebar", () => {
     const rows = publishConversations.mock.calls[0][0].conversations;
     expect(rows[0].pinned).toBe(true);
     expect(rows[1].pinned).toBeUndefined();
+  });
+});
+
+/**
+ * Reporting how a sidebar request turned out.
+ *
+ * The browser hands a request over and this app owns everything after it, so
+ * without a word back a confirmation dialog has no end and a failure looks
+ * exactly like a slow success.
+ */
+describe("what the browser is told about a request", () => {
+  function embedded() {
+    resetBrowserEmbedForTests();
+    const publishActionResult = vi.fn();
+    let contextListener: ((raw: unknown) => void) | undefined;
+    vi.stubGlobal("window", {
+      uglyBrowser: {
+        onContext: (cb: (raw: unknown) => void) => {
+          contextListener = cb;
+        },
+        onSelectConversation: () => {},
+        onAction: () => {},
+        publishConversations: vi.fn(),
+        publishActionResult,
+      },
+    });
+    vi.stubGlobal("document", {
+      documentElement: {
+        dataset: {},
+        toggleAttribute: vi.fn(),
+        style: { setProperty: vi.fn() },
+      },
+    });
+    installBrowserEmbedBridge();
+    contextListener?.({ embedded: true, theme: "light" });
+    return publishActionResult;
+  }
+
+  it("reports a success", () => {
+    const publish = embedded();
+    publishBrowserActionResult({
+      type: "remove",
+      conversationId: "c1",
+      ok: true,
+    });
+    expect(publish).toHaveBeenCalledWith({
+      type: "remove",
+      conversationId: "c1",
+      ok: true,
+    });
+  });
+
+  it("carries the reason a request failed, bounded and stripped", () => {
+    const publish = embedded();
+    publishBrowserActionResult({
+      type: "remove",
+      conversationId: "c1",
+      ok: false,
+      error: `Error: not allowed‮${"x".repeat(400)}`,
+    });
+    const sent = publish.mock.calls[0][0] as { error: string };
+    expect(sent.error).toContain("not allowed");
+    expect(sent.error).not.toContain("‮");
+    expect(sent.error.length).toBeLessThanOrEqual(200);
+  });
+
+  it("says nothing when nobody is embedding it", () => {
+    resetBrowserEmbedForTests();
+    const publishActionResult = vi.fn();
+    vi.stubGlobal("window", { uglyBrowser: { publishActionResult } });
+    vi.stubGlobal("document", {
+      documentElement: { dataset: {}, toggleAttribute: vi.fn() },
+    });
+    publishBrowserActionResult({ type: "pin", conversationId: "c1", ok: true });
+    expect(publishActionResult).not.toHaveBeenCalled();
   });
 });

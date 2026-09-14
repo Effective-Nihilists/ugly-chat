@@ -45,7 +45,7 @@ async function verifyApp(
     const res = await fetch(`${uglyBotUrl}/v1/chat/verify-app`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
+        "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       signal: AbortSignal.timeout(8_000),

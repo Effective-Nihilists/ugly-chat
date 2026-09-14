@@ -79,7 +79,10 @@ describe("triggerBotReplies — orphaned / migrated bot members", () => {
       _id: "u45WZL-xWrAfFRva7KSkr+u1",
       type: "bot",
       bots: { "u45WZL-xWrAfFRva7KSkr": { model: "gemini_2_5" } },
-      users: { "u45WZL-xWrAfFRva7KSkr": { isBot: true }, u1: { isBot: false } },
+      users: {
+        "u45WZL-xWrAfFRva7KSkr": { isBot: true },
+        "u1": { isBot: false },
+      },
     };
     await run(conv);
     const msgs = posted();
@@ -96,7 +99,7 @@ describe("triggerBotReplies — orphaned / migrated bot members", () => {
       _id: "grp1",
       type: "bot",
       bots: { "mig-bot-xyz": {} },
-      users: { "mig-bot-xyz": { isBot: true }, u1: { isBot: false } },
+      users: { "mig-bot-xyz": { isBot: true }, "u1": { isBot: false } },
     };
     await run(conv);
     const msgs = posted();
@@ -110,7 +113,7 @@ describe("triggerBotReplies — orphaned / migrated bot members", () => {
       _id: "grp2",
       type: "bot",
       bots: { "app-bot-1": {} },
-      users: { "app-bot-1": { isBot: true }, u1: { isBot: false } },
+      users: { "app-bot-1": { isBot: true }, "u1": { isBot: false } },
     };
     // Row exists but is webhook-driven → Ugly Chat must stay silent (no textGen, no orphan msg).
     await run(conv, {

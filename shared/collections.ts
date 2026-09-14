@@ -105,13 +105,24 @@ export const MessageReactionSchema = z
 export type MessageReaction = InferDocType<typeof MessageReactionSchema>;
 
 // Conversation membership (roles, bot params, per-user buttons).
+//
+// The three optional fields are `.nullable()` because a JSON null is what this
+// table actually holds for them: rows imported from the monolith carry explicit
+// nulls (the same import that left `image: null` on these blobs), and zod's
+// `.optional()` alone accepts `undefined` but NOT `null` — so every read of such
+// a row threw `db.read:conversationUser: isBot: Invalid input: expected boolean,
+// received null` and took the whole request with it (membership checks,
+// conversationDelete, conversationMembers, the roster). Migration
+// `002_drop_null_optional_fields` strips the nulls already in the table; this
+// keeps a re-appearing one from breaking reads again. Readers must treat null
+// and undefined alike (`x === true`, `x ?? fallback`) — they all already do.
 export const ConversationUserSchema = z
   .object({
     conversationId: z.string(),
     userId: z.string(),
-    isBot: z.boolean().optional(),
-    role: z.string().optional(),
-    params: z.record(z.string(), z.unknown()).optional(),
+    isBot: z.boolean().nullable().optional(),
+    role: z.string().nullable().optional(),
+    params: z.record(z.string(), z.unknown()).nullable().optional(),
   })
   .catchall(z.unknown());
 export type ConversationUser = InferDocType<typeof ConversationUserSchema>;
@@ -215,10 +226,9 @@ export type Bot = InferDocType<typeof BotSchema>;
 // live in this shared module without dragging the Node server barrel into the
 // Workers/client bundles).
 const userPublicPlaceholderGetter = async (
-  ids: string[],
+  _ids: string[],
 ): Promise<Record<string, never>> => {
   await Promise.resolve();
-  void ids;
   return {};
 };
 

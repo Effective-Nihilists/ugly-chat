@@ -54,7 +54,7 @@ async function sfu(
   const res = await fetch(`${SFU_BASE}/apps/${c.appId}${path}`, {
     method,
     headers: {
-      Authorization: `Bearer ${c.appSecret}`,
+      "Authorization": `Bearer ${c.appSecret}`,
       "Content-Type": "application/json",
     },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
@@ -118,7 +118,7 @@ export async function realtimeIceServers(): Promise<{ iceServers: unknown }> {
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${c.turnKeyToken}`,
+          "Authorization": `Bearer ${c.turnKeyToken}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ ttl: 3600 }),

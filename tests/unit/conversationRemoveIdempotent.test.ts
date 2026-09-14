@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
-import { deleteOrLeaveConversation } from '../../client/lib/conversations';
+import { describe, expect, it, vi } from "vitest";
+import { deleteOrLeaveConversation } from "../../client/lib/conversations";
 
 /**
  * Production evidence (ugly-chat, 2026-08-20 and 2026-08-22):
@@ -17,7 +17,7 @@ import { deleteOrLeaveConversation } from '../../client/lib/conversations';
  * success, not a failure — otherwise deleting the same chat from two tabs, or
  * retrying after a dropped socket, reports an error for work that is done.
  */
-function socketThat(...outcomes: (Error | 'ok')[]) {
+function socketThat(...outcomes: (Error | "ok")[]) {
   const queue = [...outcomes];
   return {
     calls: [] as string[],
@@ -30,57 +30,57 @@ function socketThat(...outcomes: (Error | 'ok')[]) {
   };
 }
 
-describe('deleteOrLeaveConversation', () => {
-  it('resolves when the conversation is already gone', async () => {
+describe("deleteOrLeaveConversation", () => {
+  it("resolves when the conversation is already gone", async () => {
     const socket = socketThat(
-      new Error('Only an owner can delete this conversation'),
-      new Error('errorDoesNotExist'),
+      new Error("Only an owner can delete this conversation"),
+      new Error("errorDoesNotExist"),
     );
     await expect(
-      deleteOrLeaveConversation(socket, 'c1', 'u1'),
+      deleteOrLeaveConversation(socket, "c1", "u1"),
     ).resolves.toBeUndefined();
     expect(socket.calls).toEqual([
-      'conversationDelete',
-      'conversationMemberRemove',
+      "conversationDelete",
+      "conversationMemberRemove",
     ]);
   });
 
-  it('resolves when the delete itself reports it is already gone', async () => {
-    const socket = socketThat(new Error('errorDoesNotExist'));
+  it("resolves when the delete itself reports it is already gone", async () => {
+    const socket = socketThat(new Error("errorDoesNotExist"));
     await expect(
-      deleteOrLeaveConversation(socket, 'c1', 'u1'),
+      deleteOrLeaveConversation(socket, "c1", "u1"),
     ).resolves.toBeUndefined();
     // No pointless leave attempt for a conversation that does not exist.
-    expect(socket.calls).toEqual(['conversationDelete']);
+    expect(socket.calls).toEqual(["conversationDelete"]);
   });
 
-  it('still deletes as the owner', async () => {
-    const socket = socketThat('ok');
+  it("still deletes as the owner", async () => {
+    const socket = socketThat("ok");
     await expect(
-      deleteOrLeaveConversation(socket, 'c1', 'u1'),
+      deleteOrLeaveConversation(socket, "c1", "u1"),
     ).resolves.toBeUndefined();
-    expect(socket.calls).toEqual(['conversationDelete']);
+    expect(socket.calls).toEqual(["conversationDelete"]);
   });
 
-  it('still leaves when the caller is not the owner', async () => {
+  it("still leaves when the caller is not the owner", async () => {
     const socket = socketThat(
-      new Error('Only an owner can delete this conversation'),
-      'ok',
+      new Error("Only an owner can delete this conversation"),
+      "ok",
     );
-    await deleteOrLeaveConversation(socket, 'c1', 'u1');
+    await deleteOrLeaveConversation(socket, "c1", "u1");
     expect(socket.calls).toEqual([
-      'conversationDelete',
-      'conversationMemberRemove',
+      "conversationDelete",
+      "conversationMemberRemove",
     ]);
   });
 
-  it('still propagates a real failure', async () => {
+  it("still propagates a real failure", async () => {
     const socket = socketThat(
-      new Error('Only an owner can delete this conversation'),
-      new Error('errorRateLimited'),
+      new Error("Only an owner can delete this conversation"),
+      new Error("errorRateLimited"),
     );
-    await expect(deleteOrLeaveConversation(socket, 'c1', 'u1')).rejects.toThrow(
-      'errorRateLimited',
+    await expect(deleteOrLeaveConversation(socket, "c1", "u1")).rejects.toThrow(
+      "errorRateLimited",
     );
   });
 });

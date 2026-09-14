@@ -107,7 +107,7 @@ async function uglyBotTextGen(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${bearer}`,
+      "Authorization": `Bearer ${bearer}`,
     },
     body: JSON.stringify({ model, messages, options: { maxTokens } }),
   });
@@ -372,7 +372,7 @@ async function uglyBotImageGen(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${bearer}`,
+      "Authorization": `Bearer ${bearer}`,
     },
     body: JSON.stringify({
       model,

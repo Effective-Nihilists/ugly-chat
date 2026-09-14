@@ -237,6 +237,30 @@ export function publishBrowserConversations(
 }
 
 /**
+ * Report how a sidebar request turned out.
+ *
+ * ⚠️ THE BROWSER CANNOT SEE THIS FOR ITSELF. It hands the request over and the
+ * guest owns everything after that, so without a word back "deleting…" has no
+ * end and a failure is indistinguishable from a slow success — the browser
+ * would have to guess, and guessing is what made Remove look like it worked
+ * when it had not.
+ */
+export function publishBrowserActionResult(result: {
+  type: BrowserAction["type"];
+  conversationId: string;
+  ok: boolean;
+  error?: string;
+}): void {
+  if (!context.embedded) return;
+  window.uglyBrowser?.publishActionResult?.({
+    type: result.type,
+    conversationId: boundedMetadataText(result.conversationId, 160),
+    ok: result.ok,
+    ...(result.error ? { error: boundedMetadataText(result.error, 200) } : {}),
+  });
+}
+
+/**
  * Tell the embedding browser which conversation this page just started — or,
  * with an empty id, that the user closed it without starting one.
  *

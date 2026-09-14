@@ -80,8 +80,7 @@ export function Sidebar(): React.ReactElement {
   // New chat + Bots are now transient popups (no full-page route). The popup
   // content renders OUTSIDE AppProvider, so we hand it the deps it needs.
   const openNew = useCallback(() => {
-    const recent = conversations.filter((c) => c.type !== "group").slice(0, 8);
-    openNewChatPopup(router, socket, recent, navigate);
+    openNewChatPopup(router, socket, navigate);
   }, [router, socket, conversations, navigate]);
 
   const openBots = useCallback(() => {

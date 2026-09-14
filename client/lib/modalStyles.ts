@@ -3,6 +3,11 @@ import type React from "react";
 // Shared modal / form styling (ported from brand.css → app tokens). Originally
 // lived in NewChatPage; extracted here when new-chat became a popup so other
 // modal-style pages (ChatSettingsPage) can keep reusing it.
+// The scrollport for the modal-style pages (group settings, new chat). It is
+// the page's surface, so it also owns the bottom safe-area inset: an INLINE
+// padding shorthand beats `.uc-page-shell > *` in styles.css, which is where
+// every other page gets that inset from, so it has to be folded in here or the
+// shell's own background shows as a bare strip under the home indicator.
 const page: React.CSSProperties = {
   height: "100%",
   overflowY: "auto",
@@ -10,7 +15,8 @@ const page: React.CSSProperties = {
   justifyContent: "center",
   alignItems: "flex-start",
   background: "var(--app-main)",
-  padding: "24px 16px",
+  padding: "24px 16px calc(24px + var(--safe-area-inset-bottom, 0px))",
+  boxSizing: "border-box",
 };
 const modal: React.CSSProperties = {
   width: "min(440px, 100%)",

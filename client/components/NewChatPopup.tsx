@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Mail, Check, MessageSquarePlus, X, Users } from "lucide-react";
 import type { Avatar as AvatarT } from "ugly-app/shared";
-import { Avatar, type ConvRow } from "../lib/conversations";
+import { Avatar } from "../lib/conversations";
 import { isValidEmail, normalizeEmail } from "../../shared/email";
 
 interface Contact {
@@ -34,7 +34,6 @@ interface PopupOpener {
 interface NewChatPopupProps {
   onClose: () => void;
   socket: PopupSocket;
-  recent: ConvRow[];
   navigate: (conversationId: string) => void;
 }
 
@@ -42,7 +41,6 @@ interface NewChatPopupProps {
 export function openNewChatPopup(
   router: PopupOpener,
   socket: PopupSocket,
-  recent: ConvRow[],
   navigate: (conversationId: string) => void,
 ): void {
   const handle = router.openPopup(
@@ -51,7 +49,6 @@ export function openNewChatPopup(
         handle.hide();
       }}
       socket={socket}
-      recent={recent}
       navigate={navigate}
     />,
     { mode: "transient" },
@@ -68,7 +65,6 @@ export function openNewChatPopup(
 export function NewChatPopup({
   onClose,
   socket,
-  recent,
   navigate,
 }: NewChatPopupProps): React.ReactElement {
   const [emails, setEmails] = useState<string[]>([]);
@@ -81,8 +77,8 @@ export function NewChatPopup({
   const [statusError, setStatusError] = useState(false);
   // People picker: contacts (people you share conversations with) + the set the
   // user has tapped to add. Clicking a person adds them as a recipient (vs the
-  // old behavior of opening that chat). `recent` is no longer rendered here.
-  void recent;
+  // old behavior of opening that chat); the recent-conversation list this popup
+  // used to render is gone, so it no longer takes one.
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [contactsLoading, setContactsLoading] = useState(true);
   const [selected, setSelected] = useState<string[]>([]);
@@ -691,15 +687,6 @@ const memberName: React.CSSProperties = {
   overflow: "hidden",
   textOverflow: "ellipsis",
 };
-const memberSub: React.CSSProperties = {
-  fontSize: 12,
-  color: "var(--app-foreground)",
-  opacity: 0.5,
-  whiteSpace: "nowrap",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-};
-void memberSub;
 // Fixed-height contacts list — reserves vertical space so the modal doesn't jump
 // while the contacts request resolves.
 const contactsBox: React.CSSProperties = {

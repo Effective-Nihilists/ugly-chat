@@ -49,8 +49,7 @@ export default function ChatHomePage(): React.ReactElement {
   );
 
   const openNew = useCallback(() => {
-    const recent = conversations.filter((c) => c.type !== "group").slice(0, 8);
-    openNewChatPopup(router, socket, recent, navigate);
+    openNewChatPopup(router, socket, navigate);
   }, [router, socket, conversations, navigate]);
 
   // Primary first-run action: drop straight into a chat with the built-in AI.

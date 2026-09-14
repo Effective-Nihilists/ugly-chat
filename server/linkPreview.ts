@@ -77,7 +77,7 @@ export async function fetchOpenGraph(url: string): Promise<LinkPreview | null> {
     const res = await fetch(url, {
       headers: {
         "User-Agent": "UglyChatBot/1.0 (+https://ugly.chat)",
-        Accept: "text/html",
+        "Accept": "text/html",
       },
       signal: AbortSignal.timeout(5000),
       redirect: "follow",

@@ -23,7 +23,7 @@ async function rpc(token, name, input) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      "Authorization": `Bearer ${token}`,
     },
     body: JSON.stringify({ input }),
   });

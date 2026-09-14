@@ -18,7 +18,7 @@ import { collections } from "../shared/collections";
 import { cronTasks } from "../shared/cron";
 import { createChatHandlers, cronHandlers, type DbSurface } from "./handlers";
 import { wireEngineDeps } from "./configure";
-import { d1Migrations } from "./migrations-d1/001_repair_id_only_fields";
+import { d1Migrations } from "./migrations-d1";
 import { registerAppApi } from "./appApi";
 import { withUserPublic } from "./userPublic";
 

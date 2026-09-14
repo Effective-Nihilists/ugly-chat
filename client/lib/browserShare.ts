@@ -39,6 +39,8 @@ declare global {
       publishConversations?(metadata: unknown): void;
       /** What the New chat page just started, or "" if it was dismissed. */
       publishCreatedConversation?(conversationId: string): void;
+      /** How a pin/unpin/remove request turned out. */
+      publishActionResult?(result: unknown): void;
     };
   }
 }

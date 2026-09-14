@@ -44,7 +44,7 @@ async function main() {
         await fetch("https://ugly.bot/v1/chat/issue-token", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${dev}`,
+            "Authorization": `Bearer ${dev}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ appName: projectId, projectId }),
@@ -57,7 +57,7 @@ async function main() {
     const r = await fetch(`https://ugly.chat${p}`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${tok}`,
+        "Authorization": `Bearer ${tok}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(b),
