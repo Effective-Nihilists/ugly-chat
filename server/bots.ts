@@ -639,6 +639,14 @@ async function botParticipants(
  * After a human message, have each bot member of the conversation reply.
  * Fire-and-forget from the caller — replies are delivered via trackDocs.
  */
+import {
+  retrievePassages,
+  formatPassages,
+  extractPdfLinks,
+  ensureIngested,
+  selfOrigin,
+} from "./chatFileIngest";
+
 export async function triggerBotReplies(
   db: MinimalDb,
   collectionsArg: {
@@ -683,6 +691,42 @@ export async function triggerBotReplies(
     (lastHumanRaw?.markdown as string | undefined) ??
     (lastHumanRaw?.text as string | undefined) ??
     "";
+
+  // Read any PDF attached to this conversation, then retrieve only the passages
+  // that bear on the newest question. Done once per turn (not per bot) — every
+  // bot in the room gets the same excerpts, and a 416-page book only fits as
+  // excerpts.
+  //
+  // Ingest is lazy and keyed off the message bodies rather than the upload path,
+  // because the reported case was a LINK shared from Ugly File, not an upload
+  // through chat — no client-side attach hook would ever have fired. Failures
+  // are logged and swallowed: a bot that answers without the document is far
+  // better than a turn that dies.
+  for (const link of extractPdfLinks(
+    live.map((m) => m.markdown ?? m.text ?? "").join("\n"),
+  )) {
+    try {
+      const r = await ensureIngested(db, {
+        conversationId,
+        fileUrl: link.url,
+        fileName: link.name,
+        selfOrigin: selfOrigin(),
+      });
+      if (!r.ok) {
+        console.warn(
+          `[bots] could not read attachment ${link.name}: ${r.reason ?? "unknown"}`,
+        );
+      }
+    } catch (e) {
+      console.error("[bots] attachment ingest threw", link.url, e);
+    }
+  }
+  const documentContext = formatPassages(
+    await retrievePassages(db, {
+      conversationId,
+      question: sanitizeHistoryContent(lastHumanBody),
+    }),
+  );
 
   interface BotCfg {
     model?: string;
@@ -838,6 +882,12 @@ export async function triggerBotReplies(
           [
             ...(systemPrompt
               ? [{ role: "system", content: systemPrompt }]
+              : []),
+            // Document excerpts go in as their own system turn, AFTER the
+            // persona so they can't be mistaken for the user's words, and
+            // BEFORE history so the model reads them as standing reference.
+            ...(documentContext
+              ? [{ role: "system", content: documentContext }]
               : []),
             ...history,
           ],

@@ -32,6 +32,9 @@ importers:
       ugly-app:
         specifier: ^0.1.1045
         version: 0.1.1045(@types/react@19.2.17)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.183.2)(typescript@5.9.3)(vega-lite@6.4.3(vega@6.2.0))(vega@6.2.0)(y-protocols@1.0.7(yjs@13.6.31))(yjs@13.6.31)
+      unpdf:
+        specifier: ^1.8.1
+        version: 1.8.1
       yjs:
         specifier: ^13.6.30
         version: 13.6.31
@@ -4013,6 +4016,15 @@ packages:
   universalify@2.0.1:
     resolution: {integrity: sha512-gptHNQghINnc/vTGIk0SOFGFNXw7JVrlRUtConJRlvaw6DuX0wO5Jeko9sWrMBhh+PsYAZ7oXAiOnf/UKogyiw==}
     engines: {node: '>= 10.0.0'}
+
+  unpdf@1.8.1:
+    resolution: {integrity: sha512-xkURhy2SoGpOIH0a1gLHNkASPIQYonadDJs2AQwPEfUakafeD9EA1WTWWsaR++gfTCXJpV27W7tU1nXuk82UKQ==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      '@napi-rs/canvas': ^0.1.69 || ^1.0.0
+    peerDependenciesMeta:
+      '@napi-rs/canvas':
+        optional: true
 
   unpipe@1.0.0:
     resolution: {integrity: sha512-pjy2bYhSsufwWlKwPc+l3cN7+wuJlK6uz0YdJEOlQDbl6jo/YlPi4mb8agUkVC8BF7V8NuzeyPNqRksA3hztKQ==}
@@ -9101,6 +9113,8 @@ snapshots:
 
   universalify@2.0.1: {}
 
+  unpdf@1.8.1: {}
+
   unpipe@1.0.0: {}
 
   update-browserslist-db@1.2.3(browserslist@4.28.2):
@@ -9356,14 +9370,14 @@ snapshots:
       d3-array: 3.2.4
       vega-dataflow: 6.1.3
       vega-statistics: 2.0.0
-      vega-time: 3.1.0
+      vega-time: 3.3.0
       vega-util: 2.1.3
 
   vega-typings@2.1.0:
     dependencies:
       '@types/geojson': 7946.0.16
       vega-event-selector: 4.0.0
-      vega-expression: 6.1.0
+      vega-expression: 6.2.2
       vega-util: 2.1.3
 
   vega-util@2.1.3: {}
@@ -9371,7 +9385,7 @@ snapshots:
   vega-view-transforms@5.1.0:
     dependencies:
       vega-dataflow: 6.1.3
-      vega-scenegraph: 5.1.0
+      vega-scenegraph: 5.3.0
       vega-util: 2.1.3
 
   vega-view@6.1.2:
@@ -9380,7 +9394,7 @@ snapshots:
       d3-timer: 3.0.1
       vega-dataflow: 6.1.3
       vega-format: 2.1.3
-      vega-functions: 6.1.3
+      vega-functions: 6.2.0
       vega-runtime: 7.1.3
       vega-scenegraph: 5.3.0
       vega-util: 2.1.3

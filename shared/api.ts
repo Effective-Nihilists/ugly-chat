@@ -399,6 +399,35 @@ export const requests = defineRequests({
     rateLimit: { max: 30, window: 60 },
   }),
 
+  /**
+   * Extract an attached PDF's text server-side so the model can actually read it.
+   *
+   * An attachment previously reached the model as a bare markdown link with no
+   * fetch tool behind it, so the bot could only answer "I can't fetch that PDF".
+   * The client calls this right after promoting the upload; it is idempotent —
+   * re-ingesting the same `fileUrl` replaces that document's fragments.
+   *
+   * Expensive (network + pdf.js over a whole book), hence the tight rate limit.
+   */
+  chatFileIngest: authReq({
+    input: z
+      .object({
+        conversationId: z.string(),
+        fileUrl: z.string(),
+        fileName: z.string(),
+      })
+      .catchall(z.unknown()),
+    output: z.object({
+      ok: z.boolean(),
+      /** Pages the document reports, including any with no text layer. */
+      pageCount: z.number(),
+      /** Stored passages. Zero with ok:true means a scan with no text layer. */
+      chunks: z.number(),
+      reason: z.string().optional(),
+    }),
+    rateLimit: { max: 10, window: 60 },
+  }),
+
   // ── Video call lifecycle (roster via trackDoc on conversation.call) ───────
   conversationVideoJoin: authReq({
     input: z.object({ conversationId: z.string() }).catchall(z.unknown()),

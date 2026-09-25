@@ -222,6 +222,33 @@ export type Bot = InferDocType<typeof BotSchema>;
 // Placeholder getter that marks `userPublic` as table-less (so schema-gen /
 // migrations skip it — getter-backed collections have no Postgres table). It
 // resolves nothing on its own; the REAL ugly.bot-backed getter is attached at
+/**
+ * One extracted passage of an attached document (currently PDF only).
+ *
+ * A chat attachment used to reach the model as nothing but a markdown link —
+ * `ChatFile` rendered a download card and `server/bots.ts` only ever special-cased
+ * IMAGES, so a PDF arrived as a bare URL the model had no way to fetch ("ugly.chat
+ * links are still just decorative wallpaper to me"). Text is extracted server-side
+ * on attach and stored here, one row per chunk, so a question can retrieve just the
+ * passages it needs — a 416-page book does not fit in any context window.
+ *
+ * Scoped by `conversationId` so retrieval can never cross a conversation boundary,
+ * and by `fileUrl` so a single conversation with several documents stays separable.
+ */
+export const ChatFileFragmentSchema = z.object({
+  conversationId: z.string(),
+  /** The durable public URL of the attachment — the identity used at retrieval. */
+  fileUrl: z.string(),
+  /** Original filename, carried so a citation can name its source. */
+  fileName: z.string(),
+  /** 1-based page this passage came from, for "see page N" citations. */
+  page: z.number(),
+  /** Ordinal within the document, so retrieved passages can be re-sorted. */
+  chunkIndex: z.number(),
+  text: z.string(),
+});
+export type ChatFileFragment = InferDocType<typeof ChatFileFragmentSchema>;
+
 // server runtime by `withUserPublic()` in `server/userPublic.ts` (which can't
 // live in this shared module without dragging the Node server barrel into the
 // Workers/client bundles).
@@ -247,6 +274,13 @@ const conversationIndexes: { fields: Record<string, 1 | -1> }[] = [
   // Engine TTL sweep (`ttlAt`) + hourly cron scan (`cronEnd`). Not currently
   // wired to a cron here, but indexed so the engine paths never throw.
   { fields: { ttlAt: 1, cronEnd: 1 } },
+];
+const chatFileFragmentIndexes: { fields: Record<string, 1 | -1> }[] = [
+  // Retrieval always scopes to the conversation, usually narrowing to one file.
+  // D1 throws on any filter over an unindexed field, so both shapes are declared.
+  { fields: { conversationId: 1, fileUrl: 1, chunkIndex: 1 } },
+  // Re-ingest deletes the previous rows for a file before writing new ones.
+  { fields: { fileUrl: 1 } },
 ];
 const messageIndexes: { fields: Record<string, 1 | -1> }[] = [
   // Conversation message list + non-FTS search + bot history (getDocs by
@@ -371,6 +405,21 @@ export const collections = defineCollections({
       cascadeFrom: null,
       db: d1,
     },
+  },
+  chatFileFragment: {
+    schema: ChatFileFragmentSchema,
+    meta: {
+      cache: false,
+      trackable: false,
+      public: false,
+      // Fragments belong to the conversation; dropping it drops them.
+      cascadeFrom: "conversation",
+      db: d1,
+      // FTS5 over the passage text. This is what turns "where is Iran mentioned"
+      // into a bounded retrieval instead of an impossible whole-book prompt.
+      search: { fields: ["text"] },
+    },
+    indexes: chatFileFragmentIndexes,
   },
   bot: {
     schema: BotSchema,

@@ -9,6 +9,7 @@
 // Type-only import — value imports from the 'ugly-app' main entry pull the
 // whole Node server (vite/pg/http agents) into the Workers bundle.
 import type { RequestHandlers } from "ugly-app";
+import { ensureIngested, selfOrigin } from "./chatFileIngest";
 import {
   conversationCreate as engineConversationCreate,
   conversationLoad as engineConversationLoad,
@@ -487,6 +488,29 @@ export function createChatHandlers(
         (input as { typed?: boolean }).typed === true,
       );
       return { ok: true };
+    },
+
+    /**
+     * Extract an attached PDF so the model can read it.
+     *
+     * Membership-gated: fragments are conversation-scoped, so writing them is
+     * only allowed for someone already in that conversation.
+     */
+    chatFileIngest: async (userId, input) => {
+      const db = getDb();
+      const member = await db.getDoc(
+        collections.conversationUser,
+        `${input.conversationId}:${userId}`,
+      );
+      if (!member) {
+        return { ok: false, pageCount: 0, chunks: 0, reason: "not-a-member" };
+      }
+      return ensureIngested(db, {
+        conversationId: input.conversationId,
+        fileUrl: input.fileUrl,
+        fileName: input.fileName,
+        selfOrigin: selfOrigin(),
+      });
     },
 
     // ── Cloudflare Realtime broker ─────────────────────────────────────────
