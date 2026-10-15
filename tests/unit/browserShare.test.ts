@@ -139,18 +139,16 @@ describe("browser share", () => {
         publishConversations: vi.fn(),
         publishActionResult: vi.fn(),
       });
-      const { installBrowserShareBridge } = await import(
-        "../../client/lib/browserShare"
-      );
+      const { installBrowserShareBridge } =
+        await import("../../client/lib/browserShare");
       expect(() => installBrowserShareBridge()).not.toThrow();
     });
 
     it("subscribes through onShare when the shell provides it", async () => {
       const onShare = vi.fn();
       stubPage({ onShare });
-      const { installBrowserShareBridge } = await import(
-        "../../client/lib/browserShare"
-      );
+      const { installBrowserShareBridge } =
+        await import("../../client/lib/browserShare");
       installBrowserShareBridge();
       expect(onShare).toHaveBeenCalledOnce();
     });
