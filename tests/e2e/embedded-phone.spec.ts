@@ -108,6 +108,9 @@ test.describe("embedded in a phone host", () => {
       .first()
       .waitFor();
     // Open a thread (the built-in bot) and come back through the header.
+    // Let the first load's silent-SSO round trip finish, or this navigation
+    // is aborted by it.
+    await page.waitForTimeout(800);
     await page.goto("/bc-bot-ugly-" + (await userId(page)));
     const back = page.locator('[data-id="back"]');
     await expect(back).toBeVisible();
@@ -171,7 +174,13 @@ test.describe("embedded in a phone host", () => {
     ]) {
       await embed(page, ctx);
       await page.goto("/");
-      await page.waitForTimeout(1500);
+      // The signed-in home: the phone list, or (host picker) the empty hero.
+      // Waiting on it also rides out the silent-SSO round trip on first load.
+      await page
+        .locator('[data-id="search"], [data-id="chat-with-ai"]')
+        .first()
+        .waitFor();
+      await page.waitForTimeout(800);
       const x = Math.floor(PHONE.width / 2);
       expect(await bgAt(page, x, 1)).toBe(await bgAt(page, x, INSET_TOP + 3));
     }
