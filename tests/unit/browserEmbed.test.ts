@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  getBrowserEmbedContext,
+  hostOwnsTheme,
+  hostShowsConversationPicker,
   installBrowserEmbedBridge,
   onBrowserAction,
   onBrowserConversationSelection,
@@ -604,5 +607,89 @@ describe("what the browser is told about a request", () => {
     });
     publishBrowserActionResult({ type: "pin", conversationId: "c1", ok: true });
     expect(publishActionResult).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Feedback 3b639ded: inside Studio's phone app there was no way to switch
+ * chats, and Chat opened dark while Studio was light.
+ *
+ * The phone shells list chats only in a drawer that is closed while you read,
+ * so "embedded" can no longer mean "the host shows the list". Only an explicit
+ * `conversationPicker: true` does. And the theme follows every context push,
+ * not just the first, falling back to the user's own setting when the host
+ * names none.
+ */
+describe("host capabilities and theme", () => {
+  function host(storedTheme: string | null = null) {
+    resetBrowserEmbedForTests();
+    let contextListener: ((raw: unknown) => void) | undefined;
+    const dataset: Record<string, string | undefined> = {};
+    vi.stubGlobal("window", {
+      localStorage: { getItem: () => storedTheme, setItem: () => undefined },
+      uglyBrowser: {
+        onContext: (cb: (raw: unknown) => void) => {
+          contextListener = cb;
+          return () => undefined;
+        },
+      },
+    });
+    vi.stubGlobal("document", {
+      documentElement: {
+        dataset,
+        toggleAttribute: vi.fn(),
+        removeAttribute: (name: string) => {
+          if (name === "data-theme") delete dataset.theme;
+        },
+        style: { setProperty: vi.fn() },
+      },
+    });
+    installBrowserEmbedBridge();
+    return {
+      dataset,
+      push: (raw: unknown) => contextListener?.(raw),
+    };
+  }
+
+  it("keeps its own conversation switcher unless the host says it has a picker", () => {
+    const { push } = host();
+    push({ embedded: true, theme: "light" });
+    expect(hostShowsConversationPicker(getBrowserEmbedContext())).toBe(false);
+    push({ embedded: true, theme: "light", conversationPicker: "yes" });
+    expect(hostShowsConversationPicker(getBrowserEmbedContext())).toBe(false);
+    push({ embedded: true, theme: "light", conversationPicker: true });
+    expect(hostShowsConversationPicker(getBrowserEmbedContext())).toBe(true);
+  });
+
+  it("never treats a page that is not embedded as having a host picker", () => {
+    host();
+    expect(hostShowsConversationPicker(getBrowserEmbedContext())).toBe(false);
+    expect(hostOwnsTheme(getBrowserEmbedContext())).toBe(false);
+  });
+
+  it("follows the host's theme on every push, not only the first", () => {
+    const { dataset, push } = host();
+    push({ embedded: true, theme: "dark" });
+    expect(dataset.theme).toBe("dark");
+    push({ embedded: true, theme: "light" });
+    expect(dataset.theme).toBe("light");
+    push({ embedded: true, theme: "dark" });
+    expect(dataset.theme).toBe("dark");
+    expect(hostOwnsTheme(getBrowserEmbedContext())).toBe(true);
+  });
+
+  it("does not force a theme when the host names none", () => {
+    const { dataset, push } = host("cosmic-latte");
+    push({ embedded: true });
+    expect(dataset.theme).toBe("cosmic-latte");
+    expect(hostOwnsTheme(getBrowserEmbedContext())).toBe(false);
+  });
+
+  it("falls back to the system theme when neither host nor user chose one", () => {
+    const { dataset, push } = host(null);
+    push({ embedded: true, theme: "dark" });
+    expect(dataset.theme).toBe("dark");
+    push({ embedded: true, theme: "sepia" });
+    expect(dataset.theme).toBeUndefined();
   });
 });

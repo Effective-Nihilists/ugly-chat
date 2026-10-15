@@ -105,6 +105,23 @@
   --color-error-subtle: var(--app-error-20);
 }
 
+/* color-scheme follows the theme that is showing. `only light` (not `light`)
+   is the opt-out from a WebView's algorithmic darkening, so a light theme is
+   never repainted dark behind the app's back; dark themes declare `dark`.
+   lib/theme.ts mirrors this inline + in the meta tag once JS runs. */
+:root {
+  color-scheme: only light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"],
+:root[data-theme="vim"] {
+  color-scheme: dark;
+}
+
 /* Dark mode CSS variable values */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {

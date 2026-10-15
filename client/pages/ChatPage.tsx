@@ -89,7 +89,11 @@ import { HumanTelemetryStrip } from "../components/HumanTelemetryStrip";
 import { openThemeMenu } from "../components/ThemeMenu";
 import { type StatMsg, replyLatencyMs } from "../../shared/humanStats";
 import { formatDuration } from "../../shared/duration";
-import { useBrowserEmbed } from "../lib/browserEmbed";
+import {
+  hostOwnsTheme,
+  hostShowsConversationPicker,
+  useBrowserEmbed,
+} from "../lib/browserEmbed";
 
 // Open a markdown link. MdastViewer's default link handler calls
 // `global.open(...)` for non-mention links, which throws in the browser
@@ -2357,13 +2361,17 @@ export default function ChatPage({
           background: "transparent",
         }}
       >
-        {narrow && !embed.embedded ? (
+        {/* The way back to the chat list. Hidden only when the embedding host
+            shows its own picker beside this thread — a phone host lists chats
+            in a closed drawer, and hiding this there left no way to switch. */}
+        {narrow && !hostShowsConversationPicker(embed) ? (
           <button
             type="button"
             onClick={() => {
               router.push("", {});
             }}
-            aria-label="Back"
+            aria-label="Back to chats"
+            title="Chats"
             style={{
               border: "none",
               background: "transparent",
@@ -2416,7 +2424,7 @@ export default function ChatPage({
           </div>
         </div>
         {/* Theme picker — mobile only (desktop has it in the sidebar header). */}
-        {narrow && !embed.embedded ? (
+        {narrow && !hostOwnsTheme(embed) ? (
           <button
             type="button"
             onClick={() => {

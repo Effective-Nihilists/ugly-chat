@@ -10,7 +10,11 @@ import { UGLY_BOT_ID } from "../../shared/bots";
 import { openThemeMenu } from "../components/ThemeMenu";
 import { openUglyBotSettings } from "../lib/uglyBot";
 import { ConversationListBody } from "../components/ConversationListBody";
-import { useBrowserEmbed } from "../lib/browserEmbed";
+import {
+  hostOwnsTheme,
+  hostShowsConversationPicker,
+  useBrowserEmbed,
+} from "../lib/browserEmbed";
 
 // True when the viewport is narrow enough that AppShell hides the sidebar
 // (<820px). Mirrors ChatPage's useNarrow.
@@ -103,7 +107,7 @@ export default function ChatHomePage(): React.ReactElement {
       >
         <Bot size={18} />
       </button>
-      {!embed.embedded ? (
+      {!hostOwnsTheme(embed) ? (
         <button
           type="button"
           title="Theme"
@@ -120,13 +124,13 @@ export default function ChatHomePage(): React.ReactElement {
 
   // ── Mobile: full-page conversation list (the sidebar is hidden here) ──────
   //
-  // NOT when embedded, however narrow the pane is. In the browser the Chats
-  // section of the sidebar IS the list, and drawing a second one inside the
-  // companion put two pickers on screen at once and made the panel a place you
-  // could get lost in — "the panel should never show a list of conversations".
-  // Embedded, this pane only ever shows the thread the browser asked for, or
-  // the empty state below while it has not asked for one.
-  if (narrow && !embed.embedded)
+  // NOT when the embedding host shows a picker of its own beside this pane
+  // (`conversationPicker` in its context): drawing a second one put two pickers
+  // on screen at once — "the panel should never show a list of conversations".
+  // Every other embedding gets the list, because a host that lists the chats
+  // only in a closed drawer (Studio's phone shells) otherwise leaves the user
+  // with no visible way to switch chats (feedback 3b639ded).
+  if (narrow && !hostShowsConversationPicker(embed))
     return (
       <MobileHome
         conversations={conversations}

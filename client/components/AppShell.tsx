@@ -14,6 +14,7 @@ import {
   publishBrowserActionResult,
   onBrowserConversationSelection,
   publishBrowserConversations,
+  hostShowsConversationPicker,
   useBrowserEmbed,
 } from "../lib/browserEmbed";
 
@@ -42,22 +43,26 @@ export function AppShell({
   const isChat = rn === ":conversationId" || (rn === "" && authed);
   const browserShare = useBrowserShare();
   const embed = useBrowserEmbed();
+  // Only a host that SAYS it shows a picker gets to replace this app's own
+  // list. Embedded alone is not enough: a phone host lists the chats in a
+  // closed drawer, and hiding ours there left no way to switch chats.
+  const hostPicker = hostShowsConversationPicker(embed);
 
   const [wide, setWide] = useState(() =>
     typeof window === "undefined"
       ? true
-      : !embed.embedded && window.innerWidth >= SIDEBAR_MIN_WIDTH,
+      : !hostPicker && window.innerWidth >= SIDEBAR_MIN_WIDTH,
   );
   useEffect(() => {
     const onResize = (): void => {
-      setWide(!embed.embedded && window.innerWidth >= SIDEBAR_MIN_WIDTH);
+      setWide(!hostPicker && window.innerWidth >= SIDEBAR_MIN_WIDTH);
     };
     onResize();
     window.addEventListener("resize", onResize);
     return () => {
       window.removeEventListener("resize", onResize);
     };
-  }, [embed.embedded]);
+  }, [hostPicker]);
 
   if (!isChat) {
     // The landing ('' when logged out) is full-bleed (its dark bg fills behind
@@ -92,11 +97,20 @@ export function AppShell({
     );
   }
 
-  // Chat two-pane: inset top + sides here; the bottom is owned per-surface (the
-  // composer needs a keyboard-aware inset, the sidebar pads its own footer).
-  // The inset (notch/edge) background must match the page filling it: the home
-  // list ('') is `--app-sidebar`, a conversation is `--app-main`.
-  const shellBg = rn === "" ? "var(--app-sidebar)" : "var(--app-main)";
+  // Chat two-pane: inset the sides here; the TOP inset is owned per column so
+  // the strip under the status bar is the same surface as the column below it.
+  // It used to be one strip across the whole shell in `--app-sidebar` on the
+  // home route, while the pane under it (the empty hero beside the sidebar, or
+  // an embedded companion's home) painted `--app-main` — the seam prod logged
+  // ("top edge shows a background seam (rgb(8,7,10) vs rgb(21,19,24))").
+  // The bottom is owned per-surface (the composer needs a keyboard-aware inset,
+  // the sidebar pads its own footer).
+  //
+  // The main column's surface: the phone home (the full-page conversation
+  // list ChatHomePage draws when the sidebar is hidden) is `--app-sidebar`;
+  // everything else there — a thread, the empty hero — is `--app-main`.
+  const phoneHome = rn === "" && !wide && !hostPicker;
+  const mainBg = phoneHome ? "var(--app-sidebar)" : "var(--app-main)";
   return (
     <div
       style={{
@@ -104,9 +118,8 @@ export function AppShell({
         height: "100dvh",
         width: "100%",
         overflow: "hidden",
-        background: shellBg,
+        background: mainBg,
         boxSizing: "border-box",
-        paddingTop: "var(--safe-area-inset-top, 0px)",
         paddingLeft: "var(--safe-area-inset-left, 0px)",
         paddingRight: "var(--safe-area-inset-right, 0px)",
       }}
@@ -132,9 +145,29 @@ export function AppShell({
         </div>
       ) : null}
       {authed ? <BrowserConversationBridge /> : null}
-      {wide && authed ? <Sidebar /> : null}
+      {wide && authed ? (
+        <div
+          style={{
+            flexShrink: 0,
+            height: "100%",
+            boxSizing: "border-box",
+            paddingTop: "var(--safe-area-inset-top, 0px)",
+            background: "var(--app-sidebar)",
+          }}
+        >
+          <Sidebar />
+        </div>
+      ) : null}
       <main
-        style={{ flex: 1, minWidth: 0, height: "100%", overflow: "hidden" }}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          height: "100%",
+          overflow: "hidden",
+          boxSizing: "border-box",
+          paddingTop: "var(--safe-area-inset-top, 0px)",
+          background: mainBg,
+        }}
       >
         {children}
       </main>

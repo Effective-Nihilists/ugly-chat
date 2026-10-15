@@ -1,8 +1,22 @@
 import { useSyncExternalStore } from "react";
+import { applyTheme, loadTheme, syncColorScheme } from "./theme";
 
 export interface BrowserEmbedContext {
   embedded: boolean;
-  theme: "light" | "dark";
+  /** The host's chosen theme. Absent when it sends none, and then this app
+   *  keeps the user's own setting (or the system one) rather than guessing. */
+  theme?: "light" | "dark";
+  /**
+   * The host draws a conversation picker the user can SEE beside this page
+   * (`conversationPicker: true` in the context it sends), so this app leaves
+   * its own list and back button out instead of showing two pickers.
+   *
+   * ⚠️ OPT-IN, NEVER ASSUMED FROM `embedded`. Studio's phone shells do list the
+   * chats, but in a drawer that is closed while you read a thread, and hiding
+   * this app's own switcher there left no visible way to change chats at all
+   * (feedback 3b639ded). A host that does not say so gets the switcher.
+   */
+  conversationPicker: boolean;
   /** The embedding browser's own frame background, so the companion paints the
    *  same ground as the chrome around it. Absent when it sends none. */
   frame?: string;
@@ -26,7 +40,7 @@ export interface BrowserConversationMeta {
 
 const DEFAULT_CONTEXT: BrowserEmbedContext = {
   embedded: false,
-  theme: "light",
+  conversationPicker: false,
 };
 const MAX_CONVERSATIONS = 24;
 let context = DEFAULT_CONTEXT;
@@ -79,14 +93,41 @@ function normalizeContext(raw: unknown): BrowserEmbedContext | null {
     embedded?: unknown;
     theme?: unknown;
     frame?: unknown;
+    conversationPicker?: unknown;
   } | null;
   if (value?.embedded !== true) return null;
   const frame = cssColor(value.frame);
+  const theme =
+    value.theme === "dark" || value.theme === "light" ? value.theme : undefined;
   return {
     embedded: true,
-    theme: value.theme === "dark" ? "dark" : "light",
+    conversationPicker: value.conversationPicker === true,
+    ...(theme ? { theme } : {}),
     ...(frame ? { frame } : {}),
   };
+}
+
+/** True when the embedding host shows its own visible conversation picker, so
+ *  this app should not draw a second one. See `conversationPicker`. */
+export function hostShowsConversationPicker(ctx: BrowserEmbedContext): boolean {
+  return ctx.embedded && ctx.conversationPicker;
+}
+
+/** True when the embedding host decides the theme (so this app's own theme
+ *  picker would be overridden on the next context push). */
+export function hostOwnsTheme(ctx: BrowserEmbedContext): boolean {
+  return ctx.embedded && ctx.theme !== undefined;
+}
+
+function restoreOwnTheme(): void {
+  try {
+    applyTheme(loadTheme());
+  } catch {
+    // Storage blocked (private mode, sandboxed preview): "auto" is the
+    // attribute-less default the stylesheet already falls back to.
+    if (typeof document !== "undefined")
+      document.documentElement.removeAttribute("data-theme");
+  }
 }
 
 function applyContext(next: BrowserEmbedContext): void {
@@ -96,7 +137,14 @@ function applyContext(next: BrowserEmbedContext): void {
       "data-browser-embedded",
       next.embedded,
     );
-    if (next.embedded) document.documentElement.dataset.theme = next.theme;
+    // Every push, not just the first: the host calls back again when the
+    // user changes its theme, and the companion must follow it live.
+    if (next.embedded) {
+      if (next.theme) {
+        document.documentElement.dataset.theme = next.theme;
+        syncColorScheme();
+      } else restoreOwnTheme();
+    }
     // Both surfaces, because the companion shows both: the thread paints on
     // `--app-main` and the panes around it on `--app-sidebar`, and leaving
     // either one behind is a seam across the middle of the panel.
@@ -151,6 +199,11 @@ export function installBrowserEmbedBridge(): void {
     if (selectionListeners.size === 0) pendingSelection = id;
     else for (const listener of selectionListeners) listener(id);
   });
+}
+
+/** The current embedding context, outside React. */
+export function getBrowserEmbedContext(): BrowserEmbedContext {
+  return context;
 }
 
 export function useBrowserEmbed(): BrowserEmbedContext {

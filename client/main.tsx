@@ -5,7 +5,7 @@ import { stringsDef } from "../shared/strings";
 import { AppShell } from "./components/AppShell";
 import { RouterProvider, RouterView } from "./router";
 import "./styles.css";
-import { loadTheme, applyTheme } from "./lib/theme";
+import { loadTheme, applyTheme, installSystemThemeListener } from "./lib/theme";
 import { loadTextSize, applyTextSize } from "./lib/textSize";
 import { installBrowserShareBridge } from "./lib/browserShare";
 import { installBrowserEmbedBridge } from "./lib/browserEmbed";
@@ -18,6 +18,9 @@ initClientLogger();
 
 // Apply persisted theme ASAP so first paint is correct (auto = no attribute → OS media query).
 applyTheme(loadTheme());
+// "Auto" follows the OS live; keep `color-scheme` (and the WebView force-dark
+// opt-out it carries) in step when the OS flips.
+installSystemThemeListener();
 
 // Apply persisted message text-size so `.uc-bubble` (which reads --uc-msg-size)
 // renders at the chosen size from first paint, before any conversation mounts.
