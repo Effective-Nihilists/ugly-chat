@@ -28,7 +28,9 @@ let installed = false;
 declare global {
   interface Window {
     uglyBrowser?: {
-      onShare(callback: (share: BrowserShare) => void): () => void;
+      /** Desktop shell only. The mobile shims (Android, iOS) do not define it;
+       *  they deliver shares through the `#ugly-browser-share?` hash instead. */
+      onShare?(callback: (share: BrowserShare) => void): () => void;
       onContext?(callback: (context: unknown) => void): () => void;
       onSelectConversation?(
         callback: (conversationId: string) => void,
@@ -224,7 +226,7 @@ export function installBrowserShareBridge(): void {
   };
   consumeMobileHash();
   window.addEventListener("hashchange", consumeMobileHash);
-  window.uglyBrowser?.onShare(accept);
+  window.uglyBrowser?.onShare?.(accept);
 }
 
 export function clearBrowserShare(): void {

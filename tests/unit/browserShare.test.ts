@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   browserShareFromHash,
   browserShareMarkdown,
@@ -110,5 +110,49 @@ describe("browser share", () => {
       excerpt: "quote",
     });
     expect(browserShareFromHash("#not-a-share")).toBeNull();
+  });
+
+  describe("installBrowserShareBridge", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      vi.resetModules();
+    });
+
+    const stubPage = (uglyBrowser: Record<string, unknown>) => {
+      vi.stubGlobal("window", { uglyBrowser, addEventListener: vi.fn() });
+      vi.stubGlobal("location", { hash: "", pathname: "/", search: "" });
+      vi.stubGlobal("history", { state: null, replaceState: vi.fn() });
+      vi.stubGlobal("sessionStorage", {
+        getItem: () => null,
+        setItem: vi.fn(),
+      });
+    };
+
+    // The Android and iOS Studio shims define window.uglyBrowser without
+    // onShare. Calling it unguarded threw "onShare is not a function" and
+    // left Chat as a blank screen inside the mobile app.
+    it("does not throw when the shell omits onShare", async () => {
+      stubPage({
+        onContext: vi.fn(),
+        onSelectConversation: vi.fn(),
+        onAction: vi.fn(),
+        publishConversations: vi.fn(),
+        publishActionResult: vi.fn(),
+      });
+      const { installBrowserShareBridge } = await import(
+        "../../client/lib/browserShare"
+      );
+      expect(() => installBrowserShareBridge()).not.toThrow();
+    });
+
+    it("subscribes through onShare when the shell provides it", async () => {
+      const onShare = vi.fn();
+      stubPage({ onShare });
+      const { installBrowserShareBridge } = await import(
+        "../../client/lib/browserShare"
+      );
+      installBrowserShareBridge();
+      expect(onShare).toHaveBeenCalledOnce();
+    });
   });
 });
