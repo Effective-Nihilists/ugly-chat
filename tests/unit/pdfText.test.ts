@@ -37,9 +37,7 @@ describe("chunkPages", () => {
       [page(1, "a".repeat(900)), page(2, "b".repeat(900))],
       { chunkChars: 400, overlap: 0 },
     );
-    expect(chunks.map((c) => c.chunkIndex)).toEqual(
-      chunks.map((_, i) => i),
-    );
+    expect(chunks.map((c) => c.chunkIndex)).toEqual(chunks.map((_, i) => i));
     expect(chunks.length).toBeGreaterThan(2);
   });
 

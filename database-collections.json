@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-14T00:31:59.486Z",
+  "generatedAt": "2026-09-25T23:28:48.199Z",
   "source": "shared/collections.ts",
   "collections": {
     "authMagicLink": {
@@ -911,6 +911,65 @@
         "cascadeFrom": null,
         "db": {
           "kind": "d1"
+        }
+      }
+    },
+    "chatFileFragment": {
+      "name": "chatFileFragment",
+      "schema": {
+        "fields": {
+          "chunkIndex": {
+            "type": "number",
+            "required": true
+          },
+          "conversationId": {
+            "type": "string",
+            "required": true
+          },
+          "fileName": {
+            "type": "string",
+            "required": true
+          },
+          "fileUrl": {
+            "type": "string",
+            "required": true
+          },
+          "page": {
+            "type": "number",
+            "required": true
+          },
+          "text": {
+            "type": "string",
+            "required": true
+          }
+        },
+        "indexes": [
+          {
+            "fields": {
+              "conversationId": 1,
+              "fileUrl": 1,
+              "chunkIndex": 1
+            }
+          },
+          {
+            "fields": {
+              "fileUrl": 1
+            }
+          }
+        ]
+      },
+      "meta": {
+        "cache": false,
+        "trackable": false,
+        "public": false,
+        "cascadeFrom": "conversation",
+        "db": {
+          "kind": "d1"
+        },
+        "search": {
+          "fields": [
+            "text"
+          ]
         }
       }
     },
