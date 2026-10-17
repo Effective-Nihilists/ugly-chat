@@ -14,8 +14,8 @@ import {
   uploadBlob,
   promoteBlob,
   downscaleImage,
-  crossOriginProps,
 } from "ugly-app/client";
+import { ResilientImage } from "../lib/imageFallback";
 import { defaultAvatar, type Avatar } from "ugly-app/shared";
 import { useRouter } from "../router";
 import { BOT_MODELS, startBotChat, type BotDoc } from "../lib/bots";
@@ -244,37 +244,35 @@ export default function BotEditPage({
             {/* Plain <img>, like every list surface — no 3D here. The
                 character/client barrel is not tree-shakeable (ugly-app has no
                 sideEffects map), so CharacterThumbnail stays out of this chunk. */}
-            {characterThumbnail ? (
-              <img
-                {...crossOriginProps(characterThumbnail)}
-                src={characterThumbnail}
-                alt=""
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 0,
-                  border: "1px solid var(--app-border)",
-                  objectFit: "cover",
-                  flexShrink: 0,
-                }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 0,
-                  border: "1px solid var(--app-border)",
-                  background: "var(--app-secondary)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <BotIcon size={22} style={{ opacity: 0.6 }} />
-              </div>
-            )}
+            <ResilientImage
+              src={characterThumbnail}
+              alt=""
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 0,
+                border: "1px solid var(--app-border)",
+                objectFit: "cover",
+                flexShrink: 0,
+              }}
+              fallback={
+                <div
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 0,
+                    border: "1px solid var(--app-border)",
+                    background: "var(--app-secondary)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <BotIcon size={22} style={{ opacity: 0.6 }} />
+                </div>
+              }
+            />
             <span
               style={{
                 flex: 1,

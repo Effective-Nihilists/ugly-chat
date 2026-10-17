@@ -17,36 +17,42 @@ import { authenticateAs, testAccount } from "ugly-app/playwright";
 const PHONE = { width: 360, height: 792 };
 const INSET_TOP = 40;
 
+/** A phone with a status bar: the native inset the shells report, and the
+ *  CSS var the framework derives from it. */
+async function withTopInset(page: Page): Promise<void> {
+  await page.addInitScript((insetTop) => {
+    const w = window as unknown as Record<string, unknown>;
+    w.__safeAreaInsets = { top: insetTop, right: 0, bottom: 0, left: 0 };
+    document.addEventListener("DOMContentLoaded", () => {
+      document.documentElement.style.setProperty(
+        "--safe-area-inset-top",
+        `${insetTop}px`,
+      );
+    });
+  }, INSET_TOP);
+}
+
 async function embed(
   page: Page,
   context: Record<string, unknown>,
 ): Promise<void> {
-  await page.addInitScript(
-    ({ ctx, insetTop }) => {
-      const w = window as unknown as Record<string, unknown>;
-      w.__safeAreaInsets = { top: insetTop, right: 0, bottom: 0, left: 0 };
-      let listener: ((value: unknown) => void) | null = null;
-      w.__pushContext = (value: unknown) => listener?.(value);
-      w.uglyBrowser = {
-        onContext(cb: (value: unknown) => void) {
-          listener = cb;
-          cb(ctx);
-          return () => undefined;
-        },
-        onSelectConversation: () => () => undefined,
-        onAction: () => () => undefined,
-        publishConversations: () => undefined,
-        publishActionResult: () => undefined,
-      };
-      document.addEventListener("DOMContentLoaded", () => {
-        document.documentElement.style.setProperty(
-          "--safe-area-inset-top",
-          `${insetTop}px`,
-        );
-      });
-    },
-    { ctx: context, insetTop: INSET_TOP },
-  );
+  await withTopInset(page);
+  await page.addInitScript((ctx) => {
+    const w = window as unknown as Record<string, unknown>;
+    let listener: ((value: unknown) => void) | null = null;
+    w.__pushContext = (value: unknown) => listener?.(value);
+    w.uglyBrowser = {
+      onContext(cb: (value: unknown) => void) {
+        listener = cb;
+        cb(ctx);
+        return () => undefined;
+      },
+      onSelectConversation: () => () => undefined,
+      onAction: () => () => undefined,
+      publishConversations: () => undefined,
+      publishActionResult: () => undefined,
+    };
+  }, context);
 }
 
 /** First opaque background at a viewport point — what the framework's seam
@@ -168,9 +174,14 @@ test.describe("embedded in a phone host", () => {
   test("the status-bar strip is the same surface as the page below it", async ({
     page,
   }) => {
+    // Both themes. The light pair is the seam prod logged on 2026-10-15
+    // ("rgb(242, 242, 244) vs rgb(255, 255, 255)": --app-sidebar over an
+    // --app-main pane); the dark pair is its earlier twin.
     for (const ctx of [
       { embedded: true, theme: "dark" },
       { embedded: true, theme: "dark", conversationPicker: true },
+      { embedded: true, theme: "light" },
+      { embedded: true, theme: "light", conversationPicker: true },
     ]) {
       await embed(page, ctx);
       await page.goto("/");
@@ -183,6 +194,41 @@ test.describe("embedded in a phone host", () => {
       await page.waitForTimeout(800);
       const x = Math.floor(PHONE.width / 2);
       expect(await bgAt(page, x, 1)).toBe(await bgAt(page, x, INSET_TOP + 3));
+    }
+  });
+});
+
+test.describe("on a phone, not embedded", () => {
+  test.use({ viewport: PHONE, hasTouch: true, isMobile: true });
+
+  test.beforeEach(async ({ page, baseURL }) => {
+    const account = await testAccount("embedded-phone");
+    const host = new URL(baseURL ?? "https://ugly.chat").hostname;
+    await authenticateAs(
+      page,
+      account,
+      host === "localhost" ? undefined : host,
+    );
+  });
+
+  test("the status-bar strip is the same surface as the home and a thread", async ({
+    page,
+  }) => {
+    await withTopInset(page);
+    const x = Math.floor(PHONE.width / 2);
+    const thread = "/bc-bot-ugly-" + (await userId(page));
+    // The theme defaults to auto, so the OS scheme picks the palette.
+    for (const colorScheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme });
+      for (const path of ["/", thread]) {
+        await page.goto(path);
+        await page
+          .locator('[data-id="search"], .uc-conversation-header')
+          .first()
+          .waitFor();
+        await page.waitForTimeout(800);
+        expect(await bgAt(page, x, 1)).toBe(await bgAt(page, x, INSET_TOP + 3));
+      }
     }
   });
 });

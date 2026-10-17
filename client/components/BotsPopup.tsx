@@ -1,4 +1,4 @@
-import { crossOriginProps } from "ugly-app/client";
+import { ResilientImage } from "../lib/imageFallback";
 import React, { useEffect, useState } from "react";
 import {
   Plus,
@@ -149,18 +149,16 @@ export function BotsPopup({
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {featured.map((b) => (
                 <div key={b._id} style={botRow} data-id={`featured-${b._id}`}>
-                  {botAvatarUri(b) ? (
-                    <img
-                      {...crossOriginProps(botAvatarUri(b) ?? "")}
-                      src={botAvatarUri(b)}
-                      alt=""
-                      style={avatarImg}
-                    />
-                  ) : (
-                    <div style={avatarFallback}>
-                      <BotIcon size={22} style={{ opacity: 0.6 }} />
-                    </div>
-                  )}
+                  <ResilientImage
+                    src={botAvatarUri(b)}
+                    alt=""
+                    style={avatarImg}
+                    fallback={
+                      <div style={avatarFallback}>
+                        <BotIcon size={22} style={{ opacity: 0.6 }} />
+                      </div>
+                    }
+                  />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={botName}>{b.name}</div>
                     {/* modelLabel() maps the raw enum to its display name — the
@@ -232,37 +230,16 @@ export function BotsPopup({
                   background: "var(--app-tertiary)",
                 }}
               >
-                {botAvatarUri(b) ? (
-                  <img
-                    {...crossOriginProps(botAvatarUri(b) ?? "")}
-                    src={botAvatarUri(b)}
-                    alt=""
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: 0,
-                      border: "1px solid var(--app-border)",
-                      objectFit: "cover",
-                      flexShrink: 0,
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: 0,
-                      border: "1px solid var(--app-border)",
-                      background: "var(--app-secondary)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <BotIcon size={22} style={{ opacity: 0.6 }} />
-                  </div>
-                )}
+                <ResilientImage
+                  src={botAvatarUri(b)}
+                  alt=""
+                  style={avatarImg}
+                  fallback={
+                    <div style={avatarFallback}>
+                      <BotIcon size={22} style={{ opacity: 0.6 }} />
+                    </div>
+                  }
+                />
                 <button
                   type="button"
                   onClick={() => {

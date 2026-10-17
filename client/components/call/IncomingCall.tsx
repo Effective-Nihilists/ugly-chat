@@ -1,4 +1,4 @@
-import { crossOriginProps } from "ugly-app/client";
+import { ResilientImage } from "../../lib/imageFallback";
 /**
  * IncomingCall — the ring overlay shown to a user who is NOT yet in the call
  * but whose conversation has an active call (someone is calling them). Accept →
@@ -69,16 +69,12 @@ export function IncomingCall({
             fontSize: 40,
           }}
         >
-          {callerAvatarUrl ? (
-            <img
-              {...crossOriginProps(callerAvatarUrl)}
-              src={callerAvatarUrl}
-              alt={callerName}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          ) : (
-            initials(callerName)
-          )}
+          <ResilientImage
+            src={callerAvatarUrl}
+            alt={callerName}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            fallback={initials(callerName)}
+          />
         </div>
         <div style={{ textAlign: "center" }}>
           <div

@@ -1,4 +1,4 @@
-import { crossOriginProps } from "ugly-app/client";
+import { ResilientImage } from "../../lib/imageFallback";
 /**
  * ParticipantAvatarTile — what a call participant shows when their CAMERA IS OFF
  * (per the call rule): their 3D avatar (GLB) over their avatar background; or,
@@ -141,16 +141,12 @@ export function ParticipantAvatarTile({
           color: "#fff",
         }}
       >
-        {imageUrl ? (
-          <img
-            {...crossOriginProps(imageUrl)}
-            src={imageUrl}
-            alt={name}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          />
-        ) : (
-          initials(name)
-        )}
+        <ResilientImage
+          src={imageUrl}
+          alt={name}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          fallback={initials(name)}
+        />
       </div>
     </div>
   );

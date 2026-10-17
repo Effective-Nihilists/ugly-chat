@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useApp, crossOriginProps } from "ugly-app/client";
+import { useImageSrc } from "./imageFallback";
 
 // One row of the sidebar / chat-home conversation list (mirrors the
 // `conversationListMine` handler output).
@@ -154,6 +155,10 @@ function initial(s: string): string {
  * image icon. Handling only a MISSING url covered half the ways artwork can be
  * absent; a dangling reference is the other half, and neither should ever
  * render a broken <img>.
+ *
+ * The failure is also remembered (imageFallback.tsx), so the dead reference
+ * is not fetched, and re-reported, by every later render and page load: the
+ * same blob was still being logged daily in October 2026.
  */
 export function Avatar(props: {
   image?: unknown;
@@ -162,22 +167,16 @@ export function Avatar(props: {
   size?: number;
 }): React.ReactElement {
   const size = props.size ?? 42;
-  const [failed, setFailed] = React.useState(false);
-  const url = resolveImageUrl(props.image);
-  React.useEffect(() => {
-    setFailed(false);
-  }, [url]);
-  if (url && !failed) {
+  const { src, onError } = useImageSrc(resolveImageUrl(props.image));
+  if (src) {
     return (
       <img
-        {...crossOriginProps(url)}
-        src={url}
+        {...crossOriginProps(src)}
+        src={src}
         width={size}
         height={size}
         alt=""
-        onError={() => {
-          setFailed(true);
-        }}
+        onError={onError}
         style={{
           width: size,
           height: size,
