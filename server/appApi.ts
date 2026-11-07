@@ -10,7 +10,8 @@
  * Endpoints:
  *   POST /app/bot/register        { key, name, instruction?, model?, firstMessage?, buttons?, avatarUrl?, backgroundUrl?, webhookUrl?, webhookSecret? } → { botId }
  *   POST /app/conversation/create { type?, title?, background?, memberUserIds[], botIds[], custom?, webhookUrl?, webhookSecret?, id? } → { conversationId }
- *   POST /app/message/create      { conversationId, asUserId, message } → { message }
+ *   POST /app/message/create      { conversationId, asUserId, message: { id?, ... } } → { message, deduplicated? }
+ *                                 (message.id = idempotency key; 503 + Retry-After on a transient D1 fault)
  *   POST /app/message/list        { conversationId, limit? } → { messages }
  */
 import type { Hono } from "hono";
@@ -24,6 +25,7 @@ import { collections } from "../shared/collections";
 import type { DbSurface } from "./handlers";
 import { fireMessageWebhooks } from "./webhooks";
 import { unfurlMessageLinks } from "./linkPreview";
+import { appMessageCreate } from "./appMessageCreate";
 
 interface AppIdentity {
   appId: string;
@@ -242,19 +244,40 @@ export function registerAppApi(
     if (!conversationId || !asUserId) {
       return c.json({ error: "conversationId and asUserId required" }, 400);
     }
-    const conv = await getDb().getDoc(collections.conversation, conversationId);
-    if (!conv) return c.json({ error: "conversation not found" }, 404);
-    if (!(await appCanAccess(getDb, conv, id.appId)))
-      return c.json({ error: "Forbidden" }, 403);
-
     const message: Record<string, unknown> =
       typeof body.message === "object" && body.message !== null
         ? (body.message as Record<string, unknown>)
         : {};
-    const msg: unknown = await engineConversationMessageCreate(
-      { conversationId, message: { ...message } },
-      asUserId,
+    // Bounded D1 retry + idempotent on message.id (see appMessageCreate.ts).
+    const result = await appMessageCreate(
+      { appId: id.appId, conversationId, asUserId, message },
+      {
+        getConversation: (cid) =>
+          getDb().getDoc(collections.conversation, cid),
+        canAccess: (conv) => appCanAccess(getDb, conv, id.appId),
+        getMessage: (docId) => getDb().getDoc(collections.message, docId),
+        createMessage: (input, author) =>
+          engineConversationMessageCreate(input, author),
+      },
     );
+    switch (result.kind) {
+      case "notFound":
+        return c.json({ error: "conversation not found" }, 404);
+      case "forbidden":
+        return c.json({ error: "Forbidden" }, 403);
+      case "badRequest":
+        return c.json({ error: result.error }, 400);
+      case "unavailable":
+        c.header("Retry-After", String(result.retryAfterSec));
+        return c.json({ error: result.error, retryable: true }, 503);
+      case "existing":
+        // Already posted (a retry of a request that committed): return it and
+        // do NOT re-fire webhooks / unfurl.
+        return c.json({ message: result.message, deduplicated: true });
+      case "created":
+        break;
+    }
+    const msg: unknown = result.message;
     // Deliver webhooks AFTER the response — must use waitUntil or the Worker
     // isolate is torn down before the catcher fetch completes.
     const fire = fireMessageWebhooks(
